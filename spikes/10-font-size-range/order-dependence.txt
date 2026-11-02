@@ -1,0 +1,3 @@
+order 20px,16px,8px:       20px→opsz 20  16px→opsz 20  8px→opsz 20
+order 8px,20px,16px:       8px→opsz 14  20px→opsz 14  16px→opsz 14
+order 16px,8px,20px:       16px→opsz 16  8px→opsz 16  20px→opsz 16

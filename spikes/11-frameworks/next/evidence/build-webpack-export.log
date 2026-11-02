@@ -1,0 +1,39 @@
+$ FONTPHOBIA_EXPORT=1 next build --webpack
+▲ Next.js 16.4.4 (webpack)
+✓ Running next.config.ts took 15ms
+
+  Creating an optimized production build ...
+[probe] webpack done server server:nodejs
+[probe] webpack done edge-server server:edge
+[probe] webpack done client client
+✓ Compiled successfully in 2.5s
+  Running next.config.js provided runAfterProductionCompile ...
+[probe] runAfterProductionCompile /Users/amir/Code/fontphobia/spikes/11-frameworks/next/.next
+✓ Completed runAfterProductionCompile in 0.3ms
+  Running TypeScript ...
+  Finished TypeScript in 658ms ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/7) ...
+  Generating static pages using 7 workers (1/7) 
+  Generating static pages using 7 workers (3/7) 
+  Generating static pages using 7 workers (5/7) 
+✓ Generating static pages using 7 workers (7/7) in 295ms
+  Finalizing page optimization ...
+  Collecting build traces ...
+  Running onBuildComplete from probe
+[probe] adapter onBuildComplete {"output":"export","outputs":{"pages":0,"pagesApi":0,"appPages":0,"appRoutes":0,"prerenders":0,"staticFiles":73},"outHtml":["404.html","_not-found.html","about.html","index.html","posts/1.html","posts/2.html"]}
+[probe] adapter prerender pathnames []
+[probe] adapter staticFiles ["/404","/__next.__PAGE__.txt","/__next._full.txt","/__next._tree.txt","/_not-found","/_not-found.txt","/_not-found/__next._full.txt","/_not-found/__next._not-found.__PAGE__.txt","/_not-found/__next._tree.txt","/about","/about.txt","/about/__next._full.txt","/about/__next._tree.txt","/about/__next.about.__PAGE__.txt","/favicon.ico","/file.svg","/globe.svg","/index","/index.txt","/next.svg","/posts/1","/posts/1.txt","/posts/1/__next._full.txt","/posts/1/__next._tree.txt","/posts/1/__next.posts.$d$id.__PAGE__.txt","/posts/2","/posts/2.txt","/posts/2/__next._full.txt","/posts/2/__next._tree.txt","/posts/2/__next.posts.$d$id.__PAGE__.txt","/vercel.svg","/window.svg"]
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /about
+└   /posts/[id]
+  ├ ● /posts/1
+  └ ● /posts/2
+
+
+○  (Static)  prerendered as static content
+●  (SSG)     prerendered as static HTML (uses generateStaticParams)
+

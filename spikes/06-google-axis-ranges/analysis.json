@@ -1,0 +1,458 @@
+{
+ "flex-full.woff2": {
+  "sfntBytes": 153292,
+  "numGlyphs": 269,
+  "cmapCount": 235,
+  "axes": {
+   "opsz": "8..144 (def 14)",
+   "wght": "100..1000 (def 400)"
+  },
+  "avarSegmentLengths": [
+   5,
+   3
+  ],
+  "hhea": [
+   1900,
+   -500,
+   0
+  ],
+  "os2": [
+   1900,
+   -500,
+   0,
+   2461,
+   600
+  ],
+  "unitsPerEm": 2048,
+  "hasHinting": false,
+  "tables": "GDEF GPOS GSUB HVAR MVAR OS/2 STAT avar cmap fvar gasp glyf gvar head hhea hmtx loca maxp name post",
+  "advance": {
+   "400": 15438.539260451049,
+   "550": 15981.372628921745,
+   "700": 16524.205997392437
+  },
+  "nameVersion": "Version 3.200;gftools[0.9.32]"
+ },
+ "flex-opsz-12-32-wght-400-700.woff2": {
+  "sfntBytes": 153292,
+  "numGlyphs": 269,
+  "cmapCount": 235,
+  "axes": {
+   "opsz": "8..144 (def 14)",
+   "wght": "100..1000 (def 400)"
+  },
+  "avarSegmentLengths": [
+   5,
+   3
+  ],
+  "hhea": [
+   1900,
+   -500,
+   0
+  ],
+  "os2": [
+   1900,
+   -500,
+   0,
+   2461,
+   600
+  ],
+  "unitsPerEm": 2048,
+  "hasHinting": false,
+  "tables": "GDEF GPOS GSUB HVAR MVAR OS/2 STAT avar cmap fvar gasp glyf gvar head hhea hmtx loca maxp name post",
+  "advance": {
+   "400": 15438.539260451049,
+   "550": 15981.372628921745,
+   "700": 16524.205997392437
+  },
+  "nameVersion": "Version 3.200;gftools[0.9.32]"
+ },
+ "flex-wght-100-1000.woff2": {
+  "sfntBytes": 72552,
+  "numGlyphs": 269,
+  "cmapCount": 235,
+  "axes": {
+   "wght": "100..1000 (def 400)"
+  },
+  "avarSegmentLengths": [
+   3
+  ],
+  "hhea": [
+   1900,
+   -500,
+   0
+  ],
+  "os2": [
+   1900,
+   -500,
+   0,
+   2461,
+   600
+  ],
+  "unitsPerEm": 2048,
+  "hasHinting": false,
+  "tables": "GDEF GPOS GSUB HVAR MVAR OS/2 STAT avar cmap fvar gasp glyf gvar head hhea hmtx loca maxp name post",
+  "advance": {
+   "400": 15577,
+   "550": 16074.25,
+   "700": 16571.5
+  },
+  "nameVersion": "Version 3.200;gftools[0.9.32]"
+ },
+ "flex-wght-400-700.woff2": {
+  "sfntBytes": 72552,
+  "numGlyphs": 269,
+  "cmapCount": 235,
+  "axes": {
+   "wght": "100..1000 (def 400)"
+  },
+  "avarSegmentLengths": [
+   3
+  ],
+  "hhea": [
+   1900,
+   -500,
+   0
+  ],
+  "os2": [
+   1900,
+   -500,
+   0,
+   2461,
+   600
+  ],
+  "unitsPerEm": 2048,
+  "hasHinting": false,
+  "tables": "GDEF GPOS GSUB HVAR MVAR OS/2 STAT avar cmap fvar gasp glyf gvar head hhea hmtx loca maxp name post",
+  "advance": {
+   "400": 15577,
+   "550": 16074.25,
+   "700": 16571.5
+  },
+  "nameVersion": "Version 3.200;gftools[0.9.32]"
+ },
+ "inter-full.woff2": {
+  "sfntBytes": 168892,
+  "numGlyphs": 518,
+  "cmapCount": 231,
+  "axes": {
+   "opsz": "14..32 (def 14)",
+   "wght": "100..900 (def 400)"
+  },
+  "avarSegmentLengths": [
+   3,
+   7
+  ],
+  "hhea": [
+   1984,
+   -494,
+   0
+  ],
+  "os2": [
+   1984,
+   -494,
+   0,
+   2269,
+   660
+  ],
+  "unitsPerEm": 2048,
+  "hasHinting": false,
+  "tables": "GDEF GPOS GSUB HVAR MVAR OS/2 STAT avar cmap fvar gasp glyf gvar head hhea hmtx loca maxp name post",
+  "advance": {
+   "400": 16507.55555555556,
+   "550": 16922.59333401146,
+   "700": 17337.723065501974
+  },
+  "nameVersion": "Version 4.001;git-66647c0bb"
+ },
+ "inter-opsz-16-24-wght-100-900.woff2": {
+  "sfntBytes": 168892,
+  "numGlyphs": 518,
+  "cmapCount": 231,
+  "axes": {
+   "opsz": "14..32 (def 14)",
+   "wght": "100..900 (def 400)"
+  },
+  "avarSegmentLengths": [
+   3,
+   7
+  ],
+  "hhea": [
+   1984,
+   -494,
+   0
+  ],
+  "os2": [
+   1984,
+   -494,
+   0,
+   2269,
+   660
+  ],
+  "unitsPerEm": 2048,
+  "hasHinting": false,
+  "tables": "GDEF GPOS GSUB HVAR MVAR OS/2 STAT avar cmap fvar gasp glyf gvar head hhea hmtx loca maxp name post",
+  "advance": {
+   "400": 16507.55555555556,
+   "550": 16922.59333401146,
+   "700": 17337.723065501974
+  },
+  "nameVersion": "Version 4.001;git-66647c0bb"
+ },
+ "inter-opsz-16-24-wght-400-700.woff2": {
+  "sfntBytes": 168892,
+  "numGlyphs": 518,
+  "cmapCount": 231,
+  "axes": {
+   "opsz": "14..32 (def 14)",
+   "wght": "100..900 (def 400)"
+  },
+  "avarSegmentLengths": [
+   3,
+   7
+  ],
+  "hhea": [
+   1984,
+   -494,
+   0
+  ],
+  "os2": [
+   1984,
+   -494,
+   0,
+   2269,
+   660
+  ],
+  "unitsPerEm": 2048,
+  "hasHinting": false,
+  "tables": "GDEF GPOS GSUB HVAR MVAR OS/2 STAT avar cmap fvar gasp glyf gvar head hhea hmtx loca maxp name post",
+  "advance": {
+   "400": 16507.55555555556,
+   "550": 16922.59333401146,
+   "700": 17337.723065501974
+  },
+  "nameVersion": "Version 4.001;git-66647c0bb"
+ },
+ "inter-wght-100-900.woff2": {
+  "sfntBytes": 122888,
+  "numGlyphs": 518,
+  "cmapCount": 231,
+  "axes": {
+   "wght": "100..900 (def 400)"
+  },
+  "avarSegmentLengths": [
+   7
+  ],
+  "hhea": [
+   1984,
+   -494,
+   0
+  ],
+  "os2": [
+   1984,
+   -494,
+   0,
+   2269,
+   660
+  ],
+  "unitsPerEm": 2048,
+  "hasHinting": false,
+  "tables": "GDEF GPOS GSUB HVAR MVAR OS/2 STAT avar cmap fvar gasp glyf gvar head hhea hmtx loca maxp name post",
+  "advance": {
+   "400": 16652,
+   "550": 17042.920231919437,
+   "700": 17433.92707354884
+  },
+  "nameVersion": "Version 4.001;git-66647c0bb"
+ },
+ "inter-wght-400-700.woff2": {
+  "sfntBytes": 122888,
+  "numGlyphs": 518,
+  "cmapCount": 231,
+  "axes": {
+   "wght": "100..900 (def 400)"
+  },
+  "avarSegmentLengths": [
+   7
+  ],
+  "hhea": [
+   1984,
+   -494,
+   0
+  ],
+  "os2": [
+   1984,
+   -494,
+   0,
+   2269,
+   660
+  ],
+  "unitsPerEm": 2048,
+  "hasHinting": false,
+  "tables": "GDEF GPOS GSUB HVAR MVAR OS/2 STAT avar cmap fvar gasp glyf gvar head hhea hmtx loca maxp name post",
+  "advance": {
+   "400": 16652,
+   "550": 17042.920231919437,
+   "700": 17433.92707354884
+  },
+  "nameVersion": "Version 4.001;git-66647c0bb"
+ },
+ "inter-wght-400.woff2": {
+  "sfntBytes": 66892,
+  "numGlyphs": 518,
+  "cmapCount": 231,
+  "axes": {},
+  "avarSegmentLengths": null,
+  "hhea": [
+   1984,
+   -494,
+   0
+  ],
+  "os2": [
+   1984,
+   -494,
+   0,
+   2269,
+   660
+  ],
+  "unitsPerEm": 2048,
+  "hasHinting": false,
+  "tables": "GDEF GPOS GSUB OS/2 STAT cmap gasp glyf head hhea hmtx loca maxp name post",
+  "advance": {
+   "400": 16652,
+   "550": 16652,
+   "700": 16652
+  },
+  "nameVersion": "Version 4.001;git-66647c0bb"
+ },
+ "variants/Inter_opsz_wght_14__32_100__900-5415a288.woff2": {
+  "sfntBytes": 168892,
+  "numGlyphs": 518,
+  "cmapCount": 231,
+  "axes": {
+   "opsz": "14..32 (def 14)",
+   "wght": "100..900 (def 400)"
+  },
+  "avarSegmentLengths": [
+   3,
+   7
+  ],
+  "hhea": [
+   1984,
+   -494,
+   0
+  ],
+  "os2": [
+   1984,
+   -494,
+   0,
+   2269,
+   660
+  ],
+  "unitsPerEm": 2048,
+  "hasHinting": false,
+  "tables": "GDEF GPOS GSUB HVAR MVAR OS/2 STAT avar cmap fvar gasp glyf gvar head hhea hmtx loca maxp name post",
+  "advance": {
+   "400": 16507.55555555556,
+   "550": 16922.59333401146,
+   "700": 17337.723065501974
+  },
+  "nameVersion": "Version 4.001;git-66647c0bb"
+ },
+ "variants/Inter_wght_400__700-bf21f6c0.woff2": {
+  "sfntBytes": 122888,
+  "numGlyphs": 518,
+  "cmapCount": 231,
+  "axes": {
+   "wght": "100..900 (def 400)"
+  },
+  "avarSegmentLengths": [
+   7
+  ],
+  "hhea": [
+   1984,
+   -494,
+   0
+  ],
+  "os2": [
+   1984,
+   -494,
+   0,
+   2269,
+   660
+  ],
+  "unitsPerEm": 2048,
+  "hasHinting": false,
+  "tables": "GDEF GPOS GSUB HVAR MVAR OS/2 STAT avar cmap fvar gasp glyf gvar head hhea hmtx loca maxp name post",
+  "advance": {
+   "400": 16652,
+   "550": 17042.920231919437,
+   "700": 17433.92707354884
+  },
+  "nameVersion": "Version 4.001;git-66647c0bb"
+ },
+ "variants/Roboto_Flex_wght_400__700-4df81e50.woff2": {
+  "sfntBytes": 72552,
+  "numGlyphs": 269,
+  "cmapCount": 235,
+  "axes": {
+   "wght": "100..1000 (def 400)"
+  },
+  "avarSegmentLengths": [
+   3
+  ],
+  "hhea": [
+   1900,
+   -500,
+   0
+  ],
+  "os2": [
+   1900,
+   -500,
+   0,
+   2461,
+   600
+  ],
+  "unitsPerEm": 2048,
+  "hasHinting": false,
+  "tables": "GDEF GPOS GSUB HVAR MVAR OS/2 STAT avar cmap fvar gasp glyf gvar head hhea hmtx loca maxp name post",
+  "advance": {
+   "400": 15577,
+   "550": 16074.25,
+   "700": 16571.5
+  },
+  "nameVersion": "Version 3.200;gftools[0.9.32]"
+ },
+ "variants/Roboto_Flex_wght_400__700-8f5f39e4.woff2": {
+  "sfntBytes": 55512,
+  "numGlyphs": 269,
+  "cmapCount": 235,
+  "axes": {
+   "wght": "400..700 (def 400)"
+  },
+  "avarSegmentLengths": [
+   3
+  ],
+  "hhea": [
+   1900,
+   -500,
+   0
+  ],
+  "os2": [
+   1900,
+   -500,
+   0,
+   2461,
+   600
+  ],
+  "unitsPerEm": 2048,
+  "hasHinting": false,
+  "tables": "GDEF GPOS GSUB HVAR MVAR OS/2 STAT avar cmap fvar gasp glyf gvar head hhea hmtx loca maxp name post",
+  "advance": {
+   "400": 15577,
+   "550": 16076,
+   "700": 16575
+  },
+  "nameVersion": "Version 3.200;gftools[0.9.32]"
+ }
+}

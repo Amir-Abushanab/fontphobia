@@ -1,0 +1,16 @@
+load [ 'orig:1', 'latin:1', 'wght:1', 'wghtOpsz:1', 'noHVAR:1' ]
+chrome 155.0.8059.79
+16px wght 400 opsz 14  orig 7889.063  Δlatin    0.000  Δwght    0.000  Δwght+opsz    0.000  Δ…noHVAR    0.000
+16px wght 400 opsz 20  orig 7647.578  Δlatin    0.000  Δwght    0.000  Δwght+opsz   -0.438  Δ…noHVAR   -1.828
+16px wght 425 opsz 14  orig 7905.188  Δlatin    0.000  Δwght   -0.063  Δwght+opsz   -0.063  Δ…noHVAR   -1.594
+16px wght 550 opsz 24  orig 7636.922  Δlatin    0.000  Δwght   -0.438  Δwght+opsz   -1.141  Δ…noHVAR   -2.000
+16px wght 650 opsz 14  orig 8050.438  Δlatin    0.000  Δwght   -0.672  Δwght+opsz   -0.672  Δ…noHVAR   -1.875
+16px wght 700 opsz 20  orig 7905.469  Δlatin    0.000  Δwght   -0.828  Δwght+opsz   -1.250  Δ…noHVAR   -1.531
+16px wght 700 opsz 24  orig 7787.297  Δlatin    0.000  Δwght   -0.859  Δwght+opsz   -1.547  Δ…noHVAR   -1.547
+64px wght 400 opsz 14  orig 31556.250  Δlatin    0.000  Δwght    0.000  Δwght+opsz    0.000  Δ…noHVAR    0.000
+64px wght 400 opsz 20  orig 30590.313  Δlatin    0.000  Δwght    0.000  Δwght+opsz   -1.750  Δ…noHVAR   -7.328
+64px wght 425 opsz 14  orig 31620.781  Δlatin    0.000  Δwght   -0.266  Δwght+opsz   -0.266  Δ…noHVAR   -6.438
+64px wght 550 opsz 24  orig 30547.672  Δlatin    0.000  Δwght   -1.703  Δwght+opsz   -4.547  Δ…noHVAR   -8.031
+64px wght 650 opsz 14  orig 32201.734  Δlatin    0.000  Δwght   -2.688  Δwght+opsz   -2.688  Δ…noHVAR   -7.547
+64px wght 700 opsz 20  orig 31621.859  Δlatin    0.000  Δwght   -3.313  Δwght+opsz   -4.984  Δ…noHVAR   -6.125
+64px wght 700 opsz 24  orig 31149.188  Δlatin    0.000  Δwght   -3.406  Δwght+opsz   -6.188  Δ…noHVAR   -6.188

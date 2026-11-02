@@ -1,0 +1,11 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+export function getStaticPaths() {
+	return [{ params: { id: '1' } }, { params: { id: '2' } }];
+}
+const { id } = Astro.params;
+---
+
+<StarlightPage frontmatter={{ title: `Post ${id}` }}>
+	<p style="font-family: Fraunces, serif">Dynamic post {id} (Fraunces)</p>
+</StarlightPage>

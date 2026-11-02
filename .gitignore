@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.fontphobia/cache/
+.fontphobia/verify/
+spikes/**/node_modules/
+spikes/**/shots/
+/*.log
+.DS_Store
+spikes/08-dlx/*.tgz

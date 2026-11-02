@@ -1,0 +1,55 @@
+$ vite build
+vite v8.3.5 building client environment for production...
+transforming...
+
+[@tanstack/devtools-vite] Removed devtools code from: /src/routes/__root.tsx
+
+✓ 138 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/client/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2     10.25 kB
+dist/client/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2      11.23 kB
+dist/client/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2       18.74 kB
+dist/client/assets/inter-greek-wght-normal-CkhJZR-_.woff2          18.99 kB
+dist/client/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2   25.96 kB
+dist/client/assets/inter-latin-wght-normal-Dx4kXJAl.woff2          48.25 kB
+dist/client/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2      85.06 kB
+dist/client/assets/index-xKv10YAh.css                               1.94 kB │ gzip:   0.59 kB
+dist/client/assets/styles-CmCcBo5l.css                              5.04 kB │ gzip:   1.70 kB
+dist/client/assets/_id-B-S3ZhSq.js                                  0.15 kB │ gzip:   0.16 kB
+dist/client/assets/about-DNBr3LDh.js                                0.17 kB │ gzip:   0.16 kB
+dist/client/assets/routes-C4Cbagqs.js                               0.35 kB │ gzip:   0.25 kB
+dist/client/assets/index-D2ABR8Yb.js                              341.54 kB │ gzip: 110.33 kB
+
+✓ built in 150ms
+[probe] closeBundle client
+vite v8.3.5 building ssr environment for production...
+transforming...
+
+[@tanstack/devtools-vite] Removed devtools code from: /src/routes/__root.tsx
+
+✓ 115 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/server/assets/about-CRjvZ1vn.js                         0.25 kB │ gzip:  0.21 kB
+dist/server/assets/empty-plugin-adapters-BiGySXWX.js         0.26 kB │ gzip:  0.17 kB
+dist/server/assets/start-2YvLMQ67.js                         0.26 kB │ gzip:  0.19 kB
+dist/server/assets/_id-xMUgjeFJ.js                           0.29 kB │ gzip:  0.23 kB
+dist/server/assets/routes-CHJ6qfeC.js                        0.51 kB │ gzip:  0.30 kB
+dist/server/assets/_tanstack-start-manifest_v-PDT98-1c.js    1.00 kB │ gzip:  0.39 kB
+dist/server/assets/router-DciOAU51.js                        3.28 kB │ gzip:  1.23 kB
+dist/server/server.js                                      260.81 kB │ gzip: 63.09 kB
+
+✓ built in 85ms
+[probe] closeBundle ssr
+[prerender] Prerendering pages...
+[prerender] Concurrency: 12
+[prerender] Crawling: /
+[prerender] Crawling: /about
+[prerender] Crawling: /posts/1
+[prerender] Crawling: /posts/2
+[prerender] Prerendered 4 pages:
+[prerender] - /
+[prerender] - /about
+[prerender] - /posts/2
+[prerender] - /posts/1

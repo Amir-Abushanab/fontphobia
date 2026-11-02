@@ -1,0 +1,14 @@
+/ 200 1278
+/about 200 1278
+/posts/1 200 1278
+/posts/2 200 1278
+/posts/3 200 1278
+/nope 200 1278
+<title>About | Foldkit App</title>
+ <- /about/ 200 1220
+<title>Post 2 | Foldkit App</title>
+ <- /posts/2/ 200 1202
+<title>Post 2 | Foldkit App</title>
+ <- /posts/2/index.html 200 1202
+<title>Home | Foldkit App</title>
+ <- /about.html 200 1278

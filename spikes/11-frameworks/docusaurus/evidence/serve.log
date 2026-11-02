@@ -1,0 +1,2 @@
+$ docusaurus serve --no-open
+[ERROR] Something is already running on port 3000.

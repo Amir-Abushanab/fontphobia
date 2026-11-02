@@ -1,0 +1,11 @@
+srvx 1.0.8 · node 24.21.0 · prod
+◆ Server handler: ./dist/server/server.js
+◇ Static files:   ./dist/client/
+
+➜ Listening on: http://localhost:3015/ (all interfaces)
+[3:47:25 PM] GET http://localhost:3015/ [200] (3.42ms)
+[3:47:25 PM] GET http://localhost:3015/about [200] (0.91ms)
+[3:47:25 PM] GET http://localhost:3015/posts/2 [200] (0.43ms)
+[3:47:25 PM] GET http://localhost:3015/posts/3 [200] (14.17ms)
+[3:47:25 PM] GET http://localhost:3015/assets/index-xKv10YAh.css [200] (0.43ms)
+Stopping server gracefully (5s)... Press Ctrl+C again to force close.[2KServer closed successfully.

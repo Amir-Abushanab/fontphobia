@@ -1,0 +1,179 @@
+$ pnpm fonts && bundle exec jekyll build
+$ rm -rf assets/fonts/inter && mkdir -p assets/fonts/inter/files && cp node_modules/@fontsource-variable/inter/index.css assets/fonts/inter/ && cp node_modules/@fontsource-variable/inter/files/*-wght-normal.woff2 assets/fonts/inter/files/
+Configuration file: /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/_config.yml
+            Source: /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll
+       Destination: /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/_site
+ Incremental build: disabled. Enable with --incremental
+      Generating... 
+       Jekyll Feed: Generating feed for posts
+DEPRECATION WARNING [import]: Sass @import rules are deprecated and will be removed in Dart Sass 3.0.0.
+
+More info and automated migrator: https://sass-lang.com/d/import
+
+  ╷
+1 │ @import "minima";
+  │         ^^^^^^^^
+  ╵
+    /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/assets/main.scss 1:9  root stylesheet
+DEPRECATION WARNING [import]: Sass @import rules are deprecated and will be removed in Dart Sass 3.0.0.
+
+More info and automated migrator: https://sass-lang.com/d/import
+
+   ╷
+48 │   "minima/base",
+   │   ^^^^^^^^^^^^^
+   ╵
+    ../../../../minima-2.5.2/_sass/minima.scss 48:3                               @import
+    /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/assets/main.scss 1:9  root stylesheet
+DEPRECATION WARNING [import]: Sass @import rules are deprecated and will be removed in Dart Sass 3.0.0.
+
+More info and automated migrator: https://sass-lang.com/d/import
+
+   ╷
+49 │   "minima/layout",
+   │   ^^^^^^^^^^^^^^^
+   ╵
+    ../../../../minima-2.5.2/_sass/minima.scss 49:3                               @import
+    /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/assets/main.scss 1:9  root stylesheet
+DEPRECATION WARNING [import]: Sass @import rules are deprecated and will be removed in Dart Sass 3.0.0.
+
+More info and automated migrator: https://sass-lang.com/d/import
+
+   ╷
+50 │   "minima/syntax-highlighting"
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   ╵
+    ../../../../minima-2.5.2/_sass/minima.scss 50:3                               @import
+    /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/assets/main.scss 1:9  root stylesheet
+DEPRECATION WARNING [global-builtin]: Global built-in functions are deprecated and will be removed in Dart Sass 3.0.0.
+Use color.adjust instead.
+
+More info and automated migrator: https://sass-lang.com/d/import
+
+   ╷
+18 │ $grey-color-light: lighten($grey-color, 40%) !default;
+   │                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+   ╵
+    ../../../../minima-2.5.2/_sass/minima.scss 18:20                              @import
+    /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/assets/main.scss 1:9  root stylesheet
+DEPRECATION WARNING [color-functions]: lighten() is deprecated. Suggestions:
+
+color.scale($color, $lightness: 81.6%)
+color.adjust($color, $lightness: 40%)
+
+More info: https://sass-lang.com/d/color-functions
+
+   ╷
+18 │ $grey-color-light: lighten($grey-color, 40%) !default;
+   │                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+   ╵
+    ../../../../minima-2.5.2/_sass/minima.scss 18:20                              @import
+    /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/assets/main.scss 1:9  root stylesheet
+DEPRECATION WARNING [global-builtin]: Global built-in functions are deprecated and will be removed in Dart Sass 3.0.0.
+Use color.adjust instead.
+
+More info and automated migrator: https://sass-lang.com/d/import
+
+   ╷
+19 │ $grey-color-dark:  darken($grey-color, 25%) !default;
+   │                    ^^^^^^^^^^^^^^^^^^^^^^^^
+   ╵
+    ../../../../minima-2.5.2/_sass/minima.scss 19:20                              @import
+    /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/assets/main.scss 1:9  root stylesheet
+DEPRECATION WARNING [color-functions]: darken() is deprecated. Suggestions:
+
+color.scale($color, $lightness: -49.0384615385%)
+color.adjust($color, $lightness: -25%)
+
+More info: https://sass-lang.com/d/color-functions
+
+   ╷
+19 │ $grey-color-dark:  darken($grey-color, 25%) !default;
+   │                    ^^^^^^^^^^^^^^^^^^^^^^^^
+   ╵
+    ../../../../minima-2.5.2/_sass/minima.scss 19:20                              @import
+    /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/assets/main.scss 1:9  root stylesheet
+DEPRECATION WARNING [global-builtin]: Global built-in functions are deprecated and will be removed in Dart Sass 3.0.0.
+Use color.adjust instead.
+
+More info and automated migrator: https://sass-lang.com/d/import
+
+    ╷
+110 │     color: darken($brand-color, 15%);
+    │            ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ╵
+    ../../../../minima-2.5.2/_sass/minima/_base.scss 110:12                       @import
+    ../../../../minima-2.5.2/_sass/minima.scss 48:3                               @import
+    /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/assets/main.scss 1:9  root stylesheet
+DEPRECATION WARNING [color-functions]: darken() is deprecated. Suggestions:
+
+color.scale($color, $lightness: -28.5447761194%)
+color.adjust($color, $lightness: -15%)
+
+More info: https://sass-lang.com/d/color-functions
+
+    ╷
+110 │     color: darken($brand-color, 15%);
+    │            ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ╵
+    ../../../../minima-2.5.2/_sass/minima/_base.scss 110:12                       @import
+    ../../../../minima-2.5.2/_sass/minima.scss 48:3                               @import
+    /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/assets/main.scss 1:9  root stylesheet
+DEPRECATION WARNING [global-builtin]: Global built-in functions are deprecated and will be removed in Dart Sass 3.0.0.
+Use color.adjust instead.
+
+More info and automated migrator: https://sass-lang.com/d/import
+
+    ╷
+235 │   color: lighten($text-color, 18%);
+    │          ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ╵
+    ../../../../minima-2.5.2/_sass/minima/_base.scss 235:10                       @import
+    ../../../../minima-2.5.2/_sass/minima.scss 48:3                               @import
+    /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/assets/main.scss 1:9  root stylesheet
+DEPRECATION WARNING [color-functions]: lighten() is deprecated. Suggestions:
+
+color.scale($color, $lightness: 19.2857142857%)
+color.adjust($color, $lightness: 18%)
+
+More info: https://sass-lang.com/d/color-functions
+
+    ╷
+235 │   color: lighten($text-color, 18%);
+    │          ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ╵
+    ../../../../minima-2.5.2/_sass/minima/_base.scss 235:10                       @import
+    ../../../../minima-2.5.2/_sass/minima.scss 48:3                               @import
+    /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/assets/main.scss 1:9  root stylesheet
+DEPRECATION WARNING [global-builtin]: Global built-in functions are deprecated and will be removed in Dart Sass 3.0.0.
+Use color.adjust instead.
+
+More info and automated migrator: https://sass-lang.com/d/import
+
+    ╷
+240 │       background-color: lighten($grey-color-light, 6%);
+    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ╵
+    ../../../../minima-2.5.2/_sass/minima/_base.scss 240:25                       @import
+    ../../../../minima-2.5.2/_sass/minima.scss 48:3                               @import
+    /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/assets/main.scss 1:9  root stylesheet
+DEPRECATION WARNING [color-functions]: lighten() is deprecated. Suggestions:
+
+color.scale($color, $lightness: 66.5217391304%)
+color.adjust($color, $lightness: 6%)
+
+More info: https://sass-lang.com/d/color-functions
+
+    ╷
+240 │       background-color: lighten($grey-color-light, 6%);
+    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ╵
+    ../../../../minima-2.5.2/_sass/minima/_base.scss 240:25                       @import
+    ../../../../minima-2.5.2/_sass/minima.scss 48:3                               @import
+    /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/assets/main.scss 1:9  root stylesheet
+WARNING: 6 repetitive deprecation warnings omitted.
+Run in verbose mode to see all warnings.
+[probe] site post_render (6 pages, 2 posts; nothing written yet)
+[probe] site post_write /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/_site ["/", "/404.html", "/about/", "/assets/main.css", "/assets/main.css.map", "/feed.xml", "/jekyll/update/2026/11/01/second-post.html", "/jekyll/update/2026/11/02/welcome-to-jekyll.html"]
+                    done in 0.174 seconds.
+ Auto-regeneration: disabled. Use --watch to enable.

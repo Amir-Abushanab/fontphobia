@@ -1,0 +1,8 @@
+$ eleventy
+[probe] eleventy.before ./_site/
+[11ty] Writing ./_site/posts/1/index.html from ./src/posts/post.njk
+[11ty] Writing ./_site/about/index.html from ./src/about.md (liquid)
+[11ty] Writing ./_site/index.html from ./src/index.md (liquid)
+[11ty] Writing ./_site/posts/2/index.html from ./src/posts/post.njk
+[probe] eleventy.after ./_site/ [["/posts/1/","./_site/posts/1/index.html"],["/posts/2/","./_site/posts/2/index.html"],["/about/","./_site/about/index.html"],["/","./_site/index.html"]]
+[11ty] Copied 8 Wrote 4 files in 0.08 seconds (v3.1.7)

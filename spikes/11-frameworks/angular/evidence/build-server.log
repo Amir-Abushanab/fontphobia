@@ -1,0 +1,28 @@
+$ ng build
+❯ Building...
+✔ Building...
+Browser bundles     
+Initial chunk files  | Names            |  Raw size | Estimated transfer size
+main-634N3YST.js     | main             | 231.73 kB |                64.65 kB
+styles-TZO2HXKZ.css  | styles           |   2.09 kB |               499 bytes
+
+                     | Initial total    | 233.81 kB |                65.15 kB
+
+
+Server bundles      
+Initial chunk files  | Names            |  Raw size
+server.mjs           | server           | 918.71 kB |                        
+main.server.mjs      | main.server      | 276.39 kB |                        
+polyfills.server.mjs | polyfills.server | 237.53 kB |                        
+chunk-C2KJ4ATU.mjs   | -                |   1.54 kB |                        
+chunk-KYQQYI4M.mjs   | -                |   1.01 kB |                        
+
+Lazy chunk files     | Names            |  Raw size
+chunk-7EY5LZPJ.mjs   | xhr2             |  12.17 kB |                        
+chunk-36UQX63L.mjs   | xhr2             |  12.08 kB |                        
+
+Prerendered 4 static routes.
+Application bundle generation complete. [10.535 seconds] - 2026-11-02T20:39:57.221Z
+
+Output location: /Users/amir/Code/fontphobia/spikes/11-frameworks/angular/dist/angular
+

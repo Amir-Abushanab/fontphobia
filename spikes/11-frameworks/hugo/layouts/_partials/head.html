@@ -1,0 +1,7 @@
+<meta charset="utf-8">
+<title>{{ .Title }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400..700&display=swap">
+{{ with resources.Get "main.css" | css.Build (dict "minify" true) | fingerprint }}
+  <link rel="stylesheet" href="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous">
+{{ end }}

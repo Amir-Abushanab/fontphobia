@@ -1,0 +1,6 @@
+allowBuilds:
+  esbuild: true
+minimumReleaseAgeExclude:
+  - octane
+  - "@octanejs/*"
+  - "@tsrx/*"

@@ -1,0 +1,24 @@
+
+inter-wght-100-900.woff2  axes wght 100-900  cmap 230  features calt ccmp dnom frac kern locl mark mkmk numr pnum tnum
+  google                               47.3 KB  
+  same chars, HB-default features      44.0 KB  7% smaller
+  core only (ASCII+punct)              26.7 KB  44% smaller
+  core, all features kept              28.0 KB  41% smaller
+  core + limit-axes wght 400..700      19.2 KB  59% smaller
+  core, pinned 400 + 700               24.6 KB  48% smaller
+
+inter-full.woff2  axes opsz 14-32, wght 100-900  cmap 230  features calt ccmp dnom frac kern locl mark mkmk numr pnum tnum
+  google                               71.3 KB  
+  same chars, HB-default features      67.2 KB  6% smaller
+  core only (ASCII+punct)              42.1 KB  41% smaller
+  core, all features kept              43.9 KB  38% smaller
+  core + limit-axes wght 400..700      29.6 KB  58% smaller
+  core, pinned 400 + 700               24.6 KB  66% smaller
+
+flex-full.woff2  axes opsz 8-144, wght 100-1000  cmap 234  features kern liga locl mark mkmk pnum rvrn
+  google                               82.6 KB  
+  same chars, HB-default features      77.9 KB  6% smaller
+  core only (ASCII+punct)              47.4 KB  43% smaller
+  core, all features kept              50.9 KB  38% smaller
+  core + limit-axes wght 400..700      32.9 KB  60% smaller
+  core, pinned 400 + 700               15.6 KB  81% smaller

@@ -1,0 +1,44 @@
+$ astro build
+15:29:25 [content] Syncing content
+15:29:25 [content] Synced content
+[probe] closeBundle ssr
+[probe] closeBundle astro
+[probe] closeBundle client
+15:29:25 [types] Generated 800ms
+15:29:25 [build] output: "static"
+15:29:25 [build] mode: "static"
+15:29:25 [build] directory: /Users/amir/Code/fontphobia/spikes/11-frameworks/starlight/dist/
+15:29:25 [build] Collecting build info...
+15:29:25 [build] ✓ Completed in 933ms.
+15:29:25 [build] Building static entrypoints...
+15:29:26 [vite] ✓ built in 644ms
+[probe] closeBundle prerender
+15:29:26 [vite] ✓ built in 36ms
+[probe] closeBundle client
+15:29:26 [build] Rearranging server assets...
+
+ generating static routes 
+15:29:26 [WARN] [content] The collection "i18n" does not exist or is empty. Please check your content config file for errors.
+15:29:26   ├─ /404.html15:29:26 [WARN] [content] Entry docs → 404 was not found.
+ (+16ms) 
+15:29:26   ├─ /posts/1/index.html (+27ms) 
+15:29:26   ├─ /posts/2/index.html (+6ms) 
+15:29:26   ├─ /guides/example/index.html (+43ms) 
+15:29:26   ├─ /index.html (+7ms) 
+15:29:26   ├─ /reference/example/index.html (+4ms) 
+15:29:26 ✓ Completed in 148ms.
+
+ generating optimized images 
+15:29:26 [vite] ✓ built in 14ms
+[probe] closeBundle astroImageService
+15:29:26   ▶ /_astro/houston.CZZyCf7p_Z1lAhR9.webp (before: 96kB, after: 26kB) (+447ms) (1/1)
+15:29:26 ✓ Completed in 448ms.
+
+15:29:26 [build] ✓ Completed in 1.31s.
+15:29:26 [starlight:pagefind] Building search index with Pagefind...
+15:29:27 [starlight:pagefind] Found 6 HTML files.
+15:29:27 [starlight:pagefind] Finished building search index in 205ms.
+15:29:27 [WARN] [@astrojs/sitemap] The Sitemap integration requires the `site` astro.config option. Skipping.
+[probe] astro:build:done /Users/amir/Code/fontphobia/spikes/11-frameworks/starlight/dist/ ["404/","posts/1/","posts/2/","guides/example/","","reference/example/"]
+15:29:27 [build] 6 page(s) built in 2.45s
+15:29:27 [build] Complete!

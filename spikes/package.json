@@ -1,0 +1,15 @@
+{
+  "name": "fontphobia-spikes",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.9.1",
+  "dependencies": {
+    "fontkit": "2.0.4",
+    "harfbuzzjs": "1.6.4",
+    "pixelmatch": "8.0.0",
+    "playwright-core": "1.64.1",
+    "pngjs": "7.0.0",
+    "subset-font": "2.9.0",
+    "wawoff2": "2.0.1"
+  }
+}

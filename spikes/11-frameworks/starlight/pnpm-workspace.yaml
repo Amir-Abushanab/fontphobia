@@ -1,0 +1,8 @@
+# Standalone: keeps this dir out of any parent workspace.
+allowBuilds:
+  esbuild: true
+  sharp: false
+# astro@7.4.5 was published 6h before this run; pnpm 12's default minimum release age
+# otherwise resolves ^7.2.10 to 7.4.4.
+minimumReleaseAgeExclude:
+  - astro

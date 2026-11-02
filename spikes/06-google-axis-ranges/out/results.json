@@ -1,0 +1,100 @@
+{
+  "chrome": "155.0.8059.79",
+  "results": [
+    {
+      "label": "inter full vs wght-only  14px wght 400 opsz auto",
+      "css": "font-size:14px;font-weight:400;font-optical-sizing:auto",
+      "diffPixels": 0
+    },
+    {
+      "label": "inter full vs wght-only  14px wght 550 opsz auto",
+      "css": "font-size:14px;font-weight:550;font-optical-sizing:auto",
+      "diffPixels": 0
+    },
+    {
+      "label": "inter full vs wght-only  14px wght 700 opsz auto",
+      "css": "font-size:14px;font-weight:700;font-optical-sizing:auto",
+      "diffPixels": 0
+    },
+    {
+      "label": "inter full vs wght-only  16px wght 400 opsz auto",
+      "css": "font-size:16px;font-weight:400;font-optical-sizing:auto",
+      "diffPixels": 7780
+    },
+    {
+      "label": "inter full vs wght-only  16px wght 550 opsz auto",
+      "css": "font-size:16px;font-weight:550;font-optical-sizing:auto",
+      "diffPixels": 8204
+    },
+    {
+      "label": "inter full vs wght-only  16px wght 700 opsz auto",
+      "css": "font-size:16px;font-weight:700;font-optical-sizing:auto",
+      "diffPixels": 8498
+    },
+    {
+      "label": "inter full vs wght-only  24px wght 400 opsz auto",
+      "css": "font-size:24px;font-weight:400;font-optical-sizing:auto",
+      "diffPixels": 18350
+    },
+    {
+      "label": "inter full vs wght-only  24px wght 550 opsz auto",
+      "css": "font-size:24px;font-weight:550;font-optical-sizing:auto",
+      "diffPixels": 20839
+    },
+    {
+      "label": "inter full vs wght-only  24px wght 700 opsz auto",
+      "css": "font-size:24px;font-weight:700;font-optical-sizing:auto",
+      "diffPixels": 20790
+    },
+    {
+      "label": "inter full@opsz14 vs wght-only 16px wght 400",
+      "css": "font-size:16px;font-weight:400;font-variation-settings:'opsz' 14",
+      "diffPixels": 0
+    },
+    {
+      "label": "inter full@opsz14 vs wght-only 16px wght 550",
+      "css": "font-size:16px;font-weight:550;font-variation-settings:'opsz' 14",
+      "diffPixels": 0
+    },
+    {
+      "label": "inter full@opsz14 vs wght-only 16px wght 700",
+      "css": "font-size:16px;font-weight:700;font-variation-settings:'opsz' 14",
+      "diffPixels": 0
+    },
+    {
+      "label": "inter wght-only vs static wght@400  16px 400",
+      "css": "font-size:16px;font-weight:400",
+      "diffPixels": 0
+    },
+    {
+      "label": "flex /s/ full-range vs /l/ instanced 16px wght 400",
+      "css": "font-size:16px;font-weight:400",
+      "diffPixels": 0
+    },
+    {
+      "label": "flex /s/ full-range vs /l/ instanced 16px wght 550",
+      "css": "font-size:16px;font-weight:550",
+      "diffPixels": 8
+    },
+    {
+      "label": "flex /s/ full-range vs /l/ instanced 16px wght 700",
+      "css": "font-size:16px;font-weight:700",
+      "diffPixels": 22
+    },
+    {
+      "label": "flex full vs wght-only  14px wght 400 opsz auto",
+      "css": "font-size:14px;font-weight:400;font-optical-sizing:auto",
+      "diffPixels": 0
+    },
+    {
+      "label": "flex full vs wght-only  16px wght 400 opsz auto",
+      "css": "font-size:16px;font-weight:400;font-optical-sizing:auto",
+      "diffPixels": 7234
+    },
+    {
+      "label": "flex full vs wght-only  24px wght 400 opsz auto",
+      "css": "font-size:24px;font-weight:400;font-optical-sizing:auto",
+      "diffPixels": 17349
+    }
+  ]
+}

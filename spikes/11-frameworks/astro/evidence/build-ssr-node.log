@@ -1,0 +1,31 @@
+$ astro build
+15:27:32 [@astrojs/node] Enabling sessions with filesystem storage
+15:27:32 [vite] Re-optimizing dependencies because lockfile has changed
+[probe] closeBundle astro
+[probe] closeBundle ssr
+[probe] closeBundle client
+15:27:32 [types] Generated 316ms
+15:27:32 [build] output: "server"
+15:27:32 [build] mode: "server"
+15:27:32 [build] directory: /Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/
+15:27:32 [build] adapter: @astrojs/node
+15:27:32 [build] Collecting build info...
+15:27:32 [build] ✓ Completed in 349ms.
+15:27:32 [build] Building server entrypoints...
+15:27:33 [vite] ✓ built in 294ms
+[probe] closeBundle prerender
+15:27:33 [vite] ✓ built in 287ms
+[probe] closeBundle ssr
+15:27:33 [vite] ✓ built in 36ms
+[probe] closeBundle client
+
+ prerendering static routes 
+15:27:33   ├─ /posts/1/index.html (+8ms) 
+15:27:33   ├─ /posts/2/index.html (+7ms) 
+15:27:33 ✓ Completed in 34ms.
+
+15:27:33 [build] Rearranging server assets...
+15:27:33 [build] ✓ Completed in 769ms.
+[probe] astro:build:done /Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/client/ ["posts/1/","posts/2/"]
+15:27:33 [build] Server built in 1.12s
+15:27:33 [build] Complete!

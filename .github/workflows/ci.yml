@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    # M1 "done when": byte-identical output on macOS, Linux and Windows (PLAN §4, §16).
+    # The golden test (packages/core/test/golden.test.ts) compares every output's sha256 with
+    # the committed hashes, so any platform difference fails here.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [22, 24]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6 # version comes from package.json "packageManager"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - name: Smoke-test the bundled CLI outside the workspace
+        shell: bash
+        run: |
+          out="$RUNNER_TEMP/cli"
+          mkdir -p "$out" && cp packages/cli/dist/* "$out/"
+          node "$out/cli.mjs" --version
+          node "$out/cli.mjs" subset fixtures/fonts/InterVariable.ttf --unicodes U+20-7E -o "$out/x.woff2"
+          node "$out/cli.mjs" inspect "$out/x.woff2" --json > /dev/null

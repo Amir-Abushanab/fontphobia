@@ -1,0 +1,14 @@
+$ vite preview --port 4181 --strictPort
+
+ ╭───────── [Build Info] ───────────╮
+ │                                  │
+ │  - Build Directory: .output      │
+ │  - Date: 11/2/2026, 3:45:38 PM   │
+ │  - Nitro Version: 3.0.261102-rc  │
+ │  - Nitro Preset: static          │
+ │                                  │
+ ╰──────────────────────────────────╯
+
+  ➜  Local:   http://localhost:4181/
+  ➜  Network: use --host to expose
+[ELIFECYCLE] Command failed with exit code 143.

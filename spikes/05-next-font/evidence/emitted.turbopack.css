@@ -1,0 +1,73 @@
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/46a9e2f250689b4a-s.0-dom-5bn10r2.woff2)format("woff2");unicode-range:U+460-52F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F}
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/76b70a1dbe058eb5-s.1y4-pdgsjb-pw.woff2)format("woff2");unicode-range:U+301,U+400-45F,U+490-491,U+4B0-4B1,U+2116}
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/2fb76073e23fd9e4-s.3lvt2whj97whp.woff2)format("woff2");unicode-range:U+1F??}
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/6131cbbf5549afa2-s.2uwcyprjm3xu3.woff2)format("woff2");unicode-range:U+370-377,U+37A-37F,U+384-38A,U+38C,U+38E-3A1,U+3A3-3FF}
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/45462fd7b7c12654-s.0k62hbripvv8p.woff2)format("woff2");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/ba63f6a0e436df8e-s.3-6t-g6q0vh0a.woff2)format("woff2");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/07c7676b89ed2778-s.p.2bn3s6zvc0dyp.woff2)format("woff2");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:Inter Fallback;src:local(Arial);ascent-override:90.44%;descent-override:22.52%;line-gap-override:0.0%;size-adjust:107.12%}
+.f6W1SG_className{font-family:Inter,Inter Fallback;font-style:normal}
+
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/51d71ccf7e7a6b96-s.0do-s6vn362zr.woff2)format("woff2");unicode-range:U+460-52F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F}
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/5db8d62ed8a64533-s.1-ayfg4wg0qfm.woff2)format("woff2");unicode-range:U+301,U+400-45F,U+490-491,U+4B0-4B1,U+2116}
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/b99b044bab870276-s.0i-yae4-dyls3.woff2)format("woff2");unicode-range:U+1F??}
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/5279b17ec43a69cf-s.19lle6lbse9av.woff2)format("woff2");unicode-range:U+370-377,U+37A-37F,U+384-38A,U+38C,U+38E-3A1,U+3A3-3FF}
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/5156c6828f034d5d-s.1oksl_d3k3jrm.woff2)format("woff2");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/0aa11383f7507f90-s.15c5kk-3im2ev.woff2)format("woff2");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/12489100264acd6f-s.p.33gca1im1ku45.woff2)format("woff2");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:Inter Fallback;src:local(Arial);ascent-override:90.44%;descent-override:22.52%;line-gap-override:0.0%;size-adjust:107.12%}
+.mAMHaa_className{font-family:Inter,Inter Fallback;font-style:normal}
+
+@font-face{font-family:Inter;font-style:normal;font-weight:400;font-display:swap;src:url(../media/46a9e2f250689b4a-s.0-dom-5bn10r2.woff2)format("woff2");unicode-range:U+460-52F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F}
+@font-face{font-family:Inter;font-style:normal;font-weight:400;font-display:swap;src:url(../media/76b70a1dbe058eb5-s.1y4-pdgsjb-pw.woff2)format("woff2");unicode-range:U+301,U+400-45F,U+490-491,U+4B0-4B1,U+2116}
+@font-face{font-family:Inter;font-style:normal;font-weight:400;font-display:swap;src:url(../media/2fb76073e23fd9e4-s.3lvt2whj97whp.woff2)format("woff2");unicode-range:U+1F??}
+@font-face{font-family:Inter;font-style:normal;font-weight:400;font-display:swap;src:url(../media/6131cbbf5549afa2-s.2uwcyprjm3xu3.woff2)format("woff2");unicode-range:U+370-377,U+37A-37F,U+384-38A,U+38C,U+38E-3A1,U+3A3-3FF}
+@font-face{font-family:Inter;font-style:normal;font-weight:400;font-display:swap;src:url(../media/45462fd7b7c12654-s.0k62hbripvv8p.woff2)format("woff2");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:Inter;font-style:normal;font-weight:400;font-display:swap;src:url(../media/ba63f6a0e436df8e-s.3-6t-g6q0vh0a.woff2)format("woff2");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:Inter;font-style:normal;font-weight:400;font-display:swap;src:url(../media/07c7676b89ed2778-s.p.2bn3s6zvc0dyp.woff2)format("woff2");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:Inter;font-style:normal;font-weight:700;font-display:swap;src:url(../media/46a9e2f250689b4a-s.0-dom-5bn10r2.woff2)format("woff2");unicode-range:U+460-52F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F}
+@font-face{font-family:Inter;font-style:normal;font-weight:700;font-display:swap;src:url(../media/76b70a1dbe058eb5-s.1y4-pdgsjb-pw.woff2)format("woff2");unicode-range:U+301,U+400-45F,U+490-491,U+4B0-4B1,U+2116}
+@font-face{font-family:Inter;font-style:normal;font-weight:700;font-display:swap;src:url(../media/2fb76073e23fd9e4-s.3lvt2whj97whp.woff2)format("woff2");unicode-range:U+1F??}
+@font-face{font-family:Inter;font-style:normal;font-weight:700;font-display:swap;src:url(../media/6131cbbf5549afa2-s.2uwcyprjm3xu3.woff2)format("woff2");unicode-range:U+370-377,U+37A-37F,U+384-38A,U+38C,U+38E-3A1,U+3A3-3FF}
+@font-face{font-family:Inter;font-style:normal;font-weight:700;font-display:swap;src:url(../media/45462fd7b7c12654-s.0k62hbripvv8p.woff2)format("woff2");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:Inter;font-style:normal;font-weight:700;font-display:swap;src:url(../media/ba63f6a0e436df8e-s.3-6t-g6q0vh0a.woff2)format("woff2");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:Inter;font-style:normal;font-weight:700;font-display:swap;src:url(../media/07c7676b89ed2778-s.p.2bn3s6zvc0dyp.woff2)format("woff2");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:Inter Fallback;src:local(Arial);ascent-override:90.44%;descent-override:22.52%;line-gap-override:0.0%;size-adjust:107.12%}
+._8733TG_className{font-family:Inter,Inter Fallback;font-style:normal}
+
+@font-face{font-family:Roboto Flex;font-style:normal;font-weight:100 1000;font-stretch:25% 151%;font-display:swap;src:url(../media/2ba0bcc85ea0e585-s.2tttowb0urzc9.woff2)format("woff2");unicode-range:U+460-52F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F}
+@font-face{font-family:Roboto Flex;font-style:normal;font-weight:100 1000;font-stretch:25% 151%;font-display:swap;src:url(../media/e6ac762d4cd0ebff-s.3brcdbbi4i1dj.woff2)format("woff2");unicode-range:U+301,U+400-45F,U+490-491,U+4B0-4B1,U+2116}
+@font-face{font-family:Roboto Flex;font-style:normal;font-weight:100 1000;font-stretch:25% 151%;font-display:swap;src:url(../media/c29e00ef32d800d5-s.3-dsc25zno8vt.woff2)format("woff2");unicode-range:U+370-377,U+37A-37F,U+384-38A,U+38C,U+38E-3A1,U+3A3-3FF}
+@font-face{font-family:Roboto Flex;font-style:normal;font-weight:100 1000;font-stretch:25% 151%;font-display:swap;src:url(../media/954c7585a54b488b-s.2nna_6v18yzzk.woff2)format("woff2");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:Roboto Flex;font-style:normal;font-weight:100 1000;font-stretch:25% 151%;font-display:swap;src:url(../media/2eea2b4677dcc03a-s.2gvhyfb3en8h6.woff2)format("woff2");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:Roboto Flex;font-style:normal;font-weight:100 1000;font-stretch:25% 151%;font-display:swap;src:url(../media/c43392a7f052971f-s.p.3z77i7wo0nqs2.woff2)format("woff2");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:Roboto Flex Fallback;src:local(Arial);ascent-override:93.28%;descent-override:24.55%;line-gap-override:0.0%;size-adjust:99.45%}
+.oRT1Aa_className{font-family:Roboto Flex,Roboto Flex Fallback;font-style:normal}
+
+@font-face{unicode-range:U+??;font-family:interLocal;src:url(../media/inter_latin_opsz_normal-s.p.34fk6-9m1aguk.woff2)format("woff2");font-display:swap;font-weight:100 900;font-style:normal}
+@font-face{unicode-range:U+??;font-family:interLocal;src:url(../media/inter_latin_ext_opsz_normal-s.p.43rxyga-l4eut.woff2)format("woff2");font-display:swap;font-weight:100 900;font-style:normal}
+@font-face{font-family:interLocal Fallback;src:local(Arial);ascent-override:96.88%;descent-override:24.12%;line-gap-override:0.0%;size-adjust:100.0%}
+._2YQIla_className{font-family:interLocal,interLocal Fallback}
+
+@font-face{font-family:Inter Split;unicode-range:U+??,U+2000-206F;src:url(../media/inter_latin_opsz_normal-s.p.34fk6-9m1aguk.woff2)format("woff2");font-display:swap;font-weight:100 900}
+@font-face{font-family:splitCore Fallback;src:local(Arial);ascent-override:89.79%;descent-override:22.36%;line-gap-override:0.0%;size-adjust:107.89%}
+.k9CHcq_className{font-family:splitCore,splitCore Fallback}
+
+@font-face{font-family:Inter Split;unicode-range:U+100-24F,U+1E??;src:url(../media/inter_latin_ext_opsz_normal-s.43rxyga-l4eut.woff2)format("woff2");font-display:swap;font-weight:100 900}
+@font-face{font-family:splitExt Fallback;src:local(Arial);ascent-override:96.88%;descent-override:24.12%;line-gap-override:0.0%;size-adjust:100.0%}
+.qKngJW_className{font-family:splitExt,splitExt Fallback}
+
+@font-face{font-family:perEntry;src:url(../media/inter_latin_opsz_normal-s.p.34fk6-9m1aguk.woff2)format("woff2");font-display:swap;font-weight:100 900}
+@font-face{font-family:perEntry;src:url(../media/inter_latin_ext_opsz_normal-s.p.43rxyga-l4eut.woff2)format("woff2");font-display:swap;font-weight:100 900}
+@font-face{font-family:perEntry Fallback;src:local(Arial);ascent-override:96.88%;descent-override:24.12%;line-gap-override:0.0%;size-adjust:100.0%}
+.tMsY3a_className{font-family:perEntry,perEntry Fallback}
+
+@font-face{font-family:Inter Split2;unicode-range:U+??;src:url(../media/inter_latin_opsz_normal-s.p.34fk6-9m1aguk.woff2)format("woff2");font-display:swap;font-weight:100 900}
+@font-face{font-family:splitCoreVar Fallback;src:local(Arial);ascent-override:89.79%;descent-override:22.36%;line-gap-override:0.0%;size-adjust:107.89%}
+.TAK6fa_className{font-family:splitCoreVar,splitCoreVar Fallback}
+.TAK6fa_variable{--font-split:"splitCoreVar", "splitCoreVar Fallback"}
+
+@font-face{font-family:Inter Split2;unicode-range:U+100-24F;src:url(../media/inter_latin_ext_opsz_normal.43rxyga-l4eut.woff2)format("woff2");font-display:swap;font-weight:100 900}
+.lzWBsW_className{font-family:splitExtNoFallback}
+
+

@@ -1,0 +1,125 @@
+chrome 155.0.8059.79  documents 1
+
+t-upper  boxes=3  fonts=Georgia:9
+  dom    : "straße ǆ"
+  layout : ["STRASSE Ǆ"]
+
+t-lower  boxes=1  fonts=Georgia:8
+  dom    : "İSTANBUL"
+  layout : ["istanbul"]
+
+t-cap  boxes=1  fonts=Georgia:9
+  dom    : "ǳemal ﬁsh"
+  layout : ["ǲemal ﬁsh"]
+
+t-fw  boxes=1  fonts=Georgia:4
+  dom    : "ab12"
+  layout : ["ab12"]
+
+t-before  boxes=2  fonts=Times New Roman:1, Georgia:5
+  dom    : "arrow"
+  layout : ["→ [::before]","arrow"]
+
+t-after  boxes=2  fonts=Georgia:5, Songti SC:1
+  dom    : "star"
+  layout : [" ★ [::after]","star"]
+
+t-attr  boxes=2  fonts=Georgia:6
+  dom    : "attr"
+  layout : [" ¶ [::after]","attr"]
+
+t-q-en  boxes=3  fonts=Georgia:7
+  dom    : "english"
+  layout : ["“ [::before]","” [::after]","english"]
+
+t-q-de  boxes=6  fonts=Georgia:8
+  dom    : "deutsch innen"
+  layout : ["„ [::before]","“ [::after]","deutsch ","‚ [::before]","‘ [::after]","innen"]
+
+t-q-fr  boxes=3  fonts=Georgia:8
+  dom    : "français"
+  layout : ["« [::before]","» [::after]","français"]
+
+t-quotes  boxes=3  fonts=Georgia:6
+  dom    : "custom"
+  layout : ["« [::before]","» [::after]","custom"]
+
+t-disc  boxes=2  fonts=Georgia:4
+  dom    : "disc"
+  layout : ["•  [::marker]","disc"]
+
+t-decimal  boxes=2  fonts=Georgia:7
+  dom    : "decimal"
+  layout : ["7.  [::marker]","decimal"]
+
+t-greek  boxes=2  fonts=Georgia:5
+  dom    : "greek"
+  layout : ["α.  [::marker]","greek"]
+
+t-check  boxes=2  fonts=Georgia:5
+  dom    : "check"
+  layout : ["✓  [::marker]","check"]
+
+t-markercontent  boxes=2  fonts=Georgia:7
+  dom    : "fleuron"
+  layout : ["❦ [::marker]","fleuron"]
+
+t-counter  boxes=6  fonts=Georgia:6
+  dom    : "onetwo"
+  layout : ["IV [::before]","  [::before]","one","V [::before]","  [::before]","two"]
+
+t-details  boxes=2  fonts=Georgia:7
+  dom    : "summaryhidden"
+  layout : ["▸  [::marker]","summary"]
+
+t-shadow-open  boxes=1  fonts=Georgia:6
+  dom    : "open Ω"
+  layout : ["open Ω [#shadow-open #shadow-open]"]
+
+t-shadow-closed  boxes=1  fonts=Georgia:8
+  dom    : "closed Ж"
+  layout : ["closed Ж [#shadow-closed #shadow-closed]"]
+
+t-svg  boxes=1  fonts=Georgia:5
+  dom    : "sum ∑"
+  layout : ["sum ∑"]
+
+t-fl  boxes=2  fonts=Georgia:11, Courier New:1
+  dom    : "Ŧirst letter"
+  layout : ["Ŧ [::first-letter]","irst letter"]
+
+t-ellipsis  boxes=1  fonts=Georgia:30
+  dom    : "truncate this long text"
+  layout : ["truncate this long text"]
+
+t-hyph  boxes=5  fonts=Georgia:39
+  dom    : "extraordinarily incomprehensibilities"
+  layout : ["extraordinarily incomprehensibilities"]
+
+t-sc  boxes=1  fonts=Georgia:10
+  dom    : "Small Caps"
+  layout : ["Small Caps"]
+
+t-textarea  boxes=0  fonts=
+  dom    : "textarea ✎"
+  layout : []
+
+t-select  boxes=0  fonts=Arial:7, Hiragino Sans:1
+  dom    : "option ☀other ☂"
+  layout : []
+
+t-button  boxes=1  fonts=Arial:7, Lucida Grande:1
+  dom    : "button ⌘"
+  layout : ["button ⌘"]
+
+t-hidden  boxes=0  fonts=
+  dom    : "hidden ✖"
+  layout : []
+
+t-vis  boxes=1  fonts=Zapf Dingbats:1, Georgia:10
+  dom    : "invisible ✗"
+  layout : ["invisible ✗"]
+
+t-mono  boxes=1  fonts=Courier New:13
+  dom    : "mono — “dash”"
+  layout : ["mono — “dash”"]

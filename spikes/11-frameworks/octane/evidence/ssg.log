@@ -1,0 +1,7 @@
+$ node scripts/ssg.mjs
+[ssg] routes [{"type":"render","path":"/"},{"type":"render","path":"/counter"},{"type":"render","path":"/about"},{"type":"render","path":"/posts/:id"},{"type":"server","path":"/api/health"}]
+[ssg] 200 / -> dist/static/index.html
+[ssg] 200 /counter -> dist/static/counter/index.html
+[ssg] 200 /about -> dist/static/about/index.html
+[ssg] 200 /posts/1 -> dist/static/posts/1/index.html
+[ssg] 200 /posts/2 -> dist/static/posts/2/index.html

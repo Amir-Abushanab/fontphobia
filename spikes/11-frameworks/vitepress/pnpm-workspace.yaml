@@ -1,0 +1,3 @@
+# Standalone: keeps this dir out of any parent workspace.
+allowBuilds:
+  esbuild: true

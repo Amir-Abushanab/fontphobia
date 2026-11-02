@@ -1,0 +1,656 @@
+{
+  "chrome": "155.0.8059.79",
+  "cdp": {
+    "6": {
+      "1rem": {
+        "computed": "9px",
+        "usedLineBox": 9,
+        "opsz": 14,
+        "fit": 0
+      },
+      "0.75rem": {
+        "computed": "6.75px",
+        "usedLineBox": 6.75,
+        "opsz": 14,
+        "fit": 0
+      },
+      "medium": {
+        "computed": "9px",
+        "usedLineBox": 9,
+        "opsz": 14,
+        "fit": 0
+      },
+      "small": {
+        "computed": "9px",
+        "usedLineBox": 9,
+        "opsz": 14,
+        "fit": 0
+      },
+      "16px": {
+        "computed": "16px",
+        "usedLineBox": 16,
+        "opsz": 16,
+        "fit": 0
+      },
+      "8px": {
+        "computed": "8px",
+        "usedLineBox": 8,
+        "opsz": 14,
+        "fit": 0
+      },
+      "12px": {
+        "computed": "12px",
+        "usedLineBox": 12,
+        "opsz": 14,
+        "fit": 0
+      }
+    },
+    "9": {
+      "1rem": {
+        "computed": "9px",
+        "usedLineBox": 9,
+        "opsz": 14,
+        "fit": 0
+      },
+      "0.75rem": {
+        "computed": "6.75px",
+        "usedLineBox": 6.75,
+        "opsz": 14,
+        "fit": 0
+      },
+      "medium": {
+        "computed": "9px",
+        "usedLineBox": 9,
+        "opsz": 14,
+        "fit": 0
+      },
+      "small": {
+        "computed": "9px",
+        "usedLineBox": 9,
+        "opsz": 14,
+        "fit": 0
+      },
+      "16px": {
+        "computed": "16px",
+        "usedLineBox": 16,
+        "opsz": 16,
+        "fit": 0
+      },
+      "8px": {
+        "computed": "8px",
+        "usedLineBox": 8,
+        "opsz": 14,
+        "fit": 0
+      },
+      "12px": {
+        "computed": "12px",
+        "usedLineBox": 12,
+        "opsz": 14,
+        "fit": 0
+      }
+    },
+    "12": {
+      "1rem": {
+        "computed": "12px",
+        "usedLineBox": 12,
+        "opsz": 14,
+        "fit": 0
+      },
+      "0.75rem": {
+        "computed": "9px",
+        "usedLineBox": 9,
+        "opsz": 14,
+        "fit": 0
+      },
+      "medium": {
+        "computed": "12px",
+        "usedLineBox": 12,
+        "opsz": 14,
+        "fit": 0
+      },
+      "small": {
+        "computed": "10px",
+        "usedLineBox": 10,
+        "opsz": 14,
+        "fit": 0
+      },
+      "16px": {
+        "computed": "16px",
+        "usedLineBox": 16,
+        "opsz": 16,
+        "fit": 0
+      },
+      "8px": {
+        "computed": "8px",
+        "usedLineBox": 8,
+        "opsz": 14,
+        "fit": 0
+      },
+      "12px": {
+        "computed": "12px",
+        "usedLineBox": 12,
+        "opsz": 14,
+        "fit": 0
+      }
+    },
+    "16": {
+      "1rem": {
+        "computed": "16px",
+        "usedLineBox": 16,
+        "opsz": 16,
+        "fit": 0
+      },
+      "0.75rem": {
+        "computed": "12px",
+        "usedLineBox": 12,
+        "opsz": 14,
+        "fit": 0
+      },
+      "medium": {
+        "computed": "16px",
+        "usedLineBox": 16,
+        "opsz": 16,
+        "fit": 0
+      },
+      "small": {
+        "computed": "13px",
+        "usedLineBox": 13,
+        "opsz": 14,
+        "fit": 0
+      },
+      "16px": {
+        "computed": "16px",
+        "usedLineBox": 16,
+        "opsz": 16,
+        "fit": 0
+      },
+      "8px": {
+        "computed": "8px",
+        "usedLineBox": 8,
+        "opsz": 14,
+        "fit": 0
+      },
+      "12px": {
+        "computed": "12px",
+        "usedLineBox": 12,
+        "opsz": 14,
+        "fit": 0
+      }
+    },
+    "20": {
+      "1rem": {
+        "computed": "20px",
+        "usedLineBox": 20,
+        "opsz": 20,
+        "fit": 0
+      },
+      "0.75rem": {
+        "computed": "15px",
+        "usedLineBox": 15,
+        "opsz": 15,
+        "fit": 0
+      },
+      "medium": {
+        "computed": "20px",
+        "usedLineBox": 20,
+        "opsz": 20,
+        "fit": 0
+      },
+      "small": {
+        "computed": "17.8px",
+        "usedLineBox": 17.8,
+        "opsz": 18,
+        "fit": -0.469
+      },
+      "16px": {
+        "computed": "16px",
+        "usedLineBox": 16,
+        "opsz": 16,
+        "fit": 0
+      },
+      "8px": {
+        "computed": "8px",
+        "usedLineBox": 8,
+        "opsz": 14,
+        "fit": 0
+      },
+      "12px": {
+        "computed": "12px",
+        "usedLineBox": 12,
+        "opsz": 14,
+        "fit": 0
+      }
+    },
+    "24": {
+      "1rem": {
+        "computed": "24px",
+        "usedLineBox": 24,
+        "opsz": 24,
+        "fit": 0
+      },
+      "0.75rem": {
+        "computed": "18px",
+        "usedLineBox": 18,
+        "opsz": 18,
+        "fit": 0
+      },
+      "medium": {
+        "computed": "24px",
+        "usedLineBox": 24,
+        "opsz": 24,
+        "fit": 0
+      },
+      "small": {
+        "computed": "21.36px",
+        "usedLineBox": 21.36,
+        "opsz": 21.5,
+        "fit": -0.391
+      },
+      "16px": {
+        "computed": "16px",
+        "usedLineBox": 16,
+        "opsz": 16,
+        "fit": 0
+      },
+      "8px": {
+        "computed": "8px",
+        "usedLineBox": 8,
+        "opsz": 14,
+        "fit": 0
+      },
+      "12px": {
+        "computed": "12px",
+        "usedLineBox": 12,
+        "opsz": 14,
+        "fit": 0
+      }
+    },
+    "72": {
+      "1rem": {
+        "computed": "72px",
+        "usedLineBox": 72,
+        "opsz": 32,
+        "fit": 0
+      },
+      "0.75rem": {
+        "computed": "54px",
+        "usedLineBox": 54,
+        "opsz": 32,
+        "fit": 0
+      },
+      "medium": {
+        "computed": "72px",
+        "usedLineBox": 72,
+        "opsz": 32,
+        "fit": 0
+      },
+      "small": {
+        "computed": "64.08px",
+        "usedLineBox": 64.08,
+        "opsz": 32,
+        "fit": 0
+      },
+      "16px": {
+        "computed": "16px",
+        "usedLineBox": 16,
+        "opsz": 16,
+        "fit": 0
+      },
+      "8px": {
+        "computed": "8px",
+        "usedLineBox": 8,
+        "opsz": 14,
+        "fit": 0
+      },
+      "12px": {
+        "computed": "12px",
+        "usedLineBox": 12,
+        "opsz": 14,
+        "fit": 0
+      }
+    },
+    "100": {
+      "1rem": {
+        "computed": "100px",
+        "usedLineBox": 100,
+        "opsz": 32,
+        "fit": 0
+      },
+      "0.75rem": {
+        "computed": "75px",
+        "usedLineBox": 75,
+        "opsz": 32,
+        "fit": 0
+      },
+      "medium": {
+        "computed": "100px",
+        "usedLineBox": 100,
+        "opsz": 32,
+        "fit": 0
+      },
+      "small": {
+        "computed": "89px",
+        "usedLineBox": 89,
+        "opsz": 32,
+        "fit": 0
+      },
+      "16px": {
+        "computed": "16px",
+        "usedLineBox": 16,
+        "opsz": 16,
+        "fit": 0
+      },
+      "8px": {
+        "computed": "8px",
+        "usedLineBox": 8,
+        "opsz": 14,
+        "fit": 0
+      },
+      "12px": {
+        "computed": "12px",
+        "usedLineBox": 12,
+        "opsz": 14,
+        "fit": 0
+      }
+    }
+  },
+  "pref": {
+    "B pref default=24": {
+      "webprefs": {
+        "default_font_size": 24
+      },
+      "r": {
+        "1rem": {
+          "computed": "24px",
+          "usedLineBox": 24,
+          "opsz": 24,
+          "fit": 0
+        },
+        "0.75rem": {
+          "computed": "18px",
+          "usedLineBox": 18,
+          "opsz": 18,
+          "fit": 0
+        },
+        "medium": {
+          "computed": "24px",
+          "usedLineBox": 24,
+          "opsz": 24,
+          "fit": 0
+        },
+        "small": {
+          "computed": "21.36px",
+          "usedLineBox": 21.36,
+          "opsz": 21.5,
+          "fit": -0.391
+        },
+        "16px": {
+          "computed": "16px",
+          "usedLineBox": 16,
+          "opsz": 16,
+          "fit": 0
+        },
+        "8px": {
+          "computed": "8px",
+          "usedLineBox": 8,
+          "opsz": 14,
+          "fit": 0
+        },
+        "12px": {
+          "computed": "12px",
+          "usedLineBox": 12,
+          "opsz": 14,
+          "fit": 0
+        }
+      }
+    },
+    "B pref default=9": {
+      "webprefs": {
+        "default_font_size": 9
+      },
+      "r": {
+        "1rem": {
+          "computed": "9px",
+          "usedLineBox": 9,
+          "opsz": 14,
+          "fit": 0
+        },
+        "0.75rem": {
+          "computed": "6.75px",
+          "usedLineBox": 6.75,
+          "opsz": 14,
+          "fit": 0
+        },
+        "medium": {
+          "computed": "9px",
+          "usedLineBox": 9,
+          "opsz": 14,
+          "fit": 0
+        },
+        "small": {
+          "computed": "9px",
+          "usedLineBox": 9,
+          "opsz": 14,
+          "fit": 0
+        },
+        "16px": {
+          "computed": "16px",
+          "usedLineBox": 16,
+          "opsz": 16,
+          "fit": 0
+        },
+        "8px": {
+          "computed": "8px",
+          "usedLineBox": 8,
+          "opsz": 14,
+          "fit": 0
+        },
+        "12px": {
+          "computed": "12px",
+          "usedLineBox": 12,
+          "opsz": 14,
+          "fit": 0
+        }
+      }
+    }
+  },
+  "minimum": {
+    "C min=0 (default)": {
+      "webprefs": {
+        "minimum_font_size": 0
+      },
+      "r": {
+        "1rem": {
+          "computed": "16px",
+          "usedLineBox": 16,
+          "opsz": 16,
+          "fit": 0
+        },
+        "0.75rem": {
+          "computed": "12px",
+          "usedLineBox": 12,
+          "opsz": 14,
+          "fit": 0
+        },
+        "medium": {
+          "computed": "16px",
+          "usedLineBox": 16,
+          "opsz": 16,
+          "fit": 0
+        },
+        "small": {
+          "computed": "13px",
+          "usedLineBox": 13,
+          "opsz": 14,
+          "fit": 0
+        },
+        "16px": {
+          "computed": "16px",
+          "usedLineBox": 16,
+          "opsz": 16,
+          "fit": 0
+        },
+        "8px": {
+          "computed": "8px",
+          "usedLineBox": 8,
+          "opsz": 14,
+          "fit": 0
+        },
+        "12px": {
+          "computed": "12px",
+          "usedLineBox": 12,
+          "opsz": 14,
+          "fit": 0
+        }
+      }
+    },
+    "C min=12": {
+      "webprefs": {
+        "minimum_font_size": 12
+      },
+      "r": {
+        "1rem": {
+          "computed": "16px",
+          "usedLineBox": 16,
+          "opsz": 16,
+          "fit": 0
+        },
+        "0.75rem": {
+          "computed": "12px",
+          "usedLineBox": 12,
+          "opsz": 14,
+          "fit": 0
+        },
+        "medium": {
+          "computed": "16px",
+          "usedLineBox": 16,
+          "opsz": 16,
+          "fit": 0
+        },
+        "small": {
+          "computed": "13px",
+          "usedLineBox": 13,
+          "opsz": 14,
+          "fit": 0
+        },
+        "16px": {
+          "computed": "16px",
+          "usedLineBox": 16,
+          "opsz": 16,
+          "fit": 0
+        },
+        "8px": {
+          "computed": "12px",
+          "usedLineBox": 12,
+          "opsz": 14,
+          "fit": 0
+        },
+        "12px": {
+          "computed": "12px",
+          "usedLineBox": 12,
+          "opsz": 14,
+          "fit": 0
+        }
+      }
+    },
+    "C min=20": {
+      "webprefs": {
+        "minimum_font_size": 20
+      },
+      "r": {
+        "1rem": {
+          "computed": "20px",
+          "usedLineBox": 20,
+          "opsz": 16,
+          "fit": 0
+        },
+        "0.75rem": {
+          "computed": "20px",
+          "usedLineBox": 20,
+          "opsz": 16,
+          "fit": 0
+        },
+        "medium": {
+          "computed": "20px",
+          "usedLineBox": 20,
+          "opsz": 16,
+          "fit": 0
+        },
+        "small": {
+          "computed": "20px",
+          "usedLineBox": 20,
+          "opsz": 16,
+          "fit": 0
+        },
+        "16px": {
+          "computed": "20px",
+          "usedLineBox": 20,
+          "opsz": 16,
+          "fit": 0
+        },
+        "8px": {
+          "computed": "20px",
+          "usedLineBox": 20,
+          "opsz": 16,
+          "fit": 0
+        },
+        "12px": {
+          "computed": "20px",
+          "usedLineBox": 20,
+          "opsz": 16,
+          "fit": 0
+        }
+      }
+    },
+    "C min=24 default=9": {
+      "webprefs": {
+        "minimum_font_size": 24,
+        "default_font_size": 9
+      },
+      "r": {
+        "1rem": {
+          "computed": "24px",
+          "usedLineBox": 24,
+          "opsz": 14,
+          "fit": 0
+        },
+        "0.75rem": {
+          "computed": "24px",
+          "usedLineBox": 24,
+          "opsz": 14,
+          "fit": 0
+        },
+        "medium": {
+          "computed": "24px",
+          "usedLineBox": 24,
+          "opsz": 14,
+          "fit": 0
+        },
+        "small": {
+          "computed": "24px",
+          "usedLineBox": 24,
+          "opsz": 14,
+          "fit": 0
+        },
+        "16px": {
+          "computed": "24px",
+          "usedLineBox": 24,
+          "opsz": 14,
+          "fit": 0
+        },
+        "8px": {
+          "computed": "24px",
+          "usedLineBox": 24,
+          "opsz": 14,
+          "fit": 0
+        },
+        "12px": {
+          "computed": "24px",
+          "usedLineBox": 24,
+          "opsz": 14,
+          "fit": 0
+        }
+      }
+    }
+  }
+}

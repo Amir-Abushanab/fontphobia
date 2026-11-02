@@ -1,0 +1,9 @@
+$ docusaurus build
+[INFO] [en] Creating an optimized production build...
+[probe] compiler done server server
+[probe] compiler done client client
+(node:25888) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[probe] postBuild /Users/amir/Code/fontphobia/spikes/11-frameworks/docusaurus/build/ ["/404.html","/blog","/blog/archive","/blog/authors","/blog/authors/all-sebastien-lorber-articles","/blog/authors/yangshun","/blog/first-blog-post","/blog/long-blog-post","/blog/mdx-blog-post","/blog/tags","/blog/tags/docusaurus","/blog/tags/facebook","/blog/tags/hello","/blog/tags/hola","/blog/welcome","/markdown-page","/posts/1","/posts/2","/docs/category/tutorial---basics","/docs/category/tutorial---extras","/docs/intro","/docs/tutorial-basics/congratulations","/docs/tutorial-basics/create-a-blog-post","/docs/tutorial-basics/create-a-document","/docs/tutorial-basics/create-a-page","/docs/tutorial-basics/deploy-your-site","/docs/tutorial-basics/markdown-features","/docs/tutorial-extras/manage-docs-versions","/docs/tutorial-extras/translate-your-site","/"]
+[SUCCESS] Generated static files in "build".
+[INFO] Use `npm run serve` command to test your build locally.

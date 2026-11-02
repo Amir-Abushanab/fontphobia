@@ -1,0 +1,27 @@
+{
+  "name": "next",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "build:webpack": "next build --webpack",
+    "build:export": "FONTPHOBIA_EXPORT=1 next build",
+    "build:export:webpack": "FONTPHOBIA_EXPORT=1 next build --webpack",
+    "start": "next start",
+    "postbuild": "node -e \"console.log('[probe] postbuild script')\""
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "5.3.0",
+    "next": "16.4.4",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5"
+  },
+  "packageManager": "pnpm@12.9.1"
+}

@@ -1,0 +1,9 @@
+original                                  72920 B size-adjust 107.89%  ascent 89.79%  descent 22.36%  lineGap 0.00%  hhea 1984/-494/0
+subset Latin-1, no instancing             57308 B size-adjust 107.89%  ascent 89.79%  descent 22.36%  lineGap 0.00%  hhea 1984/-494/0
+subset ASCII, no instancing               43412 B size-adjust 107.89%  ascent 89.79%  descent 22.36%  lineGap 0.00%  hhea 1984/-494/0
+subset ASCII minus "q"                    43188 B size-adjust 100.00%  ascent 96.88%  descent 24.12%  lineGap 0.00%  hhea 1984/-494/0
+wght 300..700 (default 400 kept)          53036 B size-adjust 107.89%  ascent 89.79%  descent 22.36%  lineGap 0.00%  hhea 1984/-494/0
+wght 500..700 (default clamps to 500)     39792 B size-adjust 109.05%  ascent 88.83%  descent 22.12%  lineGap 0.00%  hhea 1984/-494/0
+opsz pinned 14 (= default)                36520 B size-adjust 107.89%  ascent 89.79%  descent 22.36%  lineGap 0.00%  hhea 1984/-494/0
+opsz 16..32 (default clamps to 16)        58064 B size-adjust 106.82%  ascent 90.69%  descent 22.58%  lineGap 0.00%  hhea 1984/-494/0
+opsz pinned 32                            36560 B size-adjust 98.29%  ascent 98.56%  descent 24.54%  lineGap 0.00%  hhea 1984/-494/0

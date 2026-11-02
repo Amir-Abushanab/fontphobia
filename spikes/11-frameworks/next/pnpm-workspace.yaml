@@ -1,0 +1,4 @@
+# Standalone: keeps this dir out of any parent workspace.
+allowBuilds:
+  sharp: false
+  unrs-resolver: false

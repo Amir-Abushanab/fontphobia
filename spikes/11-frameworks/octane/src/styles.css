@@ -1,0 +1,68 @@
+:root {
+  --bg: #23272f;
+  --panel: #2b3138;
+  --text: #f4eee8;
+  --text-secondary: #99a1b3;
+  --accent: #ff415a;
+  --accent-hover: #ff5d72;
+  --accent-text: #ff5d72;
+  --on-accent: #16181d;
+  --border: rgba(255, 255, 255, 0.1);
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-subtle: rgba(255, 255, 255, 0.03);
+  --header-bg: rgba(35, 39, 47, 0.85);
+  /* Accent tints for the card hover, the same in both themes. */
+  --card-hover-border: rgba(255, 93, 114, 0.4);
+  --card-hover-bg: rgba(255, 65, 90, 0.07);
+  color-scheme: dark;
+}
+/* octanejs.dev defaults to dark and offers a toggle. A scaffold has no
+   toggle to offer, so the same palette follows the operating system
+   instead — and the values on both sides are the site's own. */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #ffffff;
+    --panel: #f4f5f7;
+    --text: #1c2027;
+    --text-secondary: #5c6473;
+    --accent-hover: #c81e37;
+    --accent-text: #d81f38;
+    --on-accent: #ffffff;
+    --border: rgba(0, 0, 0, 0.12);
+    --surface: rgba(0, 0, 0, 0.04);
+    --surface-subtle: rgba(0, 0, 0, 0.025);
+    --header-bg: rgba(255, 255, 255, 0.85);
+    color-scheme: light;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    "Inter Variable", Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+code,
+pre,
+kbd,
+samp {
+  font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas,
+    monospace;
+}
+a {
+  color: var(--accent-text);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--accent-hover);
+}
+::selection {
+  background: rgba(255, 65, 90, 0.45);
+}

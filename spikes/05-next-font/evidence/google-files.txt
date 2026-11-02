@@ -1,0 +1,6 @@
+# node scripts/inspect-google-files.cjs <files>  (after `pnpm build:webpack`)
+# Latin slices downloaded by next/font/google, read with Next's bundled fontkit.
+Inter {subsets:['latin']}                 e4af272ccee01ff0-s.p.woff2  48432 B  axes: wght 100..900 (default 400)                        glyphs 518, 231 code points, hhea 1984/-494/0, upm 2048
+Inter {subsets:['latin'], axes:['opsz']}  32b04a225cda6443-s.p.woff2  73016 B  axes: opsz 14..32 (default 14), wght 100..900 (default 400)  glyphs 518, 231 code points, hhea 1984/-494/0
+Roboto Flex {axes:['wdth','opsz']}        2885a5824a7be48c-s.p.woff2 195712 B  axes: opsz 8..144, wght 100..1000, wdth 25..151              glyphs 269, 235 code points, hhea 1900/-500/0
+fontsource inter-latin-opsz (local)       5678e9b0dc22dee2-s.p.woff2  72920 B  axes: opsz 14..32 (default 14), wght 100..900 (default 400)  glyphs 518, 231 code points

@@ -1,0 +1,42 @@
+$ next build --webpack
+▲ Next.js 16.4.4 (webpack)
+✓ Running next.config.ts took 16ms
+- Cache Components enabled
+- Partial Prefetching enabled
+
+  Creating an optimized production build ...
+[probe] webpack done server server:nodejs
+[probe] webpack done edge-server server:edge
+[probe] webpack done client client
+✓ Compiled successfully in 2.2s
+  Running next.config.js provided runAfterProductionCompile ...
+[probe] runAfterProductionCompile /Users/amir/Code/fontphobia/spikes/11-frameworks/next/.next
+✓ Completed runAfterProductionCompile in 0.5ms
+  Running TypeScript ...
+  Finished TypeScript in 778ms ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/8) ...
+  Generating static pages using 7 workers (2/8) 
+  Generating static pages using 7 workers (4/8) 
+  Generating static pages using 7 workers (6/8) 
+✓ Generating static pages using 7 workers (8/8) in 388ms
+  Finalizing page optimization ...
+  Collecting build traces ...
+  Running onBuildComplete from probe
+[probe] adapter onBuildComplete {"output":null,"outputs":{"pages":0,"pagesApi":0,"appPages":10,"appRoutes":0,"prerenders":30,"staticFiles":44},"outHtml":null}
+[probe] adapter prerender pathnames ["/","/index.rsc","/index.segments/_tree.segment.rsc","/index.segments/_full.segment.rsc","/index.segments/__PAGE__.segment.rsc","/_global-error","/_global-error.rsc","/_global-error.segments/_tree.segment.rsc","/_global-error.segments/_full.segment.rsc","/_global-error.segments/_global-error/__PAGE__.segment.rsc","/about","/about.rsc","/about.segments/_tree.segment.rsc","/about.segments/_full.segment.rsc","/about.segments/about/__PAGE__.segment.rsc","/posts/1","/posts/1.rsc","/posts/1.segments/_tree.segment.rsc","/posts/1.segments/_full.segment.rsc","/posts/1.segments/posts/$d$id/__PAGE__.segment.rsc","/posts/2","/posts/2.rsc","/posts/2.segments/_tree.segment.rsc","/posts/2.segments/_full.segment.rsc","/posts/2.segments/posts/$d$id/__PAGE__.segment.rsc","/posts/[id]","/posts/[id].segments/_tree.segment.rsc","/posts/[id].segments/_full.segment.rsc","/posts/[id].segments/posts/$d$id/__PAGE__.segment.rsc","/posts/[id].rsc"]
+[probe] adapter staticFiles ["/favicon.ico","/404","/500"]
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /about
+└   /posts/[id]
+  ├ ◐ /posts/[id]
+  ├ ○ /posts/1
+  └ ○ /posts/2
+
+
+○  (Static)             prerendered as static content
+◐  (Partial Prerender)  prerendered as static HTML with dynamic server-streamed content
+

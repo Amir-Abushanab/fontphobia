@@ -1,0 +1,43 @@
+$ astro build
+[probe] closeBundle ssr
+[probe] closeBundle astro
+[probe] closeBundle client
+15:27:16 [types] Generated 117ms
+15:27:16 [build] output: "static"
+15:27:16 [build] mode: "static"
+15:27:16 [build] directory: /Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/
+15:27:16 [build] Collecting build info...
+15:27:16 [build] ✓ Completed in 147ms.
+15:27:16 [build] Building static entrypoints...
+15:27:17 [assets] Copying fonts (2 files)...
+15:27:17 [vite] ✓ built in 945ms
+[probe] closeBundle prerender
+15:27:17 [vite] ✓ built in 102ms
+[probe] closeBundle client
+15:27:17 [build] Rearranging server assets...
+
+ generating static routes 
+15:27:17   ├─ /about/index.html15:27:17 [ERROR] FontFamilyNotFound: No data was found for the `"--font-lora"` family passed to the `<Font>` component.
+    at file:///Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/.prerender/chunks/Layout_Cpkh0fAD.mjs:1055:19
+    at AstroComponentInstance.Font [as factory] (file:///Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/.prerender/chunks/Layout_Cpkh0fAD.mjs:26:10)
+    at AstroComponentInstance.init (file:///Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/.prerender/chunks/console_Djs7skwi.mjs:7404:27)
+    at renderStreaming (file:///Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/.prerender/chunks/console_Djs7skwi.mjs:7640:29)
+    at renderStreamToString (file:///Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/.prerender/chunks/console_Djs7skwi.mjs:7682:8)
+    at async renderToString (file:///Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/.prerender/chunks/console_Djs7skwi.mjs:7840:9)
+    at async renderPage (file:///Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/.prerender/chunks/console_Djs7skwi.mjs:8333:10)
+    at async handlePages (file:///Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/.prerender/prerender-entry.D55uIoqE.mjs:3893:16)
+    at async callMiddleware (file:///Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/.prerender/prerender-entry.D55uIoqE.mjs:4772:9)
+    at async handleMiddleware (file:///Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/.prerender/prerender-entry.D55uIoqE.mjs:4898:18)
+15:27:17 [ERROR] [build] Caught error rendering /about: FontFamilyNotFound: No data was found for the `"--font-lora"` family passed to the `<Font>` component.
+[FontFamilyNotFound] No data was found for the `"--font-lora"` family passed to the `<Font>` component.
+  Hint:
+    This is often caused by a typo. Check that the `<Font />` component is using a `cssVariable` specified in your config.
+  Error reference:
+    https://docs.astro.build/en/reference/errors/font-family-not-found/
+  Stack trace:
+    at file:///Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/.prerender/chunks/Layout_Cpkh0fAD.mjs:1055:19
+    at AstroComponentInstance.init (file:///Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/.prerender/chunks/console_Djs7skwi.mjs:7404:27)
+    at renderStreamToString (file:///Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/.prerender/chunks/console_Djs7skwi.mjs:7682:8)
+    at async renderPage (file:///Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/.prerender/chunks/console_Djs7skwi.mjs:8333:10)
+    at async callMiddleware (file:///Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/.prerender/prerender-entry.D55uIoqE.mjs:4772:9)
+[ELIFECYCLE] Command failed with exit code 1.

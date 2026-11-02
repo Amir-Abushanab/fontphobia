@@ -1,0 +1,13 @@
+chrome 155.0.8059.79
+16px wght 400 opsz 14  orig 7889.063  Δpinned 0.000
+16px wght 400 opsz 16  orig 7808.578  Δpinned -0.141
+16px wght 550 opsz 24  orig 7636.922  Δpinned 0.516
+16px wght 650 opsz 14  orig 8050.438  Δpinned 0.531
+16px wght 700 opsz 20  orig 7905.469  Δpinned 0.750
+16px wght 700 opsz 24  orig 7787.297  Δpinned -0.328
+64px wght 400 opsz 14  orig 31556.250  Δpinned 0.000
+64px wght 400 opsz 16  orig 31234.328  Δpinned -0.578
+64px wght 550 opsz 24  orig 30547.672  Δpinned 2.078
+64px wght 650 opsz 14  orig 32201.734  Δpinned 2.141
+64px wght 700 opsz 20  orig 31621.859  Δpinned 3.016
+64px wght 700 opsz 24  orig 31149.188  Δpinned -1.313

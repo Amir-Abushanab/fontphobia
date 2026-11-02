@@ -1,0 +1,19 @@
+{
+  "name": "fontphobia",
+  "version": "0.0.0",
+  "description": "Shrink a site's web fonts without changing how anything renders.",
+  "type": "module",
+  "license": "MIT",
+  "bin": { "fontphobia": "./dist/cli.mjs" },
+  "files": ["dist"],
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "node src/cli.ts"
+  },
+  "devDependencies": {
+    "@fontphobia/core": "workspace:*",
+    "cac": "7.1.0",
+    "tsdown": "0.23.4"
+  }
+}

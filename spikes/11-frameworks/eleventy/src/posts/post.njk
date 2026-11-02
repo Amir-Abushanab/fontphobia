@@ -1,0 +1,12 @@
+---
+layout: base.njk
+pagination:
+  data: ids
+  size: 1
+  alias: id
+ids: ["1", "2"]
+permalink: "/posts/{{ id }}/"
+eleventyComputed:
+  title: "Post {{ id }}"
+---
+<h1>Post {{ id }}</h1>

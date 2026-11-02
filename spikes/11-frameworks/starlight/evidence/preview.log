@@ -1,0 +1,3 @@
+$ astro preview --ignore-lock --port 4330
+{"message":" astro  v7.4.5 ready in 18 ms\n┃ Local    http://localhost:4330/\n┃ Network  use --host to expose","label":"SKIP_FORMAT","level":"info"}
+[ELIFECYCLE] Command failed with signal SIGTERM.

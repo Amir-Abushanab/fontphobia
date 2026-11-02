@@ -1,0 +1,8 @@
+{
+  "name": "fontphobia-dlx-spike",
+  "version": "0.0.0",
+  "type": "module",
+  "bin": { "fontphobia-dlx-spike": "dist/cli.mjs" },
+  "files": ["dist"],
+  "dependencies": { "playwright-core": "1.64.1" }
+}

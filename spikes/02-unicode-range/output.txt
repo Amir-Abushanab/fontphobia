@@ -1,0 +1,59 @@
+chrome 155.0.8059.79
+sizes {
+  'whole.woff2': 88676,
+  'core.woff2': 41048,
+  'ext.woff2': 51620,
+  'coremarks.woff2': 72488,
+  'extnomarks.woff2': 38836
+}
+
+kern core|core (control): "AVATAR To We Yo"
+  width  Whole 389.72  Split Δ0.00  SplitM Δ0.00
+  pixels Split 0 px   SplitM 0 px
+  fetched (new this case) Split ["core.woff2"] SplitM ["coremarks.woff2"]
+
+kern core|ext: "Tö Vä Yö Wå Tü Fä Pö"
+  width  Whole 472.13  Split Δ18.02  SplitM Δ18.02
+  pixels Split size 946x134 vs 982x134   SplitM size 946x134 vs 982x134
+  fetched (new this case) Split ["ext.woff2"] SplitM ["extnomarks.woff2"]
+
+kern ext|core: "Äv Öy Åw ÜT"
+  width  Whole 292.42  Split Δ6.52  SplitM Δ6.52
+  pixels Split size 586x134 vs 598x134   SplitM size 586x134 vs 598x134
+  fetched (new this case) Split [] SplitM []
+
+calt core colon between ext caps: "Ä:Ö Ü:Å"
+  width  Whole 181.52  Split Δ0.00  SplitM Δ0.00
+  pixels Split 785 px   SplitM 785 px
+  fetched (new this case) Split [] SplitM []
+
+calt core only (control): "A:B 12:30 ->"
+  width  Whole 269.88  Split Δ0.00  SplitM Δ0.00
+  pixels Split 0 px   SplitM 0 px
+  fetched (new this case) Split [] SplitM []
+
+precomposed é (ext): "café naïve"
+  width  Whole 228.48  Split Δ0.47  SplitM Δ0.47
+  pixels Split 15 px   SplitM 15 px
+  fetched (new this case) Split [] SplitM []
+
+decomposed e+U+0301 (core+ext): "café naïve"
+  width  Whole 228.48  Split Δ0.47  SplitM Δ0.00
+  pixels Split 15 px   SplitM 0 px
+  fetched (new this case) Split [] SplitM []
+
+decomposed ext base + mark: "ä́ ọ̈"
+  width  Whole 79.19  Split Δ0.00  SplitM Δ0.00
+  pixels Split 0 px   SplitM 0 px
+  fetched (new this case) Split [] SplitM []
+
+curly quotes ext around core: "“Too” ‘yo’"
+  width  Whole 203.31  Split Δ1.88  SplitM Δ1.88
+  pixels Split size 408x134 vs 412x134   SplitM size 408x134 vs 412x134
+  fetched (new this case) Split [] SplitM []
+
+fresh page "ascii only": fetched ["core.woff2","coremarks.woff2"]
+
+fresh page "one é": fetched ["core.woff2","coremarks.woff2","ext.woff2","extnomarks.woff2"]
+
+fresh page "combining only": fetched ["core.woff2","coremarks.woff2","ext.woff2"]

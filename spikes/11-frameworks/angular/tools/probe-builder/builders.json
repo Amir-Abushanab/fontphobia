@@ -1,0 +1,9 @@
+{
+  "builders": {
+    "application": {
+      "implementation": "./index.cjs",
+      "schema": "./schema.json",
+      "description": "@angular/build:application + an esbuild probe plugin (codePlugins) + indexHtmlTransformer"
+    }
+  }
+}

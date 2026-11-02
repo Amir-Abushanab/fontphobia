@@ -1,0 +1,17 @@
+# Standalone: keeps this dir out of any parent workspace.
+allowBuilds:
+  lmdb: true
+  msgpackr-extract: true
+  "@parcel/watcher": true
+  gatsby: true
+  gatsby-cli: true
+  core-js: false
+  core-js-pure: false
+  "@swc/core": true
+  sharp: false
+  esbuild: true
+  es5-ext: false
+# Gatsby's generated .cache/*.js imports gatsby's own transitive deps
+# (@gatsbyjs/reach-router, gatsby-link, prop-types, ...); pnpm's isolated linker
+# makes them unresolvable (ERROR #98124). Use a flat node_modules.
+nodeLinker: hoisted

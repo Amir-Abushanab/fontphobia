@@ -1,0 +1,4 @@
+$ vite preview --port 4180 --strictPort
+  ➜  Local:   http://localhost:4180/
+  ➜  Network: use --host to expose
+[ELIFECYCLE] Command failed with exit code 143.

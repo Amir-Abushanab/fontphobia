@@ -1,0 +1,7 @@
+$ next start
+▲ Next.js 16.4.4
+- Local:         http://localhost:3000
+- Network:       http://192.168.8.116:3000
+✓ Ready in 68ms
+✓ Running next.config.ts took 19ms
+[ELIFECYCLE] Command failed with signal SIGTERM.

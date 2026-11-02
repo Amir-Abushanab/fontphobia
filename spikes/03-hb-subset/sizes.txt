@@ -1,0 +1,3 @@
+InterVariable.ttf {"default":54976,"names 0-25":55068,"names *":55392,"features *":86072,"no hinting":54976,"wght 400..700":38712,"pin 400/14":14896}
+DejaVuSans.ttf {"default":20344,"names 0-25":21888,"names *":21888,"features *":21588,"no hinting":9296}
+Inter-Regular-hinted.woff2 {"default":20512,"names 0-25":20656,"names *":20996,"features *":31636,"no hinting":14336}

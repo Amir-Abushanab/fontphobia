@@ -1,0 +1,41 @@
+Configuration file: /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/_config.yml
+[33m     Build Warning: Skipping the initial build. This may result in an out-of-date site.[0m
+ Auto-regeneration: disabled. Use --watch to enable.
+    Server address: http://127.0.0.1:4005/
+  Server running... press ctrl-c to stop.
+[2026-11-02 15:56:12] ERROR '/nope' not found.
+[31m                    ------------------------------------------------[0m
+[31m      Jekyll 4.4.1   Please append `--trace` to the `serve` command [0m
+[31m                     for any additional information or backtrace. [0m
+[31m                    ------------------------------------------------[0m
+/Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/vendor/bundle/ruby/3.4.0/gems/jekyll-4.4.1/lib/jekyll/commands/serve.rb:291:in 'Thread#join': SIGTERM (SignalException)
+	from /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/vendor/bundle/ruby/3.4.0/gems/jekyll-4.4.1/lib/jekyll/commands/serve.rb:291:in 'Jekyll::Commands::Serve.boot_or_detach'
+	from /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/vendor/bundle/ruby/3.4.0/gems/jekyll-4.4.1/lib/jekyll/commands/serve.rb:221:in 'Jekyll::Commands::Serve.start_up_webrick'
+	from /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/vendor/bundle/ruby/3.4.0/gems/jekyll-4.4.1/lib/jekyll/commands/serve.rb:102:in 'Jekyll::Commands::Serve.process'
+	from /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/vendor/bundle/ruby/3.4.0/gems/jekyll-4.4.1/lib/jekyll/command.rb:91:in 'block in Jekyll::Command.process_with_graceful_fail'
+	from /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/vendor/bundle/ruby/3.4.0/gems/jekyll-4.4.1/lib/jekyll/command.rb:91:in 'Array#each'
+	from /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/vendor/bundle/ruby/3.4.0/gems/jekyll-4.4.1/lib/jekyll/command.rb:91:in 'Jekyll::Command.process_with_graceful_fail'
+	from /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/vendor/bundle/ruby/3.4.0/gems/jekyll-4.4.1/lib/jekyll/commands/serve.rb:85:in 'block (2 levels) in Jekyll::Commands::Serve.init_with_program'
+	from /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/vendor/bundle/ruby/3.4.0/gems/mercenary-0.4.0/lib/mercenary/command.rb:221:in 'block in Mercenary::Command#execute'
+	from /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/vendor/bundle/ruby/3.4.0/gems/mercenary-0.4.0/lib/mercenary/command.rb:221:in 'Array#each'
+	from /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/vendor/bundle/ruby/3.4.0/gems/mercenary-0.4.0/lib/mercenary/command.rb:221:in 'Mercenary::Command#execute'
+	from /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/vendor/bundle/ruby/3.4.0/gems/mercenary-0.4.0/lib/mercenary/program.rb:44:in 'Mercenary::Program#go'
+	from /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/vendor/bundle/ruby/3.4.0/gems/mercenary-0.4.0/lib/mercenary.rb:21:in 'Mercenary.program'
+	from /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/vendor/bundle/ruby/3.4.0/gems/jekyll-4.4.1/exe/jekyll:15:in '<top (required)>'
+	from /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/vendor/bundle/ruby/3.4.0/bin/jekyll:25:in 'Kernel#load'
+	from /Users/amir/Code/fontphobia/spikes/11-frameworks/jekyll/vendor/bundle/ruby/3.4.0/bin/jekyll:25:in '<top (required)>'
+	from /Users/amir/.rbenv/versions/3.4.1/lib/ruby/site_ruby/3.4.0/bundler/cli/exec.rb:59:in 'Kernel.load'
+	from /Users/amir/.rbenv/versions/3.4.1/lib/ruby/site_ruby/3.4.0/bundler/cli/exec.rb:59:in 'Bundler::CLI::Exec#kernel_load'
+	from /Users/amir/.rbenv/versions/3.4.1/lib/ruby/site_ruby/3.4.0/bundler/cli/exec.rb:23:in 'Bundler::CLI::Exec#run'
+	from /Users/amir/.rbenv/versions/3.4.1/lib/ruby/site_ruby/3.4.0/bundler/cli.rb:452:in 'Bundler::CLI#exec'
+	from /Users/amir/.rbenv/versions/3.4.1/lib/ruby/site_ruby/3.4.0/bundler/vendor/thor/lib/thor/command.rb:28:in 'Bundler::Thor::Command#run'
+	from /Users/amir/.rbenv/versions/3.4.1/lib/ruby/site_ruby/3.4.0/bundler/vendor/thor/lib/thor/invocation.rb:127:in 'Bundler::Thor::Invocation#invoke_command'
+	from /Users/amir/.rbenv/versions/3.4.1/lib/ruby/site_ruby/3.4.0/bundler/vendor/thor/lib/thor.rb:538:in 'Bundler::Thor.dispatch'
+	from /Users/amir/.rbenv/versions/3.4.1/lib/ruby/site_ruby/3.4.0/bundler/cli.rb:35:in 'Bundler::CLI.dispatch'
+	from /Users/amir/.rbenv/versions/3.4.1/lib/ruby/site_ruby/3.4.0/bundler/vendor/thor/lib/thor/base.rb:584:in 'Bundler::Thor::Base::ClassMethods#start'
+	from /Users/amir/.rbenv/versions/3.4.1/lib/ruby/site_ruby/3.4.0/bundler/cli.rb:29:in 'Bundler::CLI.start'
+	from /Users/amir/.rbenv/versions/3.4.1/lib/ruby/gems/3.4.0/gems/bundler-2.6.3/exe/bundle:28:in 'block in <top (required)>'
+	from /Users/amir/.rbenv/versions/3.4.1/lib/ruby/site_ruby/3.4.0/bundler/friendly_errors.rb:117:in 'Bundler.with_friendly_errors'
+	from /Users/amir/.rbenv/versions/3.4.1/lib/ruby/gems/3.4.0/gems/bundler-2.6.3/exe/bundle:20:in '<top (required)>'
+	from /Users/amir/.rbenv/versions/3.4.1/bin/bundle:25:in 'Kernel#load'
+	from /Users/amir/.rbenv/versions/3.4.1/bin/bundle:25:in '<main>'

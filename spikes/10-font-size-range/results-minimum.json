@@ -1,0 +1,222 @@
+{
+  "min=0 default=16": {
+    "8px": {
+      "computed": "8px",
+      "opsz": 14,
+      "fit": 0,
+      "noneEqualsAuto": true
+    },
+    "16px": {
+      "computed": "16px",
+      "opsz": 16,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "18px": {
+      "computed": "18px",
+      "opsz": 18,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "22px": {
+      "computed": "22px",
+      "opsz": 22,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "25px": {
+      "computed": "25px",
+      "opsz": 25,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "30px": {
+      "computed": "30px",
+      "opsz": 30,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "1rem": {
+      "computed": "16px",
+      "opsz": 16,
+      "fit": 0,
+      "noneEqualsAuto": false
+    }
+  },
+  "min=20 default=16": {
+    "8px": {
+      "computed": "20px",
+      "opsz": 14,
+      "fit": 0,
+      "noneEqualsAuto": true
+    },
+    "16px": {
+      "computed": "20px",
+      "opsz": 14,
+      "fit": 0,
+      "noneEqualsAuto": true
+    },
+    "18px": {
+      "computed": "20px",
+      "opsz": 14,
+      "fit": 0,
+      "noneEqualsAuto": true
+    },
+    "22px": {
+      "computed": "22px",
+      "opsz": 22,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "25px": {
+      "computed": "25px",
+      "opsz": 25,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "30px": {
+      "computed": "30px",
+      "opsz": 30,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "1rem": {
+      "computed": "20px",
+      "opsz": 14,
+      "fit": 0,
+      "noneEqualsAuto": true
+    }
+  },
+  "min=20 default=24": {
+    "8px": {
+      "computed": "20px",
+      "opsz": 14,
+      "fit": 0,
+      "noneEqualsAuto": true
+    },
+    "16px": {
+      "computed": "20px",
+      "opsz": 14,
+      "fit": 0,
+      "noneEqualsAuto": true
+    },
+    "18px": {
+      "computed": "20px",
+      "opsz": 14,
+      "fit": 0,
+      "noneEqualsAuto": true
+    },
+    "22px": {
+      "computed": "22px",
+      "opsz": 22,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "25px": {
+      "computed": "25px",
+      "opsz": 25,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "30px": {
+      "computed": "30px",
+      "opsz": 30,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "1rem": {
+      "computed": "24px",
+      "opsz": 24,
+      "fit": 0,
+      "noneEqualsAuto": false
+    }
+  },
+  "min=20 default=18": {
+    "8px": {
+      "computed": "20px",
+      "opsz": 14,
+      "fit": 0,
+      "noneEqualsAuto": true
+    },
+    "16px": {
+      "computed": "20px",
+      "opsz": 14,
+      "fit": 0,
+      "noneEqualsAuto": true
+    },
+    "18px": {
+      "computed": "20px",
+      "opsz": 14,
+      "fit": 0,
+      "noneEqualsAuto": true
+    },
+    "22px": {
+      "computed": "22px",
+      "opsz": 22,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "25px": {
+      "computed": "25px",
+      "opsz": 25,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "30px": {
+      "computed": "30px",
+      "opsz": 30,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "1rem": {
+      "computed": "20px",
+      "opsz": 14,
+      "fit": 0,
+      "noneEqualsAuto": true
+    }
+  },
+  "min=12 default=16": {
+    "8px": {
+      "computed": "12px",
+      "opsz": 14,
+      "fit": 0,
+      "noneEqualsAuto": true
+    },
+    "16px": {
+      "computed": "16px",
+      "opsz": 16,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "18px": {
+      "computed": "18px",
+      "opsz": 18,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "22px": {
+      "computed": "22px",
+      "opsz": 22,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "25px": {
+      "computed": "25px",
+      "opsz": 25,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "30px": {
+      "computed": "30px",
+      "opsz": 30,
+      "fit": 0,
+      "noneEqualsAuto": false
+    },
+    "1rem": {
+      "computed": "16px",
+      "opsz": 16,
+      "fit": 0,
+      "noneEqualsAuto": false
+    }
+  }
+}

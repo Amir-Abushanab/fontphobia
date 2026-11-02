@@ -1,0 +1,6 @@
+wght 400..700 opsz 14..24  wght 650 opsz 24   1032 glyphs, max cumulative drift 312 units = 2.438 px @16px, 9.750 px @64px
+wght 400..700              wght 650 opsz 14   1032 glyphs, max cumulative drift 336 units = 2.625 px @16px, 10.500 px @64px
+wght 400..700 opsz 14..24  wght 650 opsz 14   1032 glyphs, max cumulative drift 336 units = 2.625 px @16px, 10.500 px @64px
+wght 400..700 opsz 14..24  wght 675 opsz 20   1032 glyphs, max cumulative drift 336 units = 2.625 px @16px, 10.500 px @64px
+wght 400..700 opsz 14..24  wght 625 opsz 24   1032 glyphs, max cumulative drift 348 units = 2.719 px @16px, 10.875 px @64px
+wght 400..700 opsz 14..24  wght 550 opsz 24   1032 glyphs, max cumulative drift 360 units = 2.813 px @16px, 11.250 px @64px

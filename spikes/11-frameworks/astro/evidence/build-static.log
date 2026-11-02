@@ -1,0 +1,33 @@
+? Verifying lockfile against supply-chain policies (261 entries)...
+✓ Lockfile passes supply-chain policies (261 entries in 747ms)
+Lockfile is up to date, resolution step is skipped
+Already up to date
+Done in 955ms using pnpm v12.9.1
+$ astro build
+[probe] closeBundle ssr
+[probe] closeBundle astro
+[probe] closeBundle client
+15:26:05 [types] Generated 74ms
+15:26:05 [build] output: "static"
+15:26:05 [build] mode: "static"
+15:26:05 [build] directory: /Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/
+15:26:05 [build] Collecting build info...
+15:26:05 [build] ✓ Completed in 82ms.
+15:26:05 [build] Building static entrypoints...
+15:26:05 [vite] ✓ built in 243ms
+[probe] closeBundle prerender
+15:26:05 [vite] ✓ built in 7ms
+[probe] closeBundle client
+15:26:05 [build] Rearranging server assets...
+
+ generating static routes 
+15:26:05   ├─ /about/index.html (+4ms) 
+15:26:05   ├─ /posts/1/index.html (+1ms) 
+15:26:05   ├─ /posts/2/index.html (+1ms) 
+15:26:05   ├─ /index.html (+1ms) 
+15:26:05 ✓ Completed in 16ms.
+
+15:26:05 [build] ✓ Completed in 283ms.
+[probe] astro:build:done /Users/amir/Code/fontphobia/spikes/11-frameworks/astro/dist/ ["about/","posts/1/","posts/2/",""]
+15:26:05 [build] 4 page(s) built in 367ms
+15:26:05 [build] Complete!

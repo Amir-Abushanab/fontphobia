@@ -1,0 +1,7 @@
+# UNTESTED fixture (hugo binary not installed; docs-only spike row).
+baseURL = "https://example.org/"
+title = "fontphobia hugo fixture"
+
+# Raw HTML in Markdown is dropped by default (goldmark renderer.unsafe = false).
+[markup.goldmark.renderer]
+  unsafe = true

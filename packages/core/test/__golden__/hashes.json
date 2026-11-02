@@ -1,0 +1,12 @@
+{
+  "inter latin1": "31c3a0d2aaad82134d9f74986eb0a57f2fc71d81abbcd4cc3699b2bb1a791857 55232",
+  "inter ascii +tnum,ss01": "1e11d4c727060087719257e1ff376c686c29baaa746d90b44aa521614da74736 46088",
+  "inter all features": "e340e67335e2a3ddcffcde1582a399d807b7d3eb6aca19597bcb463dbec59f70 86044",
+  "inter wght 400..700 opsz 14..24": "eca7ddfb3aa88200e9cb22a0f5c5a70eff5ab072108665ef2ca66484fbfa5b03 37332",
+  "inter pinned 550/20": "284ec3873454eac3425c15f2ceb58a0d2f1c48333aae272125fc9098a3eb4de6 15600",
+  "inter everything": "d2c8e0a1568f8292818bbd7be956dcadcd8e1d9d3c17fe0e44384aff75064631 330440",
+  "dejavu latin1": "6fe96db0f409f596fbdb2c5d66f99b090ef86953151ac953609506553f0434a9 21816",
+  "dejavu latin1 no hinting": "52b978f817bdd4dc98e76e8c4f6bee9c3e74cc02cee98f67cadad6a893b7c92e 10804",
+  "inter hinted (woff2 source) ascii": "065e9fe757b2e2d2a6de4ddeb4dfc9890b479435a9f24f852080e90feb1ca9ba 15584",
+  "decoded hinted fixture": "23b033ee82ed5a69a647baabbe1dc653b5530ec4462964a7cf68015dc51a3251"
+}

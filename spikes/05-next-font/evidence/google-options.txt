@@ -1,0 +1,30 @@
+Inter {"subsets":["latin"]}
+  -> https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap
+Inter {"subsets":["latin"],"weight":"variable"}
+  -> https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap
+Inter {"subsets":["latin"],"weight":"400"}
+  -> https://fonts.googleapis.com/css2?family=Inter:wght@400&display=swap
+Inter {"subsets":["latin"],"weight":400}
+  -> ERROR: Unknown weight `400` for font `Inter`.
+Inter {"subsets":["latin"],"weight":["400","700"]}
+  -> https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap
+Inter {"subsets":["latin"],"weight":"100 900"}
+  -> ERROR: Unknown weight `100 900` for font `Inter`.
+Inter {"subsets":["latin"],"weight":"100..900"}
+  -> ERROR: Unknown weight `100..900` for font `Inter`.
+Inter {"subsets":["latin"],"weight":["variable","400"]}
+  -> ERROR: Unexpected `variable` in weight array for font `Inter`. You only need `variable`, it includes all available weights.
+Inter {"subsets":["latin"],"axes":["opsz"]}
+  -> https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=swap
+Inter {"subsets":["latin"],"axes":["wght"]}
+  -> ERROR: Invalid axes value `wght` for font `Inter`.
+Inter {"subsets":["latin"],"weight":"400","axes":["opsz"]}
+  -> ERROR: Axes can only be defined for variable fonts when the weight property is nonexistent or set to `variable`.
+Inter {"weight":"400"}
+  -> ERROR: Preload is enabled but no subsets were specified for font `Inter`. Please specify subsets or disable preloading if your intended subset can't be preloaded.
+Inter {"preload":false}
+  -> https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap
+Roboto Flex {"subsets":["latin"],"axes":["wdth","opsz"]}
+  -> https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&display=swap
+Roboto Flex {"subsets":["latin"],"weight":"1000"}
+  -> https://fonts.googleapis.com/css2?family=Roboto+Flex:wght@1000&display=swap

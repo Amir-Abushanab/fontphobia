@@ -1,0 +1,33 @@
+$ vite build
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 490 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/client/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2     10.25 kB
+dist/client/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2      11.23 kB
+dist/client/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2       18.74 kB
+dist/client/assets/inter-greek-wght-normal-CkhJZR-_.woff2          18.99 kB
+dist/client/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2   25.96 kB
+dist/client/assets/inter-latin-wght-normal-Dx4kXJAl.woff2          48.25 kB
+dist/client/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2      85.06 kB
+dist/client/assets/app-BmYWDFx2.css                                 8.06 kB │ gzip:   2.66 kB
+dist/client/assets/app-C8MaMhsz.js                                305.43 kB │ gzip: 100.66 kB
+
+✓ built in 195ms
+[probe] closeBundle client
+vite v8.3.5 building ssr environment for production...
+transforming...
+✓ 209 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/server/fetch.js  570.73 kB │ gzip: 135.78 kB
+
+✓ built in 43ms
+[probe] closeBundle ssr
+  generated /
+  generated /about
+  generated /posts/1
+  generated /posts/2
+  wrote foldkit.build.json
+[probe] buildApp post, posts/2 html exists: true

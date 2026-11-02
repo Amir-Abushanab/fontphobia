@@ -1,0 +1,7 @@
+chrome 155.0.8059.79
+no meta          os scale none  rem=16px px=16px envProbe=16px root=16px 
+no meta          os scale 1.5   rem=16px px=16px envProbe=16px root=16px 
+no meta          os scale 2     rem=16px px=16px envProbe=16px root=16px 
+meta text-scale  os scale none  rem=16px px=16px envProbe=16px root=16px 
+meta text-scale  os scale 1.5   rem=24px px=16px envProbe=24px root=24px 
+meta text-scale  os scale 2     rem=32px px=16px envProbe=32px root=32px 

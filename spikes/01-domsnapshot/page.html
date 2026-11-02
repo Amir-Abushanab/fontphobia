@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+  body { font-family: Georgia, serif; }
+  .upper { text-transform: uppercase; }
+  .lower-tr { text-transform: lowercase; }
+  .cap { text-transform: capitalize; }
+  .fw { text-transform: full-width; }
+  .before::before { content: "\2192 "; }          /* → */
+  .after::after { content: " \2605"; }            /* ★ */
+  .attr::after { content: attr(data-x); }
+  .counter { counter-reset: c 3; }
+  .counter span::before { counter-increment: c; content: counter(c, upper-roman) " "; }
+  .greek { list-style-type: lower-greek; }
+  @counter-style check { system: cyclic; symbols: "\2713"; suffix: " "; }
+  .check { list-style-type: check; }
+  .marker-content li::marker { content: "\2766 "; }  /* ❦ */
+  .quotes { quotes: "\00AB" "\00BB"; }
+  .fl::first-letter { font-family: "Courier New"; font-size: 2em; }
+  .ellipsis { width: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .hyph { width: 70px; hyphens: auto; display: block; }
+  .sc { font-variant-caps: small-caps; }
+  .mono { font-family: "Courier New"; }
+</style></head>
+<body>
+<p id="t-upper" class="upper">straße ǆ</p>
+<p id="t-lower" class="lower-tr" lang="tr">İSTANBUL</p>
+<p id="t-cap" class="cap">ǳemal ﬁsh</p>
+<p id="t-fw" class="fw">ab12</p>
+<p id="t-before" class="before">arrow</p>
+<p id="t-after" class="after">star</p>
+<p id="t-attr" class="attr" data-x=" ¶">attr</p>
+<p id="t-q-en"><q>english</q></p>
+<p id="t-q-de" lang="de"><q>deutsch <q>innen</q></q></p>
+<p id="t-q-fr" lang="fr"><q>français</q></p>
+<p id="t-quotes" class="quotes"><q>custom</q></p>
+<ul id="t-disc"><li>disc</li></ul>
+<ol id="t-decimal" start="7"><li>decimal</li></ol>
+<ol id="t-greek" class="greek"><li>greek</li></ol>
+<ul id="t-check" class="check"><li>check</li></ul>
+<ul id="t-markercontent" class="marker-content"><li>fleuron</li></ul>
+<div id="t-counter" class="counter"><span>one</span><span>two</span></div>
+<details id="t-details"><summary>summary</summary>hidden</details>
+<div id="t-shadow-open"></div>
+<div id="t-shadow-closed"></div>
+<svg id="t-svg" width="200" height="30"><text x="0" y="20">sum ∑</text></svg>
+<p id="t-fl" class="fl">Ŧirst letter</p>
+<span id="t-ellipsis" class="ellipsis">truncate this long text</span>
+<span id="t-hyph" class="hyph" lang="en">extraordinarily incomprehensibilities</span>
+<p id="t-sc" class="sc">Small Caps</p>
+<input id="t-input" value="input ✉">
+<input id="t-placeholder" placeholder="placeholder ☎">
+<input id="t-password" type="password" value="secret">
+<textarea id="t-textarea">textarea ✎</textarea>
+<select id="t-select"><option>option ☀</option><option>other ☂</option></select>
+<button id="t-button">button ⌘</button>
+<input id="t-file" type="file">
+<input id="t-date" type="date" value="2026-11-02">
+<p id="t-hidden" style="display:none">hidden ✖</p>
+<p id="t-vis" style="visibility:hidden">invisible ✗</p>
+<p id="t-mono" class="mono">mono — “dash”</p>
+<script>
+  document.getElementById('t-shadow-open').attachShadow({ mode: 'open' }).innerHTML = '<p>open Ω</p><slot></slot>';
+  document.getElementById('t-shadow-closed').attachShadow({ mode: 'closed' }).innerHTML = '<p>closed Ж</p>';
+</script>
+</body></html>

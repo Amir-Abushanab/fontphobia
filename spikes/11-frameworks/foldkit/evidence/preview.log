@@ -1,0 +1,4 @@
+$ vite preview --outDir dist/client --port 4191 --strictPort
+  ➜  Local:   http://localhost:4191/
+  ➜  Network: use --host to expose
+[ELIFECYCLE] Command failed with signal SIGTERM.

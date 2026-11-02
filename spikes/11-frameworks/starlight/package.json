@@ -1,0 +1,19 @@
+{
+  "name": "starlight",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.42.8",
+    "@fontsource-variable/inter": "^5.3.0",
+    "astro": "^7.4.5",
+    "sharp": "^0.35.3"
+  },
+  "packageManager": "pnpm@12.9.1"
+}

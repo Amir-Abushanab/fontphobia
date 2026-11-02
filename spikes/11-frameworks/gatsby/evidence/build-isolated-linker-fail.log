@@ -1,0 +1,227 @@
+$ gatsby build
+success compile gatsby files - 0.577s
+
+[2K[1A[2K[Gsuccess load gatsby config - 0.008s
+
+[2K[1A[2K[Gsuccess load plugins - 0.085s
+
+[2K[1A[2K[Gsuccess onPreInit - 0.000s
+
+[2K[1A[2K[Gsuccess initialize cache - 0.024s
+
+[2K[1A[2K[Gsuccess copy gatsby files - 0.027s
+
+[2K[1A[2K[Gsuccess Compiling Gatsby Functions - 0.136s
+
+[2K[1A[2K[Gsuccess onPreBootstrap - 0.144s
+
+[2K[1A[2K[Gsuccess createSchemaCustomization - 0.000s
+
+[2K[1A[2K[Gsuccess Checking for changed pages - 0.000s
+
+[2K[1A[2K[Gsuccess source and transform nodes - 0.013s
+
+[2K[1A[2K[Ginfo Writing GraphQL type definitions to
+/Users/amir/Code/fontphobia/spikes/11-frameworks/gatsby/.cache/schema.gql
+
+[2K[1A[2K[Gsuccess building schema - 0.123s
+
+[2K[1A[2K[Gsuccess createPages - 0.011s
+
+[2K[1A[2K[Gsuccess createPagesStatefully - 0.027s
+
+[2K[1A[2K[Ginfo Total nodes: 26, SitePage nodes: 6 (use --verbose for breakdown)
+
+[2K[1A[2K[Gsuccess Checking for changed pages - 0.001s
+
+[2K[1A[2K[Gsuccess onPreExtractQueries - 0.000s
+
+[2K[1A[2K[Gsuccess extract queries from components - 0.022s
+
+[2K[1A[2K[Gsuccess write out redirect data - 0.001s
+
+[2K[1A[2K[Gsuccess onPostBootstrap - 0.000s
+
+[2K[1A[2K[Ginfo bootstrap finished - 2.896s
+
+[2K[1A[2K[Gsuccess write out requires - 0.004s
+
+[2K[1A[2K[G[probe] webpack done build-javascript build-javascript
+
+[2K[1A[2K[Gfailed Building production JavaScript and CSS bundles - 3.021s
+
+[2K[1A[2K[G
+ ERROR #98124  WEBPACK.BUILD-JAVASCRIPT
+
+Generating JavaScript bundles failed
+
+Can't resolve 'mitt' in
+'/Users/amir/Code/fontphobia/spikes/11-frameworks/gatsby/.cache'
+
+If you're trying to use a package make sure that 'mitt' is installed. If you're
+trying to use a local file make sure that the path is correct.
+
+File: .cache/emitter.js:1:0
+
+
+[2K[1A[2K[G
+ ERROR #98124  WEBPACK.BUILD-JAVASCRIPT
+
+Generating JavaScript bundles failed
+
+Can't resolve 'shallow-compare' in
+'/Users/amir/Code/fontphobia/spikes/11-frameworks/gatsby/.cache'
+
+If you're trying to use a package make sure that 'shallow-compare' is installed.
+ If you're trying to use a local file make sure that the path is correct.
+
+File: .cache/ensure-resources.js:1:143
+
+
+[2K[1A[2K[G
+ ERROR #98124  WEBPACK.BUILD-JAVASCRIPT
+
+Generating JavaScript bundles failed
+
+Can't resolve '@gatsbyjs/reach-router' in
+'/Users/amir/Code/fontphobia/spikes/11-frameworks/gatsby/.cache'
+
+If you're trying to use a package make sure that '@gatsbyjs/reach-router' is
+installed. If you're trying to use a local file make sure that the path is
+correct.
+
+File: .cache/find-path.js:1:0
+
+
+[2K[1A[2K[G
+ ERROR #98124  WEBPACK.BUILD-JAVASCRIPT
+
+Generating JavaScript bundles failed
+
+Can't resolve 'gatsby-react-router-scroll' in
+'/Users/amir/Code/fontphobia/spikes/11-frameworks/gatsby/.cache'
+
+If you're trying to use a package make sure that 'gatsby-react-router-scroll' is
+ installed. If you're trying to use a local file make sure that the path is
+correct.
+
+File: .cache/gatsby-browser-entry.js:1:508
+
+
+[2K[1A[2K[G
+ ERROR #98124  WEBPACK.BUILD-JAVASCRIPT
+
+Generating JavaScript bundles failed
+
+Can't resolve 'gatsby-link' in
+'/Users/amir/Code/fontphobia/spikes/11-frameworks/gatsby/.cache'
+
+If you're trying to use a package make sure that 'gatsby-link' is installed. If
+you're trying to use a local file make sure that the path is correct.
+
+File: .cache/gatsby-browser-entry.js:1:569
+
+
+[2K[1A[2K[G
+ ERROR #98124  WEBPACK.BUILD-JAVASCRIPT
+
+Generating JavaScript bundles failed
+
+Can't resolve 'gatsby-script' in
+'/Users/amir/Code/fontphobia/spikes/11-frameworks/gatsby/.cache'
+
+If you're trying to use a package make sure that 'gatsby-script' is installed.
+If you're trying to use a local file make sure that the path is correct.
+
+File: .cache/gatsby-browser-entry.js:1:779
+
+
+[2K[1A[2K[G
+ ERROR #98124  WEBPACK.BUILD-JAVASCRIPT
+
+Generating JavaScript bundles failed
+
+Can't resolve '@gatsbyjs/reach-router' in
+'/Users/amir/Code/fontphobia/spikes/11-frameworks/gatsby/.cache/head'
+
+If you're trying to use a package make sure that '@gatsbyjs/reach-router' is
+installed. If you're trying to use a local file make sure that the path is
+correct.
+
+File: .cache/head/head-export-handler-for-browser.js:1:170
+
+
+[2K[1A[2K[G
+ ERROR #98124  WEBPACK.BUILD-JAVASCRIPT
+
+Generating JavaScript bundles failed
+
+Can't resolve '@gatsbyjs/reach-router' in
+'/Users/amir/Code/fontphobia/spikes/11-frameworks/gatsby/.cache'
+
+If you're trying to use a package make sure that '@gatsbyjs/reach-router' is
+installed. If you're trying to use a local file make sure that the path is
+correct.
+
+File: .cache/navigation.js:1:332
+
+
+[2K[1A[2K[G
+ ERROR #98124  WEBPACK.BUILD-JAVASCRIPT
+
+Generating JavaScript bundles failed
+
+Can't resolve 'gatsby-link' in
+'/Users/amir/Code/fontphobia/spikes/11-frameworks/gatsby/.cache'
+
+If you're trying to use a package make sure that 'gatsby-link' is installed. If
+you're trying to use a local file make sure that the path is correct.
+
+File: .cache/navigation.js:1:408
+
+
+[2K[1A[2K[G
+ ERROR #98124  WEBPACK.BUILD-JAVASCRIPT
+
+Generating JavaScript bundles failed
+
+Can't resolve 'prop-types' in
+'/Users/amir/Code/fontphobia/spikes/11-frameworks/gatsby/.cache'
+
+If you're trying to use a package make sure that 'prop-types' is installed. If
+you're trying to use a local file make sure that the path is correct.
+
+File: .cache/page-renderer.js:1:49
+
+
+[2K[1A[2K[G
+ ERROR #98124  WEBPACK.BUILD-JAVASCRIPT
+
+Generating JavaScript bundles failed
+
+Can't resolve '@gatsbyjs/reach-router' in
+'/Users/amir/Code/fontphobia/spikes/11-frameworks/gatsby/.cache'
+
+If you're trying to use a package make sure that '@gatsbyjs/reach-router' is
+installed. If you're trying to use a local file make sure that the path is
+correct.
+
+File: .cache/production-app.js:1:153
+
+
+[2K[1A[2K[G
+ ERROR #98124  WEBPACK.BUILD-JAVASCRIPT
+
+Generating JavaScript bundles failed
+
+Can't resolve 'gatsby-react-router-scroll' in
+'/Users/amir/Code/fontphobia/spikes/11-frameworks/gatsby/.cache'
+
+If you're trying to use a package make sure that 'gatsby-react-router-scroll' is
+ installed. If you're trying to use a local file make sure that the path is
+correct.
+
+File: .cache/production-app.js:1:226
+
+
+[ELIFECYCLE] Command failed with exit code 1.

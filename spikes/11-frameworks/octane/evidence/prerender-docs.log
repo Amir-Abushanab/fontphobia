@@ -1,0 +1,19 @@
+node:internal/modules/esm/get_format:243
+  throw new ERR_UNKNOWN_FILE_EXTENSION(ext, filepath);
+        ^
+
+TypeError [ERR_UNKNOWN_FILE_EXTENSION]: Unknown file extension ".css" for /Users/amir/Code/fontphobia/spikes/11-frameworks/octane/node_modules/.pnpm/@fontsource-variable+inter@5.3.0/node_modules/@fontsource-variable/inter/index.css
+    at Object.getFileProtocolModuleFormat [as file:] (node:internal/modules/esm/get_format:243:9)
+    at defaultGetFormat (node:internal/modules/esm/get_format:283:36)
+    at defaultLoadSync (node:internal/modules/esm/load:161:16)
+    at #loadAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:806:12)
+    at nextStep (node:internal/modules/customization_hooks:189:26)
+    at load (file:///Users/amir/Code/fontphobia/spikes/11-frameworks/octane/node_modules/.pnpm/octane@0.16.7_@tsrx+oxc@0.23.0_typescript@6.0.3_vite@8.3.5_esbuild@0.28.2_/node_modules/octane/dist/compiler/register.js:114:9)
+    at nextStep (node:internal/modules/customization_hooks:189:26)
+    at loadWithHooks (node:internal/modules/customization_hooks:374:18)
+    at #loadSync (node:internal/modules/esm/loader:829:16)
+    at ModuleLoader.load (node:internal/modules/esm/loader:787:26) {
+  code: 'ERR_UNKNOWN_FILE_EXTENSION'
+}
+
+Node.js v24.21.0

@@ -1,0 +1,42 @@
+$ vite build
+vite v8.3.5 building client environment for production...
+vite v8.3.5 building ssr environment for production...
+transforming...
+transforming...
+✓ 274 modules transformed.
+rendering chunks...
+✓ 50 modules transformed.
+rendering chunks...
+computing gzip size...
+computing gzip size...
+dist/client/index.html                                              1.20 kB │ gzip:  0.68 kB
+dist/client/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2     10.25 kB
+dist/client/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2      11.23 kB
+dist/client/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2       18.74 kB
+dist/client/assets/inter-greek-wght-normal-CkhJZR-_.woff2          18.99 kB
+dist/client/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2   25.96 kB
+dist/client/assets/inter-latin-wght-normal-Dx4kXJAl.woff2          48.25 kB
+dist/client/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2      85.06 kB
+dist/client/assets/index-BoEAPoeB.css                               2.02 kB │ gzip:  0.63 kB
+dist/client/assets/about.page-DeWFrS1r.js                           0.32 kB │ gzip:  0.26 kB
+dist/client/assets/_id_.page-D1IYJCNr.js                            0.37 kB │ gzip:  0.29 kB
+dist/client/assets/index.page-Br5MRJQ-.js                           7.74 kB │ gzip:  2.02 kB
+dist/client/assets/index-WlYTehgZ.js                              271.12 kB │ gzip: 83.24 kB
+
+✓ built in 11.53s
+dist/ssr/assets/about.page-DDh9I2Uy.js    0.75 kB │ gzip:   0.43 kB
+dist/ssr/assets/_id_.page-Bk8ZgHF6.js     0.90 kB │ gzip:   0.50 kB
+dist/ssr/assets/index.page-CzGv5wMG.js    9.61 kB │ gzip:   2.31 kB
+dist/ssr/assets/xhr2-CvXMjYMp.js         20.68 kB │ gzip:   4.75 kB
+dist/ssr/main.server.js                 967.61 kB │ gzip: 209.11 kB
+
+✓ built in 11.54s
+[probe] closeBundle client
+[probe] closeBundle ssr
+Prerendering static pages...
+[probe] nitro prerender:done ["/","/about","/posts/1","/posts/2"]
+Building Server...
+[probe] nitro close
+
+
+The '@analogjs/platform' server has been successfully built.
