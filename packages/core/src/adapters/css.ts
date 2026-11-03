@@ -99,7 +99,8 @@ export function classifyFace(face: { family: string; descriptors: Record<string,
     return { adapter: s.manual ? 'manual' : 'css', file: s.file, line: s.line, fontFile: hit.path, note: s.manual };
   }
   const repo = shas.map((h) => fontIndex.get(h)).find(Boolean);
-  const hosts = face.urls.map((u) => { try { return new URL(u); } catch { return undefined; } }).filter((u): u is URL => !!u);
+  // Same-origin URLs are stored as paths (`/_next/static/media/…`): resolve them against any origin.
+  const hosts = face.urls.map((u) => { try { return new URL(u, 'http://same-origin.invalid/'); } catch { return undefined; } }).filter((u): u is URL => !!u);
   if (repo?.startsWith('node_modules/@fontsource')) return { adapter: 'fontsource', fontFile: repo, note: 'supported from M7' };
   if (hosts.some((u) => u.hostname === 'fonts.gstatic.com')) return { adapter: 'google-fonts' };
   if (hosts.some((u) => /(^|\.)typekit\.net$/.test(u.hostname))) return { adapter: 'adobe-fonts' };

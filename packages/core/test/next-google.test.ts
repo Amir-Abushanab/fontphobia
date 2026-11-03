@@ -1,0 +1,55 @@
+// next-font-google (§6.4): narrowing next/font/google options, with check and revert. No Next needed
+// for weights; `axes` needs Next's font data, so that case is in the sites tests.
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, appendFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterAll, describe, expect, it } from 'vitest';
+import { buildProject, checkProject, findGoogleFontCalls, literalProp, readManifest, revertProject, type UsageFaceJson, type UsageFileJson } from '../src/index.ts';
+
+const tmp = mkdtempSync(join(tmpdir(), 'fontphobia-nextg-'));
+afterAll(() => rmSync(tmp, { recursive: true, force: true }));
+
+describe('next/font/google calls', () => {
+  it('finds calls, aliases and literal options', () => {
+    const root = mkdtempSync(join(tmp, 'find-'));
+    writeFileSync(join(root, 'fonts.js'), `import { Lato, Roboto_Mono as Mono } from 'next/font/google';\nexport const a = Lato({ subsets: ['latin'], weight: ["300", "400"] });\nexport const b = Mono({ subsets: ['latin'] });\n`);
+    const calls = findGoogleFontCalls(root);
+    expect(calls.map((c) => [c.family, c.line, c.arg])).toEqual([['Lato', 2, `{ subsets: ['latin'], weight: ["300", "400"] }`], ['Roboto Mono', 3, `{ subsets: ['latin'] }`]]);
+    expect(literalProp(calls[0]!.arg, 'weight')).toMatchObject({ values: ['300', '400'], quote: '"', array: true });
+    expect(literalProp(`{ weight: '400' }`, 'weight')).toMatchObject({ values: ['400'], array: false });
+    expect(literalProp(`{ weight: w }`, 'weight')).toBeUndefined();
+    expect(literalProp(`{ weight: ['400', w] }`, 'weight')).toBeUndefined();
+  });
+});
+
+const face = (w: number): UsageFaceJson => ({
+  family: 'Lato', descriptors: { 'font-family': 'Lato', 'font-weight': String(w), 'font-style': 'normal', src: `url(/_next/static/media/lato-${w}.woff2) format('woff2')` },
+  source: { adapter: 'next-font-google' }, files: [{ url: `/_next/static/media/lato-${w}.woff2`, sha256: '0'.repeat(64), bytes: 1000 }],
+  chars: 'Hi', count: 2, inserted: {}, contexts: [], rendered: { weight: [w], style: ['normal'], axes: {} }, declared: {}, features: [], locales: ['en'], pages: ['/'],
+});
+const usage = (ws: number[]): UsageFileJson => ({
+  version: 1, meta: { fontphobia: '1', harfbuzz: '1', chrome: '150', framework: 'next', mode: 'static', viewports: [1280], fontSizes: [16] },
+  faces: Object.fromEntries(ws.map((w) => [`lato-${w}-normal`, face(w)])), pages: { '/': { faces: {}, bytes: 0, fonts: [] } },
+});
+
+describe('build, check and revert', () => {
+  it('drops weights nothing matches, keeps the original for revert, and check reports one asked for again', async () => {
+    const root = mkdtempSync(join(tmp, 'site-'));
+    const src = `import { Lato } from 'next/font/google';\n\nexport const lato = Lato({\n  subsets: ['latin'],\n  weight: ['100', '300', '400', '700', '900'],\n});\n`;
+    writeFileSync(join(root, 'fonts.js'), src);
+    writeFileSync(join(root, 'globals.css'), 'h1 { font-weight: 900; }\n');
+    writeFileSync(join(root, 'package.json'), '{"name":"t","private":true}\n');
+    const r = await buildProject(root, usage([400, 700, 900]), {}, { version: '1', write: true });
+    // 400, 700, 900 asked for (bolder of 700 is 900); 100 and 300 match nothing.
+    expect(readFileSync(join(root, 'fonts.js'), 'utf8')).toBe(src.replace(`['100', '300', '400', '700', '900']`, `['400', '700', '900']`));
+    expect(r.manifest.nextGoogle).toEqual([{ file: 'fonts.js', family: 'Lato', from: `{\n  subsets: ['latin'],\n  weight: ['100', '300', '400', '700', '900'],\n}`, to: `{\n  subsets: ['latin'],\n  weight: ['400', '700', '900'],\n}`, dropped: { weights: [100, 300], axes: [] } }]);
+    expect((await buildProject(root, usage([400, 700, 900]), {}, { version: '1' })).unchanged).toBe(true);
+    expect((await checkProject({ root })).issues).toEqual([]);
+    appendFileSync(join(root, 'globals.css'), '.light { font-weight: 300; }\n');
+    expect((await checkProject({ root })).issues.map((i) => i.message)).toEqual(['Lato 300 is asked for again, but build dropped it from the next/font/google call in fonts.js']);
+    const rv = revertProject(root, { write: true });
+    expect(rv.problems).toEqual([]);
+    expect(readFileSync(join(root, 'fonts.js'), 'utf8')).toBe(src);
+    expect(readManifest(root)).toBeUndefined();
+  });
+});

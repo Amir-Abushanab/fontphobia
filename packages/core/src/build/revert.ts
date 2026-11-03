@@ -58,6 +58,15 @@ export function revertProject(root: string, o: { write?: boolean } = {}): Revert
       touched.add(p.file);
     }
   }
+  // next/font/google: each call's options back.
+  for (const r of m.nextGoogle ?? []) {
+    if (!existsSync(join(root, r.file))) { problems.push(`${r.file} is gone (${r.family} next/font/google call)`); continue; }
+    const t = read(r.file);
+    const at = t.indexOf(r.to);
+    if (at < 0) { problems.push(`the ${r.family} call fontphobia narrowed in ${r.file} changed since; put back ${r.from} yourself`); continue; }
+    texts.set(r.file, t.slice(0, at) + r.from + t.slice(at + r.to.length));
+    touched.add(r.file);
+  }
   // google-fonts tighten: the original stylesheet URLs back (after the self-host copy's link, if any, went back to the tightened URL).
   for (const r of m.google ?? []) {
     for (const f of r.files) {

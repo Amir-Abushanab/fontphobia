@@ -49,6 +49,16 @@ export interface GoogleUrlRecord {
   dropped: { families: string[]; weights: Record<string, number[]>; axes: Record<string, string[]> };
 }
 
+/** next-font-google (§6.4): a `next/font/google` call's options narrowed in place. */
+export interface NextGoogleRecord {
+  file: string;
+  family: string;
+  /** The call's argument as it was (before any fontphobia build), and as written. */
+  from: string;
+  to: string;
+  dropped: { weights: number[]; axes: string[] };
+}
+
 export interface Manifest {
   version: number;
   fontphobia: string;
@@ -67,6 +77,7 @@ export interface Manifest {
    */
   ejects?: Record<string, { kind?: 'fontsource' | 'google'; package: string; version: string; specifier: string; css: string; sha256: string; imports: { file: string; from: string; to: string }[]; /** google: Google's stylesheet as audited (rebuilt from usage.json; later audits no longer see it). */ text?: string }>;
   google?: GoogleUrlRecord[];
+  nextGoogle?: NextGoogleRecord[];
   /** Features and axis values the CSS asked for when this was built ("family|feature|tag", "family|axis|wght=700"; family * = any). */
   demands?: string[];
 }

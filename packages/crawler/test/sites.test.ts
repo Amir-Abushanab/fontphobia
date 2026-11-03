@@ -1,7 +1,8 @@
 // M2 acceptance: the Astro and TanStack Start fixtures are built and crawled with no config, and
 // TanStack's SSR-only route is crawled in server mode. M4–M5: build --write, verify, revert. Opt-in: FONTPHOBIA_SITES=1, after
 // `pnpm install` in each fixture (the `sites` CI job does both).
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { constants, cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -161,6 +162,8 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       expect(f.files!.map((x) => x.role)).toEqual(['core']); // one file per face, no rest
       expect(readFileSync(fontsJs, 'utf8')).toMatch(/src: '\.\.\/fonts\/DejaVuSans\.core\.[0-9a-f]{8}\.woff2'/);
       const u2 = (await audit(opts)).usage as unknown as UsageFileJson;
+      // Google sometimes serves a face from an on-the-fly /l/font?kit= URL instead (spike 6): say which if the ids differ.
+      expect(Object.keys(u2.faces).filter((k) => k.startsWith('fraunces'))).toContain(id);
       expect(u2.faces[id]!.chars).toBe(u1.faces[id]!.chars);
       expect(u2.faces[id]!.files.every((x) => /DejaVuSans_core_[0-9a-f]{8}/.test(x.url))).toBe(true);
       expect((await buildProject(root, u2, {}, { version: 'test' })).unchanged).toBe(true);
@@ -174,6 +177,37 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       for (const x of fonts) rmSync(join(root, x), { force: true });
     }
     expect(readFileSync(fontsJs).equals(original)).toBe(true);
+  }, 900_000);
+
+  // M7, next-font-google (§6.4): a copy of the Next fixture in its own git repo, since verify
+  // compares against HEAD built in a worktree. Needs the network (Next fetches Lato from Google).
+  it('next: narrows a next/font/google weight list, renders identically against HEAD, revert restores the call', async () => {
+    const fixture = join(sites, 'next');
+    if (!existsSync(join(fixture, 'node_modules'))) throw new Error('run pnpm install in fixtures/sites/next first');
+    const root = mkdtempSync(join(tmpdir(), 'fontphobia-next-google-'));
+    try {
+      cpSync(fixture, root, { recursive: true, filter: (p) => !/[\\/](node_modules|\.next|out|\.fontphobia)$/.test(p) });
+      cpSync(join(fixture, 'node_modules'), join(root, 'node_modules'), { recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE }); // Turbopack won't follow a link out of the project
+      const call = `Lato({ subsets: ['latin'], weight: ['100', '300', '400', '700', '900'] })`;
+      writeFileSync(join(root, 'app/fonts.js'), readFileSync(join(root, 'app/fonts.js'), 'utf8').replace("import localFont from 'next/font/local';", `import localFont from 'next/font/local';\nimport { Lato } from 'next/font/google';\n\nexport const lato = ${call};`));
+      writeFileSync(join(root, 'app/page.jsx'), readFileSync(join(root, 'app/page.jsx'), 'utf8').replace("export default", "import { lato } from './fonts';\n\nexport default").replace('<h1>', '<h1 className={lato.className}>'));
+      const sh = async (args: string[]) => { const r = await runCommand(`git -c user.email=t@example.com -c user.name=t ${args.join(' ')}`, root); if (r.code) throw new Error(r.output); };
+      await sh(['init', '-q']); await sh(['add', '-A']); await sh(['commit', '-qm', 'fixture']);
+      const opts = { root, fontphobiaVersion: 'test', fontSizeSweep: false, viewports: [1280], rebuild: true, cache: false };
+      const u1 = (await audit(opts)).usage as unknown as UsageFileJson;
+      expect(Object.values(u1.faces).filter((f) => f.source.adapter === 'next-font-google').map((f) => f.family)).toContain('Lato');
+      const b = await buildProject(root, u1, {}, { version: 'test', write: true });
+      expect(b.manifest.nextGoogle).toEqual([{ file: 'app/fonts.js', family: 'Lato', from: call.slice(5, -1), to: `{ subsets: ['latin'], weight: ['400', '700', '900'] }`, dropped: { weights: [100, 300], axes: [] } }]);
+      const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1], outDir: outDir('next-google-' + Date.now()) });
+      expect(v.browser!.baseline).toBe('worktree');
+      expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated' && c.class !== 'flaky').map((c) => `${c.page} DPR ${c.dpr}: ${c.causes.join('; ')}`)).toEqual([]);
+      expect(v.ok).toBe(true);
+      expect((await checkProject({ root, usage: u1 })).issues).toEqual([]);
+      expect(revertProject(root, { write: true }).problems).toEqual([]);
+      expect(readFileSync(join(root, 'app/fonts.js'), 'utf8')).toContain(`export const lato = ${call};`);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   }, 900_000);
 
   // M7, google-fonts self-host (§6.5): needs the network (Google's CSS and files).
@@ -192,6 +226,8 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       expect(readFileSync(layout, 'utf8')).toContain('href="/fonts/fontphobia/google-fraunces.css"');
       expect(readFileSync(join(root, `.fontphobia/sources/google/${id}.woff2`)).byteLength).toBeGreaterThan(1000);
       const u2 = (await audit(opts)).usage as unknown as UsageFileJson;
+      // Google sometimes serves a face from an on-the-fly /l/font?kit= URL instead (spike 6): say which if the ids differ.
+      expect(Object.keys(u2.faces).filter((k) => k.startsWith('fraunces'))).toContain(id);
       expect(u2.faces[id]!.chars).toBe(u1.faces[id]!.chars);
       expect(u2.faces[id]!.files.every((f) => f.url.startsWith('/fonts/fontphobia/'))).toBe(true);
       expect((await buildProject(root, u2, {}, { version: 'test' })).unchanged).toBe(true); // stays self-hosted

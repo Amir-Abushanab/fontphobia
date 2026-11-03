@@ -366,7 +366,9 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
   // A verify of an old build checks nothing: rebuild whenever the source is newer (§M4: build --write edits it).
   const site = await openSite({ ...o, onStale: o.onStale ?? (() => true) }, project, log);
   let baseline: Baseline | undefined;
-  if (o.baseline === 'worktree') {
+  // next/font/google narrowing changes what Next builds: only a second build can show "before".
+  const baselineMode = o.baseline ?? (o.manifest.nextGoogle?.length ? 'worktree' : 'overlay');
+  if (baselineMode === 'worktree') {
     try { baseline = await worktreeBaseline(root, o.manifest, o, log); } catch (e) { await site.stop(); throw e; }
   }
   const browsers: { engine: Engine; browser: Browser }[] = [];

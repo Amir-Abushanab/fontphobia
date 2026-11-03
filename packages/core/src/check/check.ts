@@ -12,7 +12,8 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { detectCss } from '../adapters/css.ts';
-import { desiredWeights, namesFamily, neededWeights, repoText } from '../adapters/google-url.ts';
+import { desiredWeights, matchWeight, namesFamily, neededWeights, repoText } from '../adapters/google-url.ts';
+import { literalProp } from '../adapters/next-font.ts';
 import { resolveFontsource } from '../adapters/fontsource.ts';
 import { cssDemands, newDemands, otherFaces } from '../build/fingerprint.ts';
 import { readManifest, type Manifest, type ManifestEntry } from '../build/manifest.ts';
@@ -108,7 +109,7 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
   const root = o.root;
   const manifest: Manifest | undefined = readManifest(root);
   const notes: string[] = [];
-  if (!manifest || (!Object.keys(manifest.entries).length && !manifest.google?.length)) {
+  if (!manifest || (!Object.keys(manifest.entries).length && !manifest.google?.length && !manifest.nextGoogle?.length)) {
     return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: ['no fontphobia.manifest.json: nothing has been built to check'] };
   }
   const issues: CheckIssue[] = [];
@@ -172,6 +173,22 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
       for (const [fam, tags] of Object.entries(r.dropped.axes)) {
         for (const tag of tags) if (texts.some((x) => new RegExp(`["']${tag}["']\\s+-?\\d`).test(x.text))) add({ kind: 'axis', message: `the code sets '${tag}', which build dropped from ${fam}'s Google Fonts URL (limit-axes)` });
       }
+    }
+  }
+
+  // next/font/google (§6.4): the narrowed calls still there, and nothing asks for what they dropped.
+  if (manifest.nextGoogle?.length) {
+    const texts = repoText(root);
+    const weights = desiredWeights(texts);
+    for (const r of manifest.nextGoogle) {
+      const t = existsSync(join(root, r.file)) ? readFileSync(join(root, r.file), 'utf8') : '';
+      if (!t.includes(r.to)) add({ kind: 'block', file: r.file, message: `the ${r.family} next/font/google call in ${r.file} changed since fontphobia narrowed it; rerun build` });
+      if (r.dropped.weights.length) {
+        const all = [...new Set([...(literalProp(r.from, 'weight')?.values ?? []).map(Number)])];
+        const need = weights ? [...new Set([...weights].map((d) => matchWeight(d, all)!))].filter((w) => r.dropped.weights.includes(w)).sort((a, b) => a - b) : r.dropped.weights;
+        if (need.length) add({ kind: 'axis', file: r.file, message: `${r.family} ${need.join(', ')} ${need.length > 1 ? 'are' : 'is'} asked for again${weights ? '' : ' (a font-weight is computed)'}, but build dropped ${need.length > 1 ? 'them' : 'it'} from the next/font/google call in ${r.file}` });
+      }
+      for (const tag of r.dropped.axes) if (texts.some((x) => new RegExp(`["']${tag}["']\\s+-?\\d`).test(x.text))) add({ kind: 'axis', file: r.file, message: `the code sets '${tag}', which build dropped from the ${r.family} next/font/google call (limit-axes)` });
     }
   }
 

@@ -3,7 +3,7 @@
 // where the overlay only knows how to swap `@font-face` rules back. The working tree may differ
 // from HEAD only by fontphobia's own changes, so any other difference is content, not fonts.
 import { execFile } from 'node:child_process';
-import { existsSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
+import { constants, cpSync, existsSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { buildCommand, detectProject, MANIFEST_FILE, revertProject, type Manifest } from '@fontphobia/core';
@@ -22,7 +22,11 @@ function ownPaths(m: Manifest): (p: string) => boolean {
     exact.add(e.stylesheet);
     for (const o of e.outputs) exact.add(o.file);
     for (const p of e.preloads ?? []) exact.add(p.file);
+    if (e.next) exact.add(e.next.file);
   }
+  for (const [file, ej] of Object.entries(m.ejects ?? {})) { exact.add(file); for (const i of ej.imports) exact.add(i.file); }
+  for (const r of m.google ?? []) for (const f of r.files) exact.add(f);
+  for (const r of m.nextGoogle ?? []) exact.add(r.file);
   return (p) => exact.has(p) || p.startsWith('.fontphobia/');
 }
 
@@ -64,12 +68,16 @@ export async function worktreeBaseline(root: string, manifest: Manifest, o: Site
       if (r.problems.length) throw new Error(`Couldn't revert fontphobia's edits in the baseline: ${r.problems.join('; ')}`);
       reverted = true;
     }
-    // Dependencies aren't in git: reuse the installed ones.
+    // Dependencies aren't in git: reuse the installed ones. Turbopack (Next 16's default) won't
+    // resolve through a node_modules that links outside the project, so for Next they're cloned
+    // (copy-on-write on APFS, btrfs and XFS; a plain copy elsewhere), keeping pnpm's own links.
+    const project = detectProject(wroot);
     for (const [from, to] of [[top, dir], [root, wroot]] as const) {
       const nm = join(from, 'node_modules');
-      if (existsSync(nm) && !existsSync(join(to, 'node_modules'))) symlinkSync(nm, join(to, 'node_modules'), 'junction');
+      if (!existsSync(nm) || existsSync(join(to, 'node_modules'))) continue;
+      if (project.profile.id === 'next') cpSync(nm, join(to, 'node_modules'), { recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE });
+      else symlinkSync(nm, join(to, 'node_modules'), 'junction');
     }
-    const project = detectProject(wroot);
     const cmd = o.buildCmd ?? buildCommand(project);
     log(`baseline: HEAD in a git worktree${reverted ? ', fontphobia\'s committed edits reverted' : ''}${cmd ? `, building with ${cmd}` : ''}`);
     const site = await openSite({ dist: o.dist, buildCmd: o.buildCmd, startCmd: o.startCmd, rebuild: !!cmd && !o.dist && !o.startCmd }, project, (m) => log(`baseline: ${m}`));

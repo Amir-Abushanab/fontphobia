@@ -81,3 +81,64 @@ export function nextFallbackMetrics(root: string, bytes: Uint8Array): Record<str
     return getFallbackMetricsFromFontFile(fontFromBuffer(Buffer.from(bytes)), 'sans-serif');
   } catch { return undefined; }
 }
+
+// ─── next/font/google (§6.4) ────────────────────────────────────────────────────────────────────
+
+export interface GoogleFontCall {
+  file: string;
+  line: number;
+  /** The Google family (`Roboto_Mono` → `Roboto Mono`). */
+  family: string;
+  /** Byte range of the call's argument, `{ … }` included. */
+  start: number;
+  end: number;
+  arg: string;
+}
+
+export function findGoogleFontCalls(root: string): GoogleFontCall[] {
+  const out: GoogleFontCall[] = [];
+  for (const file of listFiles(root, (r) => CODE.test(r), { skip: (_rel, n) => SKIP.has(n) || n.startsWith('.') })) {
+    let text: string;
+    try { if (statSync(join(root, file)).size > 1_000_000) continue; text = readFileSync(join(root, file), 'utf8'); } catch { continue; }
+    if (!text.includes('next/font/google')) continue;
+    for (const imp of text.matchAll(/import\s*\{([^}]*)\}\s*from\s*["']next\/font\/google["']/g)) {
+      for (const spec of imp[1]!.split(',').map((s) => s.trim()).filter(Boolean)) {
+        const [name, local = name] = spec.split(/\s+as\s+/).map((s) => s.trim()) as [string, string?];
+        for (const m of text.matchAll(new RegExp(`\\b${local}\\s*\\(\\s*\\{`, 'g'))) {
+          const start = m.index + m[0].length - 1;
+          const end = closing(text, start);
+          out.push({ file, line: text.slice(0, m.index).split('\n').length, family: name.replace(/_/g, ' '), start, end, arg: text.slice(start, end) });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/** A property's value in an object literal's text (string or array of strings), with its byte range. */
+export function literalProp(arg: string, key: string): { start: number; end: number; values: string[]; quote: string; array: boolean } | undefined {
+  const m = new RegExp(`(?:^|[{,\\s])${key}\\s*:\\s*`).exec(arg);
+  if (!m) return undefined;
+  const at = m.index + m[0].length;
+  const q = arg[at];
+  if (q === '"' || q === "'") {
+    const e = arg.indexOf(q, at + 1);
+    return e < 0 ? undefined : { start: at, end: e + 1, values: [arg.slice(at + 1, e)], quote: q, array: false };
+  }
+  if (q !== '[') return undefined;
+  const e = arg.indexOf(']', at);
+  if (e < 0) return undefined;
+  const body = arg.slice(at + 1, e);
+  const items = [...body.matchAll(/(["'])([^"'\n]*)\1/g)];
+  if (body.replace(/(["'])([^"'\n]*)\1/g, '').replace(/[\s,]/g, '')) return undefined; // not only string literals
+  return { start: at, end: e + 1, values: items.map((x) => x[2]!), quote: items[0]?.[1] ?? "'", array: true };
+}
+
+/** Next's own data for a Google family (weights, styles, axes), from the project's installed Next. */
+export function nextGoogleFontData(root: string, family: string): { weights: string[]; styles: string[]; axes?: { tag: string; min: number; max: number; defaultValue: number }[] } | undefined {
+  try {
+    const req = createRequire(join(root, 'package.json'));
+    const data = req('next/dist/compiled/@next/font/dist/google/font-data.json') as Record<string, { weights: string[]; styles: string[]; axes?: { tag: string; min: number; max: number; defaultValue: number }[] }>;
+    return data[family];
+  } catch { return undefined; }
+}

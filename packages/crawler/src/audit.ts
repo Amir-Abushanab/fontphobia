@@ -249,9 +249,10 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       } else sources.set(id, classifyFace(f, css, fontIndex));
     }
     // next/font/local (§6.3): a face whose file no stylesheet declares, loaded by a localFont() call.
-    const calls = [...sources.values()].some((x) => x.adapter === 'manual' && x.fontFile) ? findLocalFontCalls(root) : [];
+    const fromCall = (x: FaceSource) => (x.adapter === 'manual' || (x.adapter === 'next-font-local' && !x.file)) && !!x.fontFile;
+    const calls = [...sources.values()].some(fromCall) ? findLocalFontCalls(root) : [];
     for (const [id, src] of sources) {
-      if (src.adapter !== 'manual' || !src.fontFile) continue;
+      if (!fromCall(src)) continue;
       const call = calls.find((c) => c.srcs.some((x) => x.file === src.fontFile));
       if (call) sources.set(id, { adapter: 'next-font-local', file: call.file, line: call.line, fontFile: src.fontFile });
     }
