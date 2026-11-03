@@ -30,8 +30,8 @@ export async function worktreeBaseline(root: string, manifest: Manifest, o: Site
   if (o.url) throw new Error('The worktree baseline builds the site itself; it can\'t be used with --url');
   let top: string;
   try { top = (await git(root, ['rev-parse', '--show-toplevel'])).trim(); } catch { throw new Error(`${root} isn't in a git repository; the worktree baseline builds HEAD. Use the overlay baseline (the default for css).`); }
-  // git reports the real path (macOS: /var is /private/var).
-  const rel = relative(realpathSync(top), realpathSync(root)).split(sep).join('/');
+  // git reports the real, long path (macOS: /var is /private/var; Windows: no 8.3 names like RUNNER~1).
+  const rel = relative(realpathSync.native(top), realpathSync.native(root)).split(sep).join('/');
   const mine = ownPaths(manifest);
 
   // Uncommitted changes must all be fontphobia's, or "before" and "after" differ by more than fonts.
