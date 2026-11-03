@@ -31,6 +31,8 @@ export interface BuildResult {
   stale: string[];
   /** Stylesheets fontphobia generates (fontsource ejects), repo paths. `exists`: already there with this text. */
   generated: { file: string; bytes: number; exists: boolean }[];
+  /** `manual` faces (§6.7): the @font-face block to paste, and where. Their subset files are in `fonts`. */
+  snippets: { id: string; file?: string; line?: number; css: string }[];
   /** Planned faces this version can't write yet, with why. */
   notWritten: { id: string; reason: string }[];
   /** Nothing would change. */
@@ -119,6 +121,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfg: Plan
   const fonts = new Map<string, Uint8Array>();
   const edits: Edit[] = [];
   const notWritten: BuildResult['notWritten'] = [];
+  const snippets: BuildResult['snippets'] = [];
   // One source can back several faces (normal and italic); its preloads go to the face on the most pages.
   const preloadOwner = new Map<string, string>();
   for (const f of [...plan.faces].filter((x) => x.status === 'planned' && x.adapter === 'css').sort((a, b) => (usage.faces[b.id]?.pages.length ?? 0) - (usage.faces[a.id]?.pages.length ?? 0) || (a.id < b.id ? -1 : 1))) {
@@ -142,7 +145,19 @@ export async function buildProject(root: string, usage: UsageFileJson, cfg: Plan
 
   for (const face of plan.faces) {
     if (face.status !== 'planned' || face.adapter === 'fontsource') continue;
-    if (face.adapter !== 'css') { notWritten.push({ id: face.id, reason: face.adapter === 'manual' ? 'manual: fontphobia prints the @font-face to paste (M7)' : `writing ${face.adapter} faces arrives in M7` }); continue; }
+    if (face.adapter === 'manual') {
+      // §6.7: measured, planned and subset like any face, but the edit is printed, never guessed.
+      const u = usage.faces[face.id]!;
+      const dir = posix.dirname(face.source!.file);
+      const placed = face.files!.map((f) => ({ f, file: `${dir}/${f.name}`, url: `./${f.name}` }));
+      for (const p of placed) fonts.set(p.file, outputs.get(p.f.name)!);
+      const desc = Object.entries(u.descriptors).filter(([k]) => !['src', 'font-family', 'unicode-range'].includes(k)).map(([k, v]) => `  ${k}: ${v};`).join('\n');
+      const declaration = `@font-face {\n  font-family: '${face.family.replace(/'/g, "\\'")}';\n  src: url('${posix.basename(face.source!.file)}');\n${desc ? desc + '\n' : ''}${u.descriptors['unicode-range'] ? `  unicode-range: ${u.descriptors['unicode-range']};\n` : ''}}`;
+      const css = cssBlock({ id: face.id, version: o.version, declaration, sourceUrl: posix.basename(face.source!.file), indent: '', eol: '\n', descriptors: face.descriptors, files: [...placed].reverse().map((p) => ({ url: p.url, unicodeRange: p.f.role === 'core' ? undefined : p.f.unicodeRange })) });
+      snippets.push({ id: face.id, file: u.source.file, line: u.source.line, css: `${css}\n/* The URLs are relative to ${dir}/; point them at where your site serves these files. */` });
+      continue;
+    }
+    if (face.adapter !== 'css') { notWritten.push({ id: face.id, reason: `writing ${face.adapter} faces arrives later in M7` }); continue; }
     const p = prev?.entries[face.id];
     const loc = locate(root, face, usage, p, css);
     if (typeof loc === 'string') { notWritten.push({ id: face.id, reason: loc }); continue; }
@@ -219,7 +234,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfg: Plan
     for (const f of stale) unlinkSync(join(root, f));
     if (Object.keys(entries).length) writeFileSync(join(root, MANIFEST_FILE), json);
   }
-  return { plan, manifest, fonts: fontList, generated: generatedList, edits, stale, notWritten, unchanged };
+  return { plan, manifest, fonts: fontList, generated: generatedList, snippets, edits, stale, notWritten, unchanged };
 }
 
 /**

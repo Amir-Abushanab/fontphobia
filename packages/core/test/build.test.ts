@@ -144,3 +144,25 @@ describe('renames (§11)', () => {
     expect(nameStrings(r.decoded).get(4)).toContain('Intr Subset');
   });
 });
+
+describe('manual faces (§6.7)', () => {
+  it('writes the subsets and prints the block to paste, editing nothing', async () => {
+    const root = site('manual');
+    const u = structuredClone(usage);
+    u.faces['deja-400-normal']!.source = { ...u.faces['deja-400-normal']!.source, adapter: 'manual', note: 'computed URL' };
+    const css = readFileSync(join(root, 'styles.css'), 'utf8');
+    const r = await buildProject(root, u, {}, { version: '1', write: true });
+    expect(r.snippets.map((s) => s.id)).toEqual(['deja-400-normal']);
+    const sn = r.snippets[0]!.css;
+    expect(sn).toMatch(/^\/\* fontphobia:begin deja-400-normal 1 /);
+    expect(sn.match(/@font-face/g)).toHaveLength(3);
+    expect(sn).toMatch(/font-family: 'Deja';/);
+    expect(sn).toMatch(/src: url\('\.\/DejaVuSans\.core\.[0-9a-f]{8}\.woff2'\) format\('woff2'\)/);
+    // The core rule keeps the original range (none here); the others carry theirs.
+    expect(sn.match(/unicode-range/g)).toHaveLength(2);
+    for (const f of r.plan.faces.find((x) => x.id === 'deja-400-normal')!.files!) expect(existsSync(join(root, 'fonts', f.name))).toBe(true);
+    expect(r.edits.filter((e) => e.why.startsWith('deja'))).toEqual([]);
+    expect(readFileSync(join(root, 'styles.css'), 'utf8').includes("font-family: 'Deja';\n  src: url('./fonts/DejaVuSans.ttf')")).toBe(css.includes("font-family: 'Deja';\n  src: url('./fonts/DejaVuSans.ttf')"));
+    expect(readManifest(root)!.entries['deja-400-normal']).toBeUndefined();
+  }, 300_000);
+});

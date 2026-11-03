@@ -174,6 +174,10 @@ async function runBuild(o: BuildFlags & { prompt?: boolean }) {
     for (const f of r.stale) out.push(`  - ${f}`);
     if (r.edits.length) out.push('', formatEdits(root, r.edits));
   }
+  if (r.snippets.length) {
+    out.push('', `Paste these yourself (fontphobia can measure these faces but not edit where they're declared, §6.7):`);
+    for (const sn of r.snippets) out.push('', `  ${sn.id}${sn.file ? `, replacing the @font-face in ${sn.file}${sn.line ? `:${sn.line}` : ''}` : ''}:`, ...sn.css.split('\n').map((l) => `    ${l}`));
+  }
   if (r.notWritten.length) { out.push('', 'Planned but not written'); for (const n of r.notWritten) out.push(`  ${n.id}: ${n.reason}`); }
   process.stdout.write(out.join('\n') + '\n');
   if (r.unchanged || write) { if (write && !o.prompt) process.stdout.write(`\nRun \`fontphobia verify\` to compare the site before and after. \`fontphobia revert\` puts the original declarations back.\n`); return { written: write, unchanged: r.unchanged }; }
