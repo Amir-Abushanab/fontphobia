@@ -173,6 +173,11 @@ async function runBuild(o: BuildFlags & { prompt?: boolean }) {
     for (const g of r.generated.filter((x) => !x.exists)) out.push(`  ${g.file}  (generated stylesheet)`);
     for (const f of r.stale) out.push(`  - ${f}`);
     if (r.edits.length) out.push('', formatEdits(root, r.edits));
+    for (const g of r.manifest.google ?? []) {
+      if (!r.edits.some((e) => e.why === `tighten ${g.to}` || e.text.replace(/&amp;/g, '&') === g.to)) continue;
+      const d = [...g.dropped.families.map((f) => `${f} (no page uses it)`), ...Object.entries(g.dropped.weights).map(([f, w]) => `${f} ${w.join(', ')} (nothing asks for ${w.length > 1 ? 'these weights' : 'this weight'})`), ...Object.entries(g.dropped.axes).map(([f, a]) => `${f} ${a.join(', ')} axis (every use is at the default; limit-axes)`)];
+      out.push('', `Google Fonts URL tightened (fonts still come from Google): drops ${d.join('; ')}.`);
+    }
   }
   if (r.snippets.length) {
     out.push('', `Paste these yourself (fontphobia can measure these faces but not edit where they're declared, §6.7):`);

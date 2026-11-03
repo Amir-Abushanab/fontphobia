@@ -39,6 +39,16 @@ export interface ManifestEntry {
   preloads?: { file: string; from: string; to: string }[];
 }
 
+/** google-fonts tighten (§6.5): a Google stylesheet URL rewritten in place. */
+export interface GoogleUrlRecord {
+  /** The URL as it was (before any fontphobia build), `&` unescaped. */
+  from: string;
+  to: string;
+  /** Files whose references were rewritten. */
+  files: string[];
+  dropped: { families: string[]; weights: Record<string, number[]>; axes: Record<string, string[]> };
+}
+
 export interface Manifest {
   version: number;
   fontphobia: string;
@@ -56,6 +66,7 @@ export interface Manifest {
    * at it (`from` is the original specifier), and its sha256 (revert deletes it only if unchanged).
    */
   ejects?: Record<string, { kind?: 'fontsource' | 'google'; package: string; version: string; specifier: string; css: string; sha256: string; imports: { file: string; from: string; to: string }[]; /** google: Google's stylesheet as audited (rebuilt from usage.json; later audits no longer see it). */ text?: string }>;
+  google?: GoogleUrlRecord[];
   /** Features and axis values the CSS asked for when this was built ("family|feature|tag", "family|axis|wght=700"; family * = any). */
   demands?: string[];
 }

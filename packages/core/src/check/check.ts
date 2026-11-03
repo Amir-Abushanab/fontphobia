@@ -12,6 +12,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { detectCss } from '../adapters/css.ts';
+import { desiredWeights, namesFamily, neededWeights, repoText } from '../adapters/google-url.ts';
 import { resolveFontsource } from '../adapters/fontsource.ts';
 import { cssDemands, newDemands, otherFaces } from '../build/fingerprint.ts';
 import { readManifest, type Manifest, type ManifestEntry } from '../build/manifest.ts';
@@ -107,7 +108,7 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
   const root = o.root;
   const manifest: Manifest | undefined = readManifest(root);
   const notes: string[] = [];
-  if (!manifest || !Object.keys(manifest.entries).length) {
+  if (!manifest || (!Object.keys(manifest.entries).length && !manifest.google?.length)) {
     return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: ['no fontphobia.manifest.json: nothing has been built to check'] };
   }
   const issues: CheckIssue[] = [];
@@ -148,6 +149,30 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
     const pkg = resolveFontsource(root, ej.imports[0]?.file ?? file, ej.specifier);
     if (!pkg) add({ kind: 'source', file, message: `${ej.package} isn't installed any more (${file} was ejected from it)` });
     else if (pkg.version !== ej.version) add({ kind: 'source', file, message: `${ej.package} is ${pkg.version} now; ${file} was ejected from ${ej.version}` });
+  }
+
+  // google-fonts tighten (§6.5): the rewritten URLs still there, and nothing asks for what they dropped.
+  if (manifest.google?.length) {
+    const texts = repoText(root);
+    const weights = desiredWeights(texts);
+    for (const r of manifest.google) {
+      const amp = r.to.replace(/&/g, '&amp;');
+      for (const f of r.files) {
+        const t = existsSync(join(root, f)) ? readFileSync(join(root, f), 'utf8') : '';
+        if (!t.includes(r.to) && !t.includes(amp)) add({ kind: 'block', file: f, message: `${f} no longer loads the Google Fonts URL fontphobia wrote (${r.to})` });
+      }
+      for (const fam of r.dropped.families) {
+        const by = namesFamily(texts, fam);
+        if (by.length) add({ kind: 'face', file: by[0], message: `${by[0]} names ${fam}, which build dropped from the Google Fonts URL because nothing used it` });
+      }
+      for (const [fam, ws] of Object.entries(r.dropped.weights)) {
+        const need = neededWeights(r.from, fam, ws, weights);
+        if (need.length) add({ kind: 'axis', message: `${fam} ${need.join(', ')} ${need.length > 1 ? 'are' : 'is'} asked for again${weights ? '' : ' (a font-weight is computed)'}, but build dropped ${need.length > 1 ? 'them' : 'it'} from the Google Fonts URL` });
+      }
+      for (const [fam, tags] of Object.entries(r.dropped.axes)) {
+        for (const tag of tags) if (texts.some((x) => new RegExp(`["']${tag}["']\\s+-?\\d`).test(x.text))) add({ kind: 'axis', message: `the code sets '${tag}', which build dropped from ${fam}'s Google Fonts URL (limit-axes)` });
+      }
+    }
   }
 
   // 2. Other @font-face rules, against the build's fingerprint.

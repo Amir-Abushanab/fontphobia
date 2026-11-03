@@ -58,6 +58,23 @@ export function revertProject(root: string, o: { write?: boolean } = {}): Revert
       touched.add(p.file);
     }
   }
+  // google-fonts tighten: the original stylesheet URLs back (after the self-host copy's link, if any, went back to the tightened URL).
+  for (const r of m.google ?? []) {
+    for (const f of r.files) {
+      if (!existsSync(join(root, f))) { problems.push(`${f} is gone (Google Fonts URL)`); continue; }
+      let t = read(f);
+      let n = 0;
+      const amp = (u: string) => u.replace(/&/g, '&amp;');
+      for (const [to, from] of r.to.includes('&') ? [[amp(r.to), amp(r.from)], [r.to, r.from]] : [[r.to, r.from]]) {
+        const parts = t.split(to!);
+        n += parts.length - 1;
+        t = parts.join(from!);
+      }
+      if (!n) { problems.push(`the Google Fonts URL ${r.to} is gone from ${f}`); continue; }
+      texts.set(f, t);
+      touched.add(f);
+    }
+  }
   if (o.write) {
     for (const f of touched) writeFileSync(join(root, f), texts.get(f)!);
     for (const f of deleted) unlinkSync(join(root, f));

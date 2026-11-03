@@ -204,10 +204,12 @@ async function context(browser: Browser, o: { viewport: number; dpr: number; eng
     if (type !== 'document' && type !== 'stylesheet' && !thirdParty) return route.continue();
     let snap: { status: number; headers: Record<string, string>; body: Buffer } | undefined;
     if (thirdParty) {
-      const key = `${o.engine} ${req.url()}`;
+      // A tightened Google URL (§6.5): "before" loads the original one.
+      const orig = before && type === 'stylesheet' ? overlay.originalSheet(req.url()) : undefined;
+      const key = `${o.engine} ${orig ?? req.url()}`;
       let p = snapshots.get(key);
       if (!p) {
-        p = route.fetch().then(async (r) => {
+        p = route.fetch(orig ? { url: orig } : undefined).then(async (r) => {
           const headers = { ...r.headers() };
           delete headers['content-length']; delete headers['content-encoding'];
           return { status: r.status(), headers, body: await r.body() };

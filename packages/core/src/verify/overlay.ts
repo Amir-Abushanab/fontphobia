@@ -30,6 +30,8 @@ export interface Overlay {
   restoreHtml(html: string, hits?: Set<string>): string | undefined;
   /** Which entries a stylesheet (or HTML) uses, without rewriting. */
   scan(text: string): Set<string>;
+  /** The original Google stylesheet URL behind a tightened one (§6.5), if fontphobia rewrote it. */
+  originalSheet(url: string): string | undefined;
 }
 
 const sha = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
@@ -147,8 +149,11 @@ export function createOverlay(manifest: Manifest): Overlay {
     return s;
   };
 
+  const norm = (u: string) => { try { return new URL(u).href; } catch { return u; } };
+  const sheets = new Map((manifest.google ?? []).map((r) => [norm(r.to), r.from]));
   return {
     outputOf, outputsOf, sourceUrl, restoreCss, restoreHtml, scan,
+    originalSheet: (url) => sheets.get(norm(url)),
     sourceFile: (pathname) => {
       if (!pathname.startsWith(BEFORE_PREFIX)) return undefined;
       return sources.get(pathname.slice(BEFORE_PREFIX.length).split('/')[0]!);

@@ -206,6 +206,36 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
     expect(readFileSync(layout).equals(layoutText)).toBe(true);
   }, 900_000);
 
+  // M7, google-fonts tighten (§6.5): an unused family in the URL is dropped; verify's "before" loads the original URL.
+  it('astro: tighten drops an unused Google family, renders identically, and revert restores the URL', async () => {
+    const root = join(sites, 'astro');
+    const layout = join(root, 'src/layouts/Layout.astro');
+    const layoutText = readFileSync(layout);
+    const tight = 'https://fonts.googleapis.com/css2?family=Fraunces:wght@400..700&display=swap';
+    const loose = tight.replace('&display', '&family=Lora:wght@400;700&display');
+    writeFileSync(layout, layoutText.toString('utf8').replace(tight, loose));
+    const opts = { root, fontphobiaVersion: 'test', fontSizeSweep: false, viewports: [1280], rebuild: true, cache: false };
+    let fonts: string[] = [];
+    try {
+      const u1 = (await audit(opts)).usage as unknown as UsageFileJson;
+      const b = await buildProject(root, u1, {}, { version: 'test', write: true });
+      expect(b.manifest.google).toEqual([{ from: loose, to: tight, files: ['src/layouts/Layout.astro'], dropped: { families: ['Lora'], weights: {}, axes: {} } }]);
+      expect(readFileSync(layout, 'utf8')).toContain(`href="${tight}"`);
+      const u2 = (await audit(opts)).usage as unknown as UsageFileJson;
+      expect((await buildProject(root, u2, {}, { version: 'test' })).edits).toEqual([]);
+      expect((await checkProject({ root, usage: u2 })).ok).toBe(true);
+      const v = await verify({ root, usage: u2, viewports: [1280], dprs: [1], outDir: outDir(root.split('/').pop()! + '-' + Date.now()) });
+      expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated' && c.class !== 'flaky').map((c) => `${c.browser} ${c.page} DPR ${c.dpr}: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`)).toEqual([]);
+      expect(v.ok).toBe(true);
+    } finally {
+      if (existsSync(join(root, 'fontphobia.manifest.json'))) fonts = revertProject(root, { write: true }).fonts;
+      for (const f of fonts) rmSync(join(root, f), { force: true });
+      rmSync(join(root, 'src/styles/fontphobia'), { recursive: true, force: true });
+    }
+    expect(readFileSync(layout, 'utf8')).toContain(`href="${loose}"`);
+    writeFileSync(layout, layoutText);
+  }, 900_000);
+
   it('tanstack-start: crawls an SSR-only route in server mode', async () => {
     const root = join(sites, 'tanstack-start');
     if (!existsSync(join(root, 'dist/server/server.js'))) throw new Error('build fixtures/sites/tanstack-start first');

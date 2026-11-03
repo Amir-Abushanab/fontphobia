@@ -14,6 +14,7 @@ import { parseStylesheet } from '../css/stylesheet.ts';
 import { findLocalFontCalls, localFontPath, nextFallbackMetrics } from '../adapters/next-font.ts';
 import { ejectName, findFontsourceImports, fontsourceRules, resolveFontsource, sameFile, type FontsourcePackage } from '../adapters/fontsource.ts';
 import { cssDemands, demandKeys, otherFaces } from './fingerprint.ts';
+import { tightenGoogle } from './google-tighten.ts';
 import { applyEdits, type Edit } from './edits.ts';
 import { MANIFEST_FILE, MANIFEST_VERSION, manifestJson, readManifest, type Manifest, type ManifestEntry } from './manifest.ts';
 
@@ -164,6 +165,13 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
     Object.assign(ejects, r.ejects);
     notWritten.push(...r.notWritten);
   }
+  // Google faces staying on Google: tighten the stylesheet URLs (§6.5).
+  let google = prev?.google;
+  if (!cfg.allow?.includes('self-host')) {
+    const t = await tightenGoogle(root, usage, prev, { limitAxes: !!cfg.allow?.includes('limit-axes') });
+    edits.push(...t.edits);
+    google = t.records.length ? t.records : undefined;
+  }
   const fsFaces = plan.faces.filter((f) => f.status === 'planned' && f.adapter === 'fontsource');
   if (fsFaces.length) {
     const r = ejectFontsource(root, fsFaces, prev, outputs, sources, o.version);
@@ -264,7 +272,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
   for (const [k, v] of Object.entries(prev?.ejects ?? {})) if (!ejects[k] && Object.values(entries).some((e) => e.stylesheet === k)) ejects[k] = v;
   const manifest: Manifest = {
     version: MANIFEST_VERSION, fontphobia: o.version, harfbuzz: harfbuzzVersion(), chrome: usage.meta.chrome, entries,
-    ejects: Object.keys(ejects).length ? ejects : undefined,
+    ejects: Object.keys(ejects).length ? ejects : undefined, google,
     others: otherFaces(root, css.filter((c) => !generated.has(c.file) && !ejects[c.file]), edits), demands: demandKeys(cssDemands(root)),
   };
   const generatedList = [...generated].sort(([a], [b]) => (a < b ? -1 : 1)).map(([file, text]) => ({ file, bytes: Buffer.byteLength(text), exists: existsSync(join(root, file)) && readFileSync(join(root, file), 'utf8') === text }));
@@ -277,7 +285,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
     .filter((x) => existsSync(join(root, x.file)) && sha(readFileSync(join(root, x.file))) === x.sha256).map((x) => x.file);
   const json = manifestJson(manifest);
   const manifestSame = existsSync(join(root, MANIFEST_FILE)) && readFileSync(join(root, MANIFEST_FILE), 'utf8') === json;
-  const unchanged = !edits.length && fontList.every((f) => f.exists) && generatedList.every((g) => g.exists) && !stale.length && (manifestSame || !Object.keys(entries).length);
+  const unchanged = !edits.length && fontList.every((f) => f.exists) && generatedList.every((g) => g.exists) && !stale.length && (manifestSame || (!Object.keys(entries).length && !google));
 
   if (o.write && !unchanged) {
     for (const [file, bytes] of fonts) {
@@ -289,7 +297,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
     for (const [file, text] of generated) { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), text); }
     applyEdits(root, edits);
     for (const f of stale) unlinkSync(join(root, f));
-    if (Object.keys(entries).length) writeFileSync(join(root, MANIFEST_FILE), json);
+    if (Object.keys(entries).length || google) writeFileSync(join(root, MANIFEST_FILE), json);
   }
   return { plan, manifest, fonts: fontList, generated: generatedList, snippets, edits, stale, notWritten, unchanged };
 }
