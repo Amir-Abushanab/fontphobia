@@ -24,7 +24,7 @@ export const ENGINES: Engine[] = ['chromium', 'firefox', 'webkit', 'linux-chromi
  * `unrelated`: pixels differ only in text drawn with fonts fontphobia didn't change (Google Fonts,
  * system fonts), at identical layout. Our files can't cause that; the browser's rasterizer can (CI).
  */
-export type CompareClass = 'identical' | 'sub-pixel rounding' | 'unrelated' | 'regression' | 'content changed' | 'failed';
+export type CompareClass = 'identical' | 'sub-pixel rounding' | 'unrelated' | 'flaky' | 'regression' | 'content changed' | 'failed';
 
 export interface VerifyOptions extends SiteOptions {
   root: string;
@@ -413,7 +413,19 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
         const [b, a] = await Promise.all([capture(cb, beforeUrl, t.engine), capture(ca, url, t.engine)]);
         for (const id of hitsA) usedInAfter.add(id);
         const drawn = Object.keys(o.usage.pages[t.page]?.faces ?? {}).filter((id) => entryIds.has(id));
-        comparisons.push(await compare(t, base, b, a, drawn.some(roundingOk), o.manifest, outDir, ours));
+        let c = await compare(t, base, b, a, drawn.some(roundingOk), o.manifest, outDir, ours);
+        // Pixels only, at identical layout: load both once more. Browsers occasionally rasterize a
+        // glyph a pixel differently between loads (seen with Fraunces in Linux Chromium); a
+        // difference that doesn't come back is noise, one that does is reported.
+        if (c.class === 'regression' && !c.moved && c.causes.every((x) => /^pixels differ/.test(x))) {
+          const [cb2, ca2] = await Promise.all([context(t.browser, t, overlay, baseline ? 'plain' : 'before', root, new Set(), local, snapshots), context(t.browser, t, overlay, 'plain', root, new Set(), local, snapshots)]);
+          try {
+            const [b2, a2] = await Promise.all([capture(cb2, beforeUrl, t.engine), capture(ca2, url, t.engine)]);
+            const again = await compare(t, base, b2, a2, drawn.some(roundingOk), o.manifest, outDir, ours);
+            if (again.class === 'identical') c = { ...c, class: 'flaky', causes: [`${c.causes.join('; ')}; didn't reproduce on a second load`] };
+          } finally { await Promise.all([cb2.close().catch(() => {}), ca2.close().catch(() => {})]); }
+        }
+        comparisons.push(c);
         if (t.dpr === dprsFor(t.engine)[0] && t.engine === engines[0]) record(t.page, b.snap.fonts, a.snap.fonts, hitsA);
       } catch (e) {
         comparisons.push({ ...base, causes: [(e as Error).message.split('\n')[0]!] });

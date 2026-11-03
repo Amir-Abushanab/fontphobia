@@ -29,7 +29,7 @@ const runtime = chrome && (process.env.FONTPHOBIA_LINUX || !process.env.CI) ? aw
 
 // CI uploads diff images of failing comparisons from here.
 const outDir = (name: string) => (process.env.VERIFY_ARTIFACTS ? join(process.env.VERIFY_ARTIFACTS, name) : undefined);
-const differences = (r: Awaited<ReturnType<typeof verify>>) => r.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated')
+const differences = (r: Awaited<ReturnType<typeof verify>>) => r.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated' && c.class !== 'flaky')
   .map((c) => `${c.browser} ${c.page} ${c.viewport} DPR ${c.dpr} ${c.class} ${c.pixels}px: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`);
 
 function copy(name: string) {

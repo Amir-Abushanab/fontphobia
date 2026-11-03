@@ -84,7 +84,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
         // Every page draws a generated face now (Inter is ejected too).
         expect(v.browser!.pages).toEqual(Object.keys(u1.pages).sort());
         expect(v.browser!.comparisons.length).toBe(2 * v.browser!.pages.length);
-        expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated').map((c) => `${c.page} DPR ${c.dpr} ${c.class}: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`)).toEqual([]);
+        expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated' && c.class !== 'flaky').map((c) => `${c.page} DPR ${c.dpr} ${c.class}: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`)).toEqual([]);
         expect(v.ok).toBe(true);
 
         // An updated fontsource package makes the ejected copy out of date.
@@ -135,6 +135,37 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       expect(existsSync(join(root, 'fontphobia.manifest.json'))).toBe(false);
     }, 600_000);
   }
+
+  // M7, google-fonts self-host (§6.5): needs the network (Google's CSS and files).
+  it('astro: --allow self-host serves Fraunces from the site, renders identically, and revert restores the Google link', async () => {
+    const root = join(sites, 'astro');
+    const layout = join(root, 'src/layouts/Layout.astro');
+    const layoutText = readFileSync(layout);
+    const opts = { root, fontphobiaVersion: 'test', fontSizeSweep: false, viewports: [1280], rebuild: true, cache: false };
+    const u1 = (await audit(opts)).usage as unknown as UsageFileJson;
+    const id = Object.keys(u1.faces).find((k) => u1.faces[k]!.family.includes('Fraunces'))!;
+    let fonts: string[] = [];
+    try {
+      const b = await buildProject(root, u1, { allow: ['self-host'] }, { version: 'test', write: true });
+      expect(b.notWritten).toEqual([]);
+      expect(b.generated.map((g) => g.file)).toContain('public/fonts/fontphobia/google-fraunces.css');
+      expect(readFileSync(layout, 'utf8')).toContain('href="/fonts/fontphobia/google-fraunces.css"');
+      expect(readFileSync(join(root, `.fontphobia/sources/google/${id}.woff2`)).byteLength).toBeGreaterThan(1000);
+      const u2 = (await audit(opts)).usage as unknown as UsageFileJson;
+      expect(u2.faces[id]!.chars).toBe(u1.faces[id]!.chars);
+      expect(u2.faces[id]!.files.every((f) => f.url.startsWith('/fonts/fontphobia/'))).toBe(true);
+      expect((await buildProject(root, u2, {}, { version: 'test' })).unchanged).toBe(true); // stays self-hosted
+      const linux = process.platform === 'darwin' && (await findRuntime());
+      const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1], browsers: linux ? ['linux-chromium'] : ['chromium'] });
+      expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated' && c.class !== 'flaky').map((c) => `${c.browser} ${c.page} DPR ${c.dpr}: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`)).toEqual([]);
+      expect(v.ok).toBe(true);
+    } finally {
+      if (existsSync(join(root, 'fontphobia.manifest.json'))) fonts = revertProject(root, { write: true }).fonts;
+      for (const f of fonts) rmSync(join(root, f), { force: true });
+      for (const d of ['src/styles/fontphobia', 'public/fonts/fontphobia', '.fontphobia/sources']) rmSync(join(root, d), { recursive: true, force: true });
+    }
+    expect(readFileSync(layout).equals(layoutText)).toBe(true);
+  }, 900_000);
 
   it('tanstack-start: crawls an SSR-only route in server mode', async () => {
     const root = join(sites, 'tanstack-start');

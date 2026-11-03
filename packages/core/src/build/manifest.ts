@@ -24,7 +24,7 @@ export interface ManifestOutput {
 
 export interface ManifestEntry {
   id: string;
-  adapter: 'css' | 'fontsource';
+  adapter: 'css' | 'fontsource' | 'google-fonts';
   family: string;
   /** Stylesheet (or component) holding the marked block. */
   stylesheet: string;
@@ -53,7 +53,7 @@ export interface Manifest {
    * fontsource ejects (§6.2), by generated stylesheet: the package CSS it copies, the imports pointed
    * at it (`from` is the original specifier), and its sha256 (revert deletes it only if unchanged).
    */
-  ejects?: Record<string, { package: string; version: string; specifier: string; css: string; sha256: string; imports: { file: string; from: string; to: string }[] }>;
+  ejects?: Record<string, { kind?: 'fontsource' | 'google'; package: string; version: string; specifier: string; css: string; sha256: string; imports: { file: string; from: string; to: string }[] }>;
   /** Features and axis values the CSS asked for when this was built ("family|feature|tag", "family|axis|wght=700"; family * = any). */
   demands?: string[];
 }

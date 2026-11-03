@@ -22,6 +22,8 @@ export interface UsageFaceJson {
   family: string;
   descriptors: Record<string, string>;
   source: { adapter: string; file?: string; line?: number; fontFile?: string; sha256?: string; note?: string };
+  /** The stylesheet that declared the face (Google's CSS URL for google-fonts). */
+  sheet?: string;
   files: { url: string; sha256?: string; bytes?: number }[];
   chars: string;
   count: number;
@@ -316,7 +318,8 @@ interface Built { files: PlannedFile[]; bytes: Record<Role, number> }
 /** `outputs`, when given, receives the planned files' WOFF2 bytes by file name (what `build --write` writes). */
 export async function planFace(id: string, face: UsageFaceJson, usage: UsageFileJson, src: SourceFont | undefined, cfg: PlanConfig = {}, outputs?: Map<string, Uint8Array>): Promise<FacePlan> {
   const adapter = face.source.adapter;
-  const caps = CAPS[adapter] ?? CAPS.unknown!;
+  // self-host (§6.5): Google's served file becomes the source, with the full split.
+  const caps = adapter === 'google-fonts' && cfg.allow?.includes('self-host') ? { subset: true, split: 'full' as const } : CAPS[adapter] ?? CAPS.unknown!;
   const base: FacePlan = { id, family: face.family, adapter, status: 'skipped' };
   const now = face.files.reduce((n, f) => Math.max(n, f.bytes ?? 0), 0);
   if (face.local) return { ...base, reason: 'drawn from an installed font (local())' };
