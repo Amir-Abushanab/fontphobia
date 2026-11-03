@@ -164,8 +164,15 @@ async function launch(engine: Engine, linux: () => Promise<LinuxBrowsers>): Prom
   }
 }
 
+/**
+ * Third-party CSS and fonts (Google Fonts, CDNs), as first served in this run, per engine. Google can
+ * serve different bytes for one URL (§6.5), so every load gets the same snapshot: otherwise "before"
+ * and "after" can differ by fonts fontphobia never touched.
+ */
+type Snapshots = Map<string, Promise<{ status: number; headers: Record<string, string>; body: Buffer } | undefined>>;
+
 /** `before`: rewrite to the original fonts (overlay); `plain`: serve as is and note which outputs the CSS uses. */
-async function context(browser: Browser, o: { viewport: number; dpr: number }, overlay: Overlay, mode: 'before' | 'plain', root: string, hits: Set<string>): Promise<BrowserContext> {
+async function context(browser: Browser, o: { viewport: number; dpr: number; engine: Engine }, overlay: Overlay, mode: 'before' | 'plain', root: string, hits: Set<string>, local: Set<string>, snapshots: Snapshots): Promise<BrowserContext> {
   const before = mode === 'before';
   const ctx = await browser.newContext({ viewport: { width: o.viewport, height: 900 }, deviceScaleFactor: o.dpr, locale: 'en-US', timezoneId: 'UTC', reducedMotion: 'reduce' });
   await ctx.clock.setFixedTime(FIXED_TIME);
@@ -189,19 +196,37 @@ async function context(browser: Browser, o: { viewport: number; dpr: number }, o
       return route.fulfill({ status: 200, body: readFileSync(p), headers: { 'content-type': 'font/' + (src.file.split('.').pop() ?? 'ttf'), 'access-control-allow-origin': '*', 'cache-control': 'no-store' } });
     }
     const type = req.resourceType();
-    if (type !== 'document' && type !== 'stylesheet') return route.continue();
+    const thirdParty = !local.has(url.origin) && (type === 'font' || type === 'stylesheet');
+    if (type !== 'document' && type !== 'stylesheet' && !thirdParty) return route.continue();
+    let snap: { status: number; headers: Record<string, string>; body: Buffer } | undefined;
+    if (thirdParty) {
+      const key = `${o.engine} ${req.url()}`;
+      let p = snapshots.get(key);
+      if (!p) {
+        p = route.fetch().then(async (r) => {
+          const headers = { ...r.headers() };
+          delete headers['content-length']; delete headers['content-encoding'];
+          return { status: r.status(), headers, body: await r.body() };
+        }, () => undefined);
+        snapshots.set(key, p);
+      }
+      snap = await p;
+      if (!snap) return route.abort();
+      if (type === 'font') return route.fulfill({ status: snap.status, headers: snap.headers, body: snap.body });
+    }
     let resp;
-    try { resp = await route.fetch(); } catch { return route.continue(); }
-    const ct = resp.headers()['content-type'] ?? '';
+    if (!snap) { try { resp = await route.fetch(); } catch { return route.continue(); } }
+    const respHeaders = snap ? snap.headers : resp!.headers();
+    const ct = respHeaders['content-type'] ?? '';
     const isCss = type === 'stylesheet' || /css/i.test(ct);
-    if (!isCss && !/html/i.test(ct)) return route.fulfill({ response: resp });
-    const body = await resp.text();
+    if (!isCss && !/html/i.test(ct)) return snap ? route.fulfill({ status: snap.status, headers: snap.headers, body: snap.body }) : route.fulfill({ response: resp! });
+    const body = snap ? snap.body.toString('utf8') : await resp!.text();
     let out: string | undefined;
     if (before) out = isCss ? overlay.restoreCss(body, hits) : overlay.restoreHtml(body, hits);
     else for (const id of overlay.scan(isCss ? body : (body.match(/<style\b[^>]*>[\s\S]*?<\/style>/gi) ?? []).join('\n').replace(/<\/?style\b[^>]*>/gi, ''))) hits.add(id);
-    const headers = { ...resp.headers() };
+    const headers = { ...respHeaders };
     delete headers['content-length']; delete headers['content-encoding'];
-    return route.fulfill({ status: resp.status(), headers, body: out ?? body });
+    return route.fulfill({ status: snap ? snap.status : resp!.status(), headers, body: out ?? body });
   });
   return ctx;
 }
@@ -359,6 +384,8 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
       await ctx.close();
     }
 
+    const local = new Set([new URL(site.base).origin, ...(baseline ? [new URL(baseline.site.base).origin] : [])]);
+    const snapshots: Snapshots = new Map();
     type Task = { page: string; viewport: number; dpr: number; engine: Engine; browser: Browser };
     const tasks: Task[] = [];
     for (const b of browsers) for (const page of pages) for (const viewport of viewports) for (const dpr of dprsFor(b.engine)) tasks.push({ page, viewport, dpr, engine: b.engine, browser: b.browser });
@@ -369,7 +396,7 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
       const beforeUrl = baseline ? new URL(t.page.replace(/^\//, ''), baseline.site.base).href : url;
       const base: Comparison = { page: t.page, viewport: t.viewport, dpr: t.dpr, browser: t.engine, class: 'failed', causes: [], nodes: 0, moved: 0, maxDx: 0, pixels: 0, examples: [] };
       const hitsB = new Set<string>(), hitsA = new Set<string>();
-      const [cb, ca] = await Promise.all([context(t.browser, t, overlay, baseline ? 'plain' : 'before', root, hitsB), context(t.browser, t, overlay, 'plain', root, hitsA)]);
+      const [cb, ca] = await Promise.all([context(t.browser, t, overlay, baseline ? 'plain' : 'before', root, hitsB, local, snapshots), context(t.browser, t, overlay, 'plain', root, hitsA, local, snapshots)]);
       try {
         const [b, a] = await Promise.all([capture(cb, beforeUrl, t.engine), capture(ca, url, t.engine)]);
         for (const id of hitsA) usedInAfter.add(id);

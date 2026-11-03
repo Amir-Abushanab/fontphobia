@@ -59,6 +59,13 @@ cli
     process.stdout.write(`${o.output}: ${r.woff2.byteLength} bytes (${pct}% smaller than the source), ${r.unicodes.length} characters\nunicode-range: ${formatUnicodeRange(rangesFromCodePoints(r.unicodes))}\n`);
   });
 
+/** .fontphobia/ is committed (usage.json, report.md); its cache and diff images aren't (§9.9). */
+function ensureOutDir(out: string) {
+  mkdirSync(out, { recursive: true });
+  const gi = join(out, '.gitignore');
+  if (!existsSync(gi)) writeFileSync(gi, '# fontphobia: visit cache and verify diff images\ncache/\nverify/\n');
+}
+
 const list = (v: unknown): string[] | undefined => {
   if (v === undefined || v === true) return undefined;
   return [v].flat().flatMap((x) => String(x).split(',')).map((x) => x.trim()).filter(Boolean);
@@ -66,7 +73,7 @@ const list = (v: unknown): string[] | undefined => {
 
 interface AuditFlags {
   cwd?: string; dist?: string; buildCmd?: string; startCmd?: string; url?: string; pages?: string | string[]; ignore?: string | string[];
-  viewports?: string; locales?: string; maxPages?: number; concurrency?: number; fontSizeSweep: boolean; rebuild?: boolean; ci?: boolean; json?: boolean; outDir?: string;
+  viewports?: string; locales?: string; maxPages?: number; concurrency?: number; fontSizeSweep: boolean; cache: boolean; rebuild?: boolean; ci?: boolean; json?: boolean; outDir?: string;
 }
 
 async function runAudit(o: AuditFlags, how: { summary: boolean } = { summary: true }) {
@@ -84,7 +91,7 @@ async function runAudit(o: AuditFlags, how: { summary: boolean } = { summary: tr
     dist: o.dist ?? config.dist, url: o.url ?? config.url, buildCmd: o.buildCmd ?? config.build, startCmd: o.startCmd ?? config.start,
     rebuild: o.rebuild, pages: [...(config.pages ?? []), ...(list(o.pages) ?? [])], ignore: [...(config.ignore ?? []), ...(list(o.ignore) ?? [])],
     viewports: list(o.viewports)?.map(Number) ?? config.viewports, locales: list(o.locales) ?? config.locales,
-    maxPages: o.maxPages ?? config.maxPages, concurrency: o.concurrency, fontSizeSweep: o.fontSizeSweep,
+    maxPages: o.maxPages ?? config.maxPages, concurrency: o.concurrency, fontSizeSweep: o.fontSizeSweep, cache: o.cache,
     storageState: config.auth?.storageState, privatePages: config.auth?.pages,
     onStale: interactive ? async (age) => {
       const n = age.newer!;
@@ -98,7 +105,7 @@ async function runAudit(o: AuditFlags, how: { summary: boolean } = { summary: tr
     } : undefined,
   });
   const out = resolve(root, o.outDir ?? '.fontphobia');
-  mkdirSync(out, { recursive: true });
+  ensureOutDir(out);
   writeFileSync(join(out, 'usage.json'), canonicalJson(result.usage));
   writeFileSync(join(out, 'report.md'), auditMarkdown(result.usage as never, result.crawl));
   if (o.json) process.stdout.write(JSON.stringify({ crawl: result.crawl, usage: result.usage }, null, 2) + '\n');
@@ -119,6 +126,7 @@ const auditCommand = (c: ReturnType<typeof cli.command>) => c
   .option('--max-pages <n>', 'Stop discovering pages after n (default 500)')
   .option('--concurrency <n>', 'Parallel page visits')
   .option('--no-font-size-sweep', "Skip the browser default-font-size sweep (§7.2)")
+  .option('--no-cache', 'Visit every page again, ignoring .fontphobia/cache/visits (by default a page is revisited only when something it loads changed)')
   .option('--rebuild', 'Build again even if output exists')
   .option('--ci', "Never prompt (also when CI is set); a stale build is crawled with a warning")
   .option('--out-dir <dir>', 'Where usage.json and report.md go (default .fontphobia)')
@@ -202,7 +210,7 @@ async function runVerify(o: VerifyFlags) {
     viewports: list(o.viewports)?.map(Number) ?? config.verify?.viewports ?? config.viewports, dprs: list(o.dpr)?.map(Number) ?? config.verify?.dprs,
     browsers, hinting: o.hinting ?? config.verify?.hinting, runtime: o.runtime as 'container' | undefined, baseline: o.baseline as 'overlay' | undefined, concurrency: o.concurrency, outDir: join(out, 'verify'),
   });
-  mkdirSync(out, { recursive: true });
+  ensureOutDir(out);
   const reportFile = join(out, 'report.md');
   writeFileSync(reportFile, verifyMarkdown(existsSync(reportFile) ? readFileSync(reportFile, 'utf8') : '# fontphobia report\n', r, root));
   if (o.json) process.stdout.write(JSON.stringify(r, null, 2) + '\n');

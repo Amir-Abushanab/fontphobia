@@ -27,6 +27,7 @@ export interface CrawlFacts {
   failed: Record<string, string>;
   dynamicRoutes: string[];
   visits: number;
+  cache?: { reused: number; visited: number };
   viewports: number[];
   fontSizes: number[];
   durationMs: number;
@@ -118,7 +119,7 @@ export function formatAudit(u: UsageJson, crawl: CrawlFacts): string {
   const L: string[] = [];
   const sweep = crawl.fontSizes.length > 1 ? ` + font sizes ${crawl.fontSizes.filter((s) => s !== 16).join('/')}` : '';
   L.push(`fontphobia ${u.meta.fontphobia} · ${crawl.framework.name}${crawl.framework.tier === 2 ? ' (tier 2, best effort)' : ''} · ${crawl.mode} ${crawl.source}${buildNote(crawl) ? ` (${buildNote(crawl)})` : ''}`);
-  L.push(`${crawl.pages.length} pages × ${crawl.viewports.length} viewports${sweep} · ${crawl.visits} visits · Chrome ${u.meta.chrome} · ${(crawl.durationMs / 1000).toFixed(1)} s`);
+  L.push(`${crawl.pages.length} pages × ${crawl.viewports.length} viewports${sweep} · ${crawl.visits} visits${crawl.cache?.reused ? ` (${crawl.cache.reused} reused from the cache)` : ''} · Chrome ${u.meta.chrome} · ${(crawl.durationMs / 1000).toFixed(1)} s`);
   L.push('');
   const faces = Object.entries(u.faces);
   const n = crawl.pages.length;

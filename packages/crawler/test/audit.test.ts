@@ -1,6 +1,6 @@
 // M2 acceptance on the static `css` fixture: every §7.4 rule, per-face attribution, declared
 // values, preloads, and a byte-identical usage.json from two crawls. Needs Google Chrome.
-import { cpSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -100,7 +100,7 @@ describe.skipIf(!chrome)('audit: static css fixture', () => {
   });
 
   it('writes the same usage.json from a second crawl', async () => {
-    const again = await audit({ root: site, dist: '.', fontphobiaVersion: 'test', concurrency: 2 });
+    const again = await audit({ root: site, dist: '.', fontphobiaVersion: 'test', concurrency: 2, cache: false });
     expect(canonicalJson(again.usage)).toBe(canonicalJson(r.usage));
   }, 240_000);
 });
@@ -161,6 +161,34 @@ describe.skipIf(!chrome)('stale builds', () => {
     const again = await audit({ ...opts, onStale: () => { throw new Error('asked about a fresh build'); } });
     expect(again.crawl.build?.newer).toBeUndefined();
   }, 120_000);
+});
+
+describe.skipIf(!chrome)('incremental audit (M3.5)', () => {
+  it('reuses every visit of an unchanged site, and re-visits only an edited page, matching a full crawl byte for byte', async () => {
+    const root = join(tmp, 'incremental');
+    cpSync(site, root, { recursive: true });
+    rmSync(join(root, '.fontphobia'), { recursive: true, force: true });
+    const opts = { root, dist: '.', fontphobiaVersion: 'test', viewports: [360, 1280] };
+    const a1 = await audit(opts);
+    expect(a1.crawl.cache).toEqual({ reused: 0, visited: a1.crawl.visits });
+    const a2 = await audit(opts);
+    expect(a2.crawl.cache).toEqual({ reused: a1.crawl.visits, visited: 0 });
+    expect(canonicalJson(a2.usage)).toBe(canonicalJson(a1.usage));
+
+    // One page's content changes: only its visits run again.
+    const about = join(root, 'about/index.html');
+    writeFileSync(about, readFileSync(about, 'utf8').replace('Only ASCII here', 'Only ASCII here, and ñ'));
+    const a3 = await audit(opts);
+    const aboutVisits = a1.usage.pages['/about/']!.visits.length;
+    expect(a3.crawl.cache).toEqual({ reused: a1.crawl.visits - aboutVisits, visited: aboutVisits });
+    const full = await audit({ ...opts, cache: false });
+    expect(full.crawl.cache).toBeUndefined();
+    expect(canonicalJson(a3.usage)).toBe(canonicalJson(full.usage));
+    expect(canonicalJson(a3.usage)).not.toBe(canonicalJson(a1.usage));
+    // A shared stylesheet change re-visits everything.
+    writeFileSync(join(root, 'styles.css'), readFileSync(join(root, 'styles.css'), 'utf8') + '\n/* edit */\n');
+    expect((await audit(opts)).crawl.cache!.reused).toBe(0);
+  }, 300_000);
 });
 
 describe.skipIf(!chrome)('after build --write (M4)', () => {

@@ -6,3 +6,4 @@ export * from './site.ts';
 export * from './verify.ts';
 export * from './verify-report.ts';
 export * from './linux.ts';
+export * from './visit-cache.ts';

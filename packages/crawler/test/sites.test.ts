@@ -70,7 +70,8 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
         expect(v.browser!.loads).toEqual([]);
         // Only pages that draw a generated face are compared: Fixture Sans is on one page.
         expect(v.browser!.pages).toEqual(u1.faces[id]!.pages);
-        expect(v.browser!.comparisons.map((c) => c.class)).toEqual(Array(2 * v.browser!.pages.length).fill('identical'));
+        expect(v.browser!.comparisons.length).toBe(2 * v.browser!.pages.length);
+        expect(v.browser!.comparisons.filter((c) => c.class !== 'identical').map((c) => `${c.page} DPR ${c.dpr} ${c.class}: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`)).toEqual([]);
         expect(v.ok).toBe(true);
       } finally {
         if (existsSync(join(root, 'fontphobia.manifest.json'))) fonts = revertProject(root, { write: true }).fonts;

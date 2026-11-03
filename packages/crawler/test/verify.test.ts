@@ -27,6 +27,11 @@ const hostEngines = { webkit: await starts(webkit), firefox: await starts(firefo
 // Linux engines need a container runtime (Apple container, Docker or Podman); CI's sites job has Docker.
 const runtime = chrome && (process.env.FONTPHOBIA_LINUX || !process.env.CI) ? await findRuntime() : undefined;
 
+// CI uploads diff images of failing comparisons from here.
+const outDir = (name: string) => (process.env.VERIFY_ARTIFACTS ? join(process.env.VERIFY_ARTIFACTS, name) : undefined);
+const differences = (r: Awaited<ReturnType<typeof verify>>) => r.browser!.comparisons.filter((c) => c.class !== 'identical')
+  .map((c) => `${c.browser} ${c.page} ${c.viewport} DPR ${c.dpr} ${c.class} ${c.pixels}px: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`);
+
 function copy(name: string) {
   const root = join(tmp, name);
   cpSync(join(repo, 'fixtures/sites/static-css'), root, { recursive: true });
@@ -59,10 +64,11 @@ describe('overlay (§10.3): the built CSS and HTML with the original fonts swapp
 describe.skipIf(!chrome)('verify in Chrome (§10.3)', () => {
   it('a clean build renders pixel for pixel like the original fonts, at every viewport and DPR', async () => {
     const root = await built('clean');
-    const r = await verify({ root, usage, viewports: [360, 1280], dprs: [1, 2] });
+    const r = await verify({ root, usage, viewports: [360, 1280], dprs: [1, 2], outDir: outDir('clean') });
     expect(r.static.findings).toEqual([]);
     expect(r.browser!.rejected).toEqual([]);
     expect(r.browser!.loads).toEqual([]);
+    expect(differences(r)).toEqual([]);
     expect(r.browser!.comparisons.map((c) => `${c.page} ${c.viewport} ${c.dpr} ${c.class} ${c.pixels}`)).toEqual(
       ['/', '/about/', '/edge.html'].flatMap((p) => ['360 1', '360 2', '1280 1', '1280 2'].map((v) => `${p} ${v} identical 0`)));
     // Every page downloads less, and the about page only Inter's core.
@@ -117,8 +123,8 @@ for (const engine of ['webkit', 'firefox'] as const) {
   describe.skipIf(!chrome || !hostEngines[engine])(`verify in ${engine} on this machine (§10.3)`, () => {
     it('a clean build is pixel-identical', async () => {
       const root = await built(`host-${engine}`);
-      const r = await verify({ root, usage, viewports: [360, 1280], dprs: [1, 2], browsers: [engine] });
-      expect(r.browser!.comparisons.filter((c) => c.class !== 'identical').map((c) => `${c.page} ${c.viewport} ${c.dpr}: ${c.causes.join('; ')}`)).toEqual([]);
+      const r = await verify({ root, usage, viewports: [360, 1280], dprs: [1, 2], browsers: [engine], outDir: outDir(engine) });
+      expect(differences(r)).toEqual([]);
       expect(r.browser!.rejected).toEqual([]);
       expect(r.ok).toBe(true);
     }, 300_000);
@@ -128,11 +134,11 @@ for (const engine of ['webkit', 'firefox'] as const) {
 describe.skipIf(!runtime)('verify in the pinned Linux image (§10.3, --hinting)', () => {
   it('is pixel-identical in Linux Chromium with hinting on, Firefox and WebKit (auto-hinter references and glyph aliases)', async () => {
     const root = await built('linux');
-    const r = await verify({ root, usage, viewports: [1280], dprs: [1, 2], browsers: ['linux-firefox', 'linux-webkit'], hinting: true });
+    const r = await verify({ root, usage, viewports: [1280], dprs: [1, 2], browsers: ['linux-firefox', 'linux-webkit'], hinting: true, outDir: outDir('linux') });
     expect(r.browser!.browsers.map((b) => b.engine)).toEqual(['linux-firefox', 'linux-webkit', 'linux-chromium']);
     // --hinting alone is DPR 1.
     expect(r.browser!.comparisons.filter((c) => c.browser === 'linux-chromium').map((c) => c.dpr)).toEqual([1, 1, 1]);
-    expect(r.browser!.comparisons.filter((c) => c.class !== 'identical').map((c) => `${c.browser} ${c.page} ${c.dpr}: ${c.causes.join('; ')}`)).toEqual([]);
+    expect(differences(r)).toEqual([]);
     expect(r.ok).toBe(true);
   }, 600_000);
 });
@@ -150,8 +156,9 @@ describe.skipIf(!chrome)('verify --baseline worktree (§10.3)', () => {
   it('builds HEAD in a worktree as "before", whether the build is committed or not, and cleans up', async () => {
     const root = repo('worktree');
     await buildProject(root, usage, {}, { version: '1', write: true });
-    const r1 = await verify({ root, usage, viewports: [1280], dprs: [1], baseline: 'worktree' });
+    const r1 = await verify({ root, usage, viewports: [1280], dprs: [1], baseline: 'worktree', outDir: outDir('worktree') });
     expect(r1.browser!.baseline).toBe('worktree');
+    expect(differences(r1)).toEqual([]);
     expect(r1.browser!.comparisons.map((c) => c.class)).toEqual(['identical', 'identical', 'identical']);
     expect(r1.browser!.bytes.find((p) => p.page === '/about/')!.faces['inter-100-900-normal']!.before).toBe(879708);
     expect(r1.ok).toBe(true);

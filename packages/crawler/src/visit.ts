@@ -23,6 +23,11 @@ export interface VisitOptions {
 
 export interface VisitResult {
   visit?: Visit;
+  /**
+   * Everything the page loaded that can change what it draws (HTML, CSS, scripts, fetch/XHR, fonts),
+   * by URL and sha256, for the incremental audit's cache (M3.5). Undefined when a body couldn't be read.
+   */
+  resources?: { url: string; sha256: string; font?: boolean }[];
   status: number;
   finalUrl: string;
   links: string[];
@@ -63,7 +68,7 @@ async function run(page: Page, cdp: CDPSession, url: string, o: VisitOptions, bo
   await page.setViewportSize({ width: o.viewport, height: o.height ?? 900 });
 
   // Network: every font request with bytes and initiator.
-  type Req = { url: string; initiator?: string; status: number; mime?: string; transfer: number; done: boolean; font: boolean };
+  type Req = { url: string; initiator?: string; status: number; mime?: string; transfer: number; done: boolean; font: boolean; type?: string };
   const reqs = new Map<string, Req>();
   let inflightFonts = 0;
   await cdp.send('Network.enable');
@@ -71,7 +76,7 @@ async function run(page: Page, cdp: CDPSession, url: string, o: VisitOptions, bo
     const font = e.type === 'Font' || FONT_EXT.test(e.request.url);
     if (font) inflightFonts++;
     const init = e.initiator.url ?? e.initiator.stack?.callFrames?.[0]?.url;
-    reqs.set(e.requestId, { url: e.request.url, initiator: init, status: 0, transfer: 0, done: false, font });
+    reqs.set(e.requestId, { url: e.request.url, initiator: init, status: 0, transfer: 0, done: false, font, type: e.type });
   });
   cdp.on('Network.responseReceived', (e) => {
     const r = reqs.get(e.requestId);
@@ -79,6 +84,7 @@ async function run(page: Page, cdp: CDPSession, url: string, o: VisitOptions, bo
     r.status = e.response.status;
     r.mime = e.response.mimeType;
     if (e.type === 'Font' && !r.font) { r.font = true; inflightFonts++; }
+    r.type ??= e.type;
   });
   const finish = (id: string, transfer: number) => { const r = reqs.get(id); if (r && !r.done) { r.done = true; r.transfer = transfer; if (r.font) inflightFonts--; } };
   cdp.on('Network.loadingFinished', (e) => finish(e.requestId, e.encodedDataLength));
@@ -335,6 +341,28 @@ async function run(page: Page, cdp: CDPSession, url: string, o: VisitOptions, bo
   }
   fonts.sort((a, b) => (a.url < b.url ? -1 : a.url > b.url ? 1 : 0));
 
+  // What the page loaded, hashed, for the visit cache (M3.5). One unreadable body: not cacheable.
+  let resources: VisitResult['resources'] = [];
+  const CONTENT = new Set(['Document', 'Stylesheet', 'Script', 'XHR', 'Fetch']);
+  for (const [id, r] of reqs) {
+    if (!resources || r.url.startsWith('data:') || r.url.startsWith('blob:')) continue;
+    if (r.font) {
+      const f = fonts.find((x) => x.url === r.url);
+      if (f?.sha256) resources.push({ url: r.url, sha256: f.sha256, font: true });
+      else if (r.done && r.status >= 400) resources.push({ url: r.url, sha256: `http-${r.status}`, font: true });
+      else resources = undefined;
+      continue;
+    }
+    if (!CONTENT.has(r.type ?? '')) continue;
+    if (!r.done) { resources = undefined; continue; }
+    if (r.status >= 400) { resources.push({ url: r.url, sha256: `http-${r.status}` }); continue; }
+    try {
+      const b = await cdp.send('Network.getResponseBody', { requestId: id });
+      resources.push({ url: r.url, sha256: sha256(new Uint8Array(Buffer.from(b.body, b.base64Encoded ? 'base64' : 'utf8'))) });
+    } catch { resources = undefined; }
+  }
+  resources?.sort((a, b) => (a.url < b.url ? -1 : a.url > b.url ? 1 : 0));
+
   const visit: Visit = {
     page: pageKey(finalUrl), url: finalUrl, viewport: o.viewport, fontSize: o.fontSize, textScale: o.textScale, private: o.private,
     styles, runs, declared, faces, featureValues, counterStyles, keyframes, fonts,
@@ -342,7 +370,7 @@ async function run(page: Page, cdp: CDPSession, url: string, o: VisitOptions, bo
     emMediaQueries, textScaleMeta: inPage.textScaleMeta, notes,
   };
   const links = inPage.links.filter((l) => { try { return new URL(l).origin === origin; } catch { return false; } });
-  return { visit, status, finalUrl, links, bodies };
+  return { visit, status, finalUrl, links, bodies, resources: o.private ? undefined : resources };
 }
 
 export const pageKey = (u: string): string => { const x = new URL(u); return x.pathname + x.search; };

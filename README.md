@@ -9,7 +9,7 @@ pnpm install
 pnpm test                      # unit, golden-hash and crawler tests (crawler tests need Google Chrome)
 pnpm --filter fontphobia build # bundles packages/cli/dist + HarfBuzz WASM
 
-node packages/cli/src/cli.ts audit --cwd path/to/site   # builds if needed (asks if the build is stale), crawls every page
+node packages/cli/src/cli.ts audit --cwd path/to/site   # builds if needed (asks if the build is stale), crawls every page; reruns revisit only changed pages
 node packages/cli/src/cli.ts build --cwd path/to/site   # plans from .fontphobia/usage.json; --write applies; --allow limit-axes etc.
 node packages/cli/src/cli.ts verify --cwd path/to/site  # rebuilds if needed, compares before/after; diffs in .fontphobia/verify/
 node packages/cli/src/cli.ts verify --hinting --browsers chromium,webkit,linux-firefox  # + Linux engines via Apple container / Docker / Podman

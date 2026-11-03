@@ -29,6 +29,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
+        env:
+          VERIFY_ARTIFACTS: ${{ runner.temp }}/verify
+      - name: Upload verify diff images
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verify-diffs-${{ matrix.os }}-${{ matrix.node }}
+          path: ${{ runner.temp }}/verify
+          if-no-files-found: ignore
       - run: pnpm build
       - name: Install the packed CLI outside the workspace and run it
         shell: bash
@@ -85,3 +94,11 @@ jobs:
       - run: pnpm vitest run packages/crawler/test/verify.test.ts
         env:
           FONTPHOBIA_LINUX: '1'
+          VERIFY_ARTIFACTS: ${{ runner.temp }}/verify
+      - name: Upload verify diff images
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verify-diffs-sites
+          path: ${{ runner.temp }}/verify
+          if-no-files-found: ignore

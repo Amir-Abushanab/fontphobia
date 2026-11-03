@@ -11,6 +11,7 @@ import {
 } from '@fontphobia/core';
 import { openSite, since, type SiteOptions } from './site.ts';
 import { pageKey, visitPage, type VisitOptions } from './visit.ts';
+import { VisitCache } from './visit-cache.ts';
 
 export interface AuditOptions extends SiteOptions {
   root: string;
@@ -27,10 +28,14 @@ export interface AuditOptions extends SiteOptions {
   /** The default-font-size sweep (§7.2). */
   fontSizeSweep?: boolean;
   maxWords?: number;
+  /** Reuse cached visits whose resources are unchanged (M3.5, default true). */
+  cache?: boolean;
   log?: (msg: string) => void;
 }
 
 export interface CrawlInfo {
+  /** M3.5: visits reused from .fontphobia/cache/visits (nothing they loaded changed) and made fresh. */
+  cache?: { reused: number; visited: number };
   framework: { id: string; name: string; tier: 1 | 2 };
   mode: 'static' | 'server' | 'url';
   source: string;
@@ -141,11 +146,24 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     const pages = new Set<string>();
     const contextOpts = { locale: 'en-US', timezoneId: 'UTC', deviceScaleFactor: 1, storageState: o.storageState, reducedMotion: 'no-preference' as const };
     const bodyCache = new Map<string, { sha256: string; bytes: number }>();
+    // M3.5: reuse a page's earlier visit when nothing it loaded changed.
+    let cache: VisitCache | undefined;
+    if (o.cache !== false) {
+      const ctx = await browser.newContext(contextOpts);
+      const userAgent = await (await ctx.newPage()).evaluate(() => navigator.userAgent).catch(() => '');
+      await ctx.close();
+      cache = new VisitCache(root, { chrome, fontphobia: o.fontphobiaVersion, userAgent, locales: o.locales ?? [] });
+    }
+    const origin = new URL(base).origin;
     const doVisit = async (url: string, vo: Omit<VisitOptions, 'locales'>) => {
+      const key = vo.private ? undefined : cache?.keyOf(url, vo);
+      const hit = key ? await cache!.get(key, origin) : undefined;
+      if (hit) { for (const [k, b] of hit.bodies) bodies.set(k, b); return hit; }
       const ctx = await browser!.newContext(contextOpts);
       try {
         const r = await visitPage(ctx, url, { ...vo, locales: o.locales ?? [], bodyCache });
         for (const [k, b] of r.bodies) bodies.set(k, b);
+        if (key) cache!.put(key, origin, r);
         return r;
       } finally { await ctx.close().catch(() => {}); }
     };
@@ -204,6 +222,10 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       if (++done % 25 === 0) log(`visits: ${done}/${tasks.length}`);
     });
 
+    // Entries for pages and settings this run didn't touch are stale; keep them when pages were filtered.
+    if (cache && !include.length && !(o.pages ?? []).length) cache.prune();
+    if (cache) log(`visits: ${cache.stats.hits} reused from the cache, ${visitsOut.length - cache.stats.hits} made`);
+
     // 5. Font facts, usage, sources.
     const facts = new Map<string, FontFacts>();
     for (const [sha, b] of [...bodies].sort(([a], [c]) => (a < c ? -1 : 1))) {
@@ -236,7 +258,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       mode, source: o.url ?? (site?.dir !== undefined ? site.dir.slice(root.length + 1).split('\\').join('/') || '.' : site?.server?.cmd ?? ''), built,
       build: age ? { at: new Date(age.builtAt).toISOString(), output: age.output, newer: age.newer && { file: age.newer.file, at: new Date(age.newer.mtime).toISOString(), count: age.newer.count } } : undefined,
       pages: [...pages].sort(), failed: Object.fromEntries(Object.entries(failed).sort()), dynamicRoutes, routeSources: fileRoutes.sources,
-      visits: visitsOut.length, viewports, fontSizes: [...fontSizes].sort((a, b) => a - b), durationMs: Date.now() - t0,
+      visits: visitsOut.length, cache: cache ? { reused: cache.stats.hits, visited: visitsOut.length - cache.stats.hits } : undefined, viewports, fontSizes: [...fontSizes].sort((a, b) => a - b), durationMs: Date.now() - t0,
     };
     const json = usageToJson(usage, {
       fontphobia: o.fontphobiaVersion, harfbuzz: harfbuzzVersion(), chrome, framework: project.profile.id, mode,
