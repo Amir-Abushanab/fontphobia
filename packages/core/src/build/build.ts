@@ -9,8 +9,9 @@ import { listFiles } from '../project/detect.ts';
 import { planAll, type FacePlan, type Plan, type PlanConfig, type UsageFileJson } from '../plan/planner.ts';
 import { resolveSources } from '../plan/sources.ts';
 import { cssBlock, findBlock } from './css.ts';
-import { findSheetRefs, googleCss, googleFileUrl, googleSources, hostedDir, isGoogleSheet, sheetSlug } from '../adapters/google.ts';
+import { findSheetRefs, googleCssFromAudit, googleFileUrl, googleSources, hostedDir, isGoogleSheet, sheetSlug } from '../adapters/google.ts';
 import { parseStylesheet } from '../css/stylesheet.ts';
+import { findLocalFontCalls, localFontPath, nextFallbackMetrics } from '../adapters/next-font.ts';
 import { ejectName, findFontsourceImports, fontsourceRules, resolveFontsource, sameFile, type FontsourcePackage } from '../adapters/fontsource.ts';
 import { cssDemands, demandKeys, otherFaces } from './fingerprint.ts';
 import { applyEdits, type Edit } from './edits.ts';
@@ -141,6 +142,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
   const edits: Edit[] = [];
   const notWritten: BuildResult['notWritten'] = [];
   const snippets: BuildResult['snippets'] = [];
+  let calls: ReturnType<typeof findLocalFontCalls> | undefined;
   // One source can back several faces (normal and italic); its preloads go to the face on the most pages.
   const preloadOwner = new Map<string, string>();
   for (const f of [...plan.faces].filter((x) => x.status === 'planned' && x.adapter === 'css').sort((a, b) => (usage.faces[b.id]?.pages.length ?? 0) - (usage.faces[a.id]?.pages.length ?? 0) || (a.id < b.id ? -1 : 1))) {
@@ -185,6 +187,31 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
       const declaration = `@font-face {\n  font-family: '${face.family.replace(/'/g, "\\'")}';\n  src: url('${posix.basename(face.source!.file)}');\n${desc ? desc + '\n' : ''}${u.descriptors['unicode-range'] ? `  unicode-range: ${u.descriptors['unicode-range']};\n` : ''}}`;
       const css = cssBlock({ id: face.id, version: o.version, declaration, sourceUrl: posix.basename(face.source!.file), indent: '', eol: '\n', descriptors: face.descriptors, files: [...placed].reverse().map((p) => ({ url: p.url, unicodeRange: p.f.role === 'core' ? undefined : p.f.unicodeRange })) });
       snippets.push({ id: face.id, file: u.source.file, line: u.source.line, css: `${css}\n/* The URLs are relative to ${dir}/; point them at where your site serves these files. */` });
+      continue;
+    }
+    if (face.adapter === 'next-font-local') {
+      // §6.3: the one subset file goes next to the source; the call's path string points at it.
+      calls ??= findLocalFontCalls(root);
+      const p = prev?.entries[face.id];
+      const call = calls.find((c) => c.srcs.some((x) => x.file === face.source!.file || (p?.next && x.file === posix.join(posix.dirname(c.file), p.next.to))));
+      const src = call?.srcs.find((x) => x.file === face.source!.file || (p?.next && x.path === p.next.to));
+      const f = face.files!.find((x) => x.role === 'core');
+      if (!call || !src || !f) { notWritten.push({ id: face.id, reason: `couldn't find the localFont() call that loads ${face.source!.file}` }); continue; }
+      const out = `${posix.dirname(face.source!.file)}/${f.name}`;
+      const to = localFontPath(call, out);
+      // Next derives the fallback face from the file; it must come out the same (§6.3).
+      const before = nextFallbackMetrics(root, sources.get(face.id)!.bytes), after = nextFallbackMetrics(root, outputs.get(f.name)!);
+      if (!before || !after) { notWritten.push({ id: face.id, reason: "couldn't load the project's next to check the fallback face (install dependencies first)" }); continue; }
+      if (JSON.stringify(before) !== JSON.stringify(after)) { notWritten.push({ id: face.id, reason: `the fallback face would change (${JSON.stringify(before)} → ${JSON.stringify(after)})` }); continue; }
+      fonts.set(out, outputs.get(f.name)!);
+      if (src.path !== to) edits.push({ file: call.file, start: src.start, end: src.end, text: to, why: `${face.id}: ${src.path} → ${to}` });
+      entries[face.id] = {
+        id: face.id, adapter: 'next-font-local', family: face.family, stylesheet: call.file, declaration: '',
+        source: { file: face.source!.file, sha256: face.source!.sha256, bytes: sources.get(face.id)!.bytes.byteLength },
+        outputs: [{ role: f.role, file: out, url: to, sha256: f.sha256, bytes: f.bytes, unicodeRange: f.unicodeRange, hintRefs: f.hintRefs }],
+        plan: { features: face.features, axes: face.axes, descriptors: face.descriptors, hinting: face.hinting, optIns: (face.optIns ?? []).filter((x) => x.applied).map((x) => x.id), rename: face.license?.rename },
+        next: { file: call.file, from: p?.next?.from ?? src.path, to },
+      };
       continue;
     }
     if (face.adapter !== 'css') { notWritten.push({ id: face.id, reason: `writing ${face.adapter} faces arrives later in M7` }); continue; }
@@ -371,8 +398,10 @@ async function selfHostGoogle(root: string, faces: FacePlan[], usage: UsageFileJ
   const bySheet = new Map<string, FacePlan[]>();
   for (const f of faces) { const i = info.get(f.id); if (i) (bySheet.get(i.sheet) ?? bySheet.set(i.sheet, []).get(i.sheet)!).push(f); }
   for (const [sheet, planned] of bySheet) {
-    let css: string;
-    try { css = await googleCss(sheet, usage.meta.chrome); } catch (e) { for (const f of planned) notWritten.push({ id: f.id, reason: `couldn't fetch ${sheet}: ${(e as Error).message}` }); continue; }
+    // From this audit while it still sees Google's sheet; after self-hosting, as recorded then.
+    const prevEject = Object.values(prev?.ejects ?? {}).find((e) => e.specifier === sheet);
+    const seen = Object.values(usage.faces).some((f) => f.sheet === sheet);
+    const css = seen || !prevEject?.text ? googleCssFromAudit(usage, sheet) : prevEject.text;
     const slug = sheetSlug(sheet);
     const genFile = `${host.dir}/${slug}.css`;
     const rules = parseStylesheet(css).fontFaces;
@@ -402,12 +431,11 @@ async function selfHostGoogle(root: string, faces: FacePlan[], usage: UsageFileJ
     if (!done.size) continue;
     generated.set(genFile, out);
     const to = `${host.url}/${slug}.css`;
-    const prevEject = Object.values(prev?.ejects ?? {}).find((e) => e.specifier === sheet);
     const refs = findSheetRefs(root, sheet);
     for (const r of refs) edits.push({ file: r.file, start: r.start, end: r.end, text: to, why: `${sheet} → ${to}` });
     const imports = [...(prevEject?.imports ?? []), ...refs.map((r) => ({ file: r.file, from: r.text, to }))];
     if (!imports.length) for (const f of planned) notWritten.push({ id: f.id, reason: `couldn't find where the repo links ${sheet}` });
-    ejects[genFile] = { kind: 'google', package: 'fonts.googleapis.com', version: '', specifier: sheet, css: sheet, sha256: sha(out), imports: imports.sort((a, b) => (a.file < b.file ? -1 : 1)) };
+    ejects[genFile] = { kind: 'google', package: 'fonts.googleapis.com', version: '', specifier: sheet, css: sheet, sha256: sha(out), imports: imports.sort((a, b) => (a.file < b.file ? -1 : 1)), text: css };
   }
   return { entries, fonts, edits, generated, ejects, notWritten };
 }

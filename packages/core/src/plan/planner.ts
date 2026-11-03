@@ -141,11 +141,12 @@ export interface Plan {
 
 // ─── Capabilities (§6, capability matrix) ───────────────────────────────────────────────────────
 
-interface Caps { subset: boolean; split: 'full' | 'single'; why?: string }
+interface Caps { subset: boolean; split: 'full' | 'single'; /** A rest file can be declared (false: next/font/local, one file per face). */ rest?: boolean; why?: string }
 const CAPS: Record<string, Caps> = {
   css: { subset: true, split: 'full' },
   manual: { subset: true, split: 'full' },
-  'next-font-local': { subset: true, split: 'full' },
+  // One file per face: Turbopack (Next 16's default) can't split a localFont() call (§6.3, spike 5).
+  'next-font-local': { subset: true, split: 'single', rest: false },
   // Each slice is subset on its own; fontsource's slices are the split (§6.2).
   fontsource: { subset: true, split: 'single' },
   'next-font-google': { subset: false, split: 'single', why: 'Google serves next/font/google files; the to-local opt-in self-hosts them (M7)' },
@@ -400,7 +401,7 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
   // 4–5. Extended and rest.
   const setsFor = (core: Set<number>) => {
     const E = new Set([...K].filter((c) => !core.has(c)));
-    const R = cfg.remainder === false ? new Set<number>() : new Set([...servable].filter((c) => !K.has(c)));
+    const R = cfg.remainder === false || caps.rest === false ? new Set<number>() : new Set([...servable].filter((c) => !K.has(c)));
     return { core, ext: E, rest: R };
   };
   const stem = basename(src.file, extname(src.file));
@@ -467,7 +468,7 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
   if (unknownLocales.length) notes.push(`CLDR has no characters for ${unknownLocales.join(', ')}`);
   if (face.wordsTruncated) notes.push('word list was capped (§7.6): the shaping repair saw only part of the text');
   if (!hinted && !readSfnt(sfnt).tables.has('CFF ')) notes.push('no TrueType hinting to drop');
-  if (caps.split === 'single') notes.push(`${adapter}: one file per slice, no core/extended split`);
+  if (caps.split === 'single') notes.push(adapter === 'next-font-local' ? 'next/font/local: one file per face (Turbopack can\'t split a localFont() call); characters outside it fall back to the next font' : `${adapter}: one file per slice, no core/extended split`);
   const plan: FacePlan = {
     ...base, status: 'planned', source, license, kept, files: out.files, features, hinting: !final.dropHinting,
     axes: final.limit ? axesLimit : undefined, descriptors: final.limit && axesLimit ? axisDescriptors(face, axesLimit) : undefined,

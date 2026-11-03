@@ -127,7 +127,10 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
       f.outputs.push(await fontFacts(bytes));
       for (const c of rangeSet(out.unicodeRange)) (out.role === 'rest' ? f.rest : f.kept).add(c);
     }
-    checkCss(root, e, (_k, severity, message) => { if (severity === 'regression') add({ kind: 'block', id: e.id, file: e.stylesheet, message }); });
+    if (e.next) {
+      const t = existsSync(join(root, e.next.file)) ? readFileSync(join(root, e.next.file), 'utf8') : '';
+      if (!new RegExp(`["']${e.next.to.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`).test(t)) add({ kind: 'block', id: e.id, file: e.next.file, message: `${e.next.file} no longer loads ${e.next.to} in its localFont() call` });
+    } else checkCss(root, e, (_k, severity, message) => { if (severity === 'regression') add({ kind: 'block', id: e.id, file: e.stylesheet, message }); });
     facts.push(f);
   }
 
@@ -186,8 +189,12 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
   const outDir = o.outputDir ?? (() => { const s = findSite(project); return s?.mode === 'static' ? s.dir : undefined; })();
   if (!outDir) notes.push('no built static output found: the character check needs prerendered HTML (pass --dist)');
   else {
-    const files = listFiles(outDir, (r) => /\.(html?|m?js|json)$/i.test(r), { skip: (_rel, n) => n === 'node_modules', max: 20_000 });
+    // Not fontphobia's own files when the site is served from the project root (usage.json, the manifest).
+    const files = listFiles(outDir, (r) => /\.(html?|m?js|json)$/i.test(r) && !r.endsWith('fontphobia.manifest.json'), { skip: (_rel, n) => n === 'node_modules' || n.startsWith('.'), max: 20_000 });
     const missing = new Map<string, { cps: Set<number>; files: Set<string> }>();
+    // From JS/JSON only: bundles escape non-ASCII, so UI text and Unicode tables (React's, regexes)
+    // look the same. Reported as a note; prerendered HTML is what fails the check.
+    const scripted = new Map<string, { cps: Set<number>; files: Set<string> }>();
     type PageJson = { faces: Record<string, string>; fallback?: Record<string, string> };
     const pageChars = (pg: PageJson) => new Set([...Object.values(pg.faces), ...Object.values(pg.fallback ?? {})].flatMap((r) => [...rangeSet(r)]));
     const allSeen = new Set(Object.values(o.usage?.pages ?? {}).flatMap((pg) => [...pageChars(pg as PageJson)]));
@@ -196,7 +203,8 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
       try { if (statSync(join(outDir, rel)).size > 5_000_000) continue; text = readFileSync(join(outDir, rel), 'utf8'); } catch { continue; }
       textFiles++;
       const isHtml = /\.html?$/i.test(rel);
-      const chars = new Set([...(isHtml ? htmlText(text) : scriptStrings(text))].map((c) => c.codePointAt(0)!).filter((c) => c > 0x20 && !allow.has(c)));
+      // Space separators and invisible format characters never decide a subset.
+      const chars = new Set([...(isHtml ? htmlText(text) : scriptStrings(text))].filter((ch) => !/[\p{Z}\p{Cf}\p{Cc}]/u.test(ch)).map((c) => c.codePointAt(0)!).filter((c) => !allow.has(c)));
       // Faces drawn on this page (from the audit); unknown pages and scripts: every face.
       const pg = isHtml ? o.usage?.pages[pageOf(rel)] : undefined;
       const drawn = pg ? facts.filter((f) => pg.faces[f.e.id]) : facts;
@@ -207,11 +215,17 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
         if (drawn.some((f) => f.kept.has(c))) continue;
         for (const f of drawn) {
           if (!f.source?.cmap.has(c) || f.kept.has(c)) continue;
-          const m = missing.get(f.e.id) ?? missing.set(f.e.id, { cps: new Set(), files: new Set() }).get(f.e.id)!;
+          const into = isHtml ? missing : scripted;
+          const m = into.get(f.e.id) ?? into.set(f.e.id, { cps: new Set(), files: new Set() }).get(f.e.id)!;
           m.cps.add(c);
           m.files.add(relative(root, join(outDir, rel)).split(sep).join('/'));
         }
       }
+    }
+    for (const [id, m] of scripted) {
+      const f = facts.find((x) => x.e.id === id)!;
+      const cps = [...m.cps].filter((c) => !missing.get(id)?.cps.has(c)).sort((a, b) => a - b);
+      if (cps.length) notes.push(`${f.e.family}: strings in ${[...m.files].slice(0, 2).join(', ')}${m.files.size > 2 ? ` and ${m.files.size - 2} more` : ''} have ${show(cps)}, outside its subsets; if any of them render, rerun (allowChars silences the rest)`);
     }
     for (const [id, m] of missing) {
       const f = facts.find((x) => x.e.id === id)!;

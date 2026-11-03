@@ -33,6 +33,16 @@ export function revertProject(root: string, o: { write?: boolean } = {}): Revert
   }
   for (const e of Object.values(m.entries).sort((a, b) => (a.id < b.id ? -1 : 1))) {
     if (m.ejects?.[e.stylesheet]) continue; // the whole copy goes
+    if (e.next) {
+      // next/font/local: the call's path string back.
+      if (!existsSync(join(root, e.next.file))) { problems.push(`${e.next.file} is gone (${e.id})`); continue; }
+      const t = read(e.next.file);
+      const q = new RegExp(`(["'])${e.next.to.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\1`).exec(t);
+      if (!q) { problems.push(`the path ${e.next.to} is gone from ${e.next.file}`); continue; }
+      texts.set(e.next.file, t.slice(0, q.index + 1) + e.next.from + t.slice(q.index + 1 + e.next.to.length));
+      touched.add(e.next.file);
+      continue;
+    }
     if (!existsSync(join(root, e.stylesheet))) { problems.push(`${e.stylesheet} is gone (${e.id})`); continue; }
     const text = read(e.stylesheet);
     const span = findBlock(text, e.id);

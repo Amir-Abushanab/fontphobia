@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { listFiles } from '../project/detect.ts';
+import { inRanges, parseUnicodeRange } from '../css/unicode-range.ts';
 import type { UsageFaceJson, UsageFileJson } from '../plan/planner.ts';
 
 const sha = (b: Uint8Array | string) => createHash('sha256').update(b).digest('hex');
@@ -57,11 +58,24 @@ export async function googleSources(root: string, usage: UsageFileJson, ids: str
   return { sources, problems };
 }
 
-/** The Google stylesheet as Chrome got it. */
-export async function googleCss(sheet: string, chrome: string): Promise<string> {
-  const r = await fetch(sheet, { headers: { 'user-agent': chromeUserAgent(chrome) }, signal: AbortSignal.timeout(30_000) });
-  if (!r.ok) throw new Error(`${sheet} answered HTTP ${r.status}`);
-  return r.text();
+/**
+ * Google's stylesheet as the audited browser got it, rebuilt from the audit: every face it declared,
+ * loaded or not, with the descriptors Chrome saw. Not fetched again: Google answers by user agent and
+ * platform, and sometimes with an on-the-fly `/l/font?kit=` file (spike 6), so a second request
+ * can list different files. The slice holding U+0020 goes last, as Google orders them (WebKit takes
+ * a segmented family's primary font from the last rule).
+ */
+export function googleCssFromAudit(usage: UsageFileJson & { unloaded?: Record<string, { descriptors: Record<string, string>; sheet?: string }> }, sheet: string): string {
+  const faces = [...Object.values(usage.faces), ...Object.values(usage.unloaded ?? {})].filter((f) => f.sheet === sheet);
+  const order = ['font-family', 'font-style', 'font-weight', 'font-stretch', 'font-display', 'src', 'unicode-range'];
+  const hasSpace = (d: Record<string, string>) => !d['unicode-range'] || inRanges(parseUnicodeRange(d['unicode-range']), 0x20);
+  const rules = faces.map((f) => {
+    const d = f.descriptors;
+    const keys = [...order.filter((k) => d[k] !== undefined), ...Object.keys(d).filter((k) => !order.includes(k)).sort()];
+    return { last: hasSpace(d), text: `@font-face {\n${keys.map((k) => `  ${k}: ${d[k]};`).join('\n')}\n}` };
+  });
+  const sorted = [...rules.filter((r) => !r.last), ...rules.filter((r) => r.last)];
+  return sorted.map((r) => r.text).join('\n') + '\n';
 }
 
 export interface SheetRef { file: string; start: number; end: number; text: string }

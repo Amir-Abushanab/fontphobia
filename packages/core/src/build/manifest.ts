@@ -24,7 +24,7 @@ export interface ManifestOutput {
 
 export interface ManifestEntry {
   id: string;
-  adapter: 'css' | 'fontsource' | 'google-fonts';
+  adapter: 'css' | 'fontsource' | 'google-fonts' | 'next-font-local';
   family: string;
   /** Stylesheet (or component) holding the marked block. */
   stylesheet: string;
@@ -33,6 +33,8 @@ export interface ManifestEntry {
   source: { file: string; sha256: string; bytes: number };
   outputs: ManifestOutput[];
   plan: Pick<FacePlan, 'features' | 'axes' | 'descriptors' | 'hinting'> & { optIns: string[]; rename?: { from: string; to: string } };
+  /** next/font/local (§6.3): the `src`/`path` string rewritten in the call (`from` is the original). */
+  next?: { file: string; from: string; to: string };
   /** Preload hrefs pointed at the core file: `from` is the original text. */
   preloads?: { file: string; from: string; to: string }[];
 }
@@ -53,7 +55,7 @@ export interface Manifest {
    * fontsource ejects (§6.2), by generated stylesheet: the package CSS it copies, the imports pointed
    * at it (`from` is the original specifier), and its sha256 (revert deletes it only if unchanged).
    */
-  ejects?: Record<string, { kind?: 'fontsource' | 'google'; package: string; version: string; specifier: string; css: string; sha256: string; imports: { file: string; from: string; to: string }[] }>;
+  ejects?: Record<string, { kind?: 'fontsource' | 'google'; package: string; version: string; specifier: string; css: string; sha256: string; imports: { file: string; from: string; to: string }[]; /** google: Google's stylesheet as audited (rebuilt from usage.json; later audits no longer see it). */ text?: string }>;
   /** Features and axis values the CSS asked for when this was built ("family|feature|tag", "family|axis|wght=700"; family * = any). */
   demands?: string[];
 }
@@ -70,12 +72,13 @@ export const manifestJson = (m: Manifest) => canonicalJson(m);
 export function writeManifest(root: string, m: Manifest) { writeFileSync(join(root, MANIFEST_FILE), manifestJson(m)); }
 
 /** Output file name → the entry it belongs to and the original face's descriptors (audit folds them, §M4 notes). */
-export function generatedFaces(m: Manifest | undefined): Map<string, { id: string; descriptors: Record<string, string> }> {
-  const out = new Map<string, { id: string; descriptors: Record<string, string> }>();
+export function generatedFaces(m: Manifest | undefined): Map<string, { id: string; descriptors?: Record<string, string> }> {
+  const out = new Map<string, { id: string; descriptors?: Record<string, string> }>();
   for (const e of Object.values(m?.entries ?? {})) {
-    const rule = parseStylesheet(e.declaration).fontFaces[0];
-    if (!rule) continue;
-    for (const o of e.outputs) out.set(o.file.split('/').pop()!, { id: e.id, descriptors: rule.descriptors });
+    // next/font/local entries have no rule of ours: the rule Next emits keeps its own descriptors.
+    const rule = e.declaration ? parseStylesheet(e.declaration).fontFaces[0] : undefined;
+    if (e.declaration && !rule) continue;
+    for (const o of e.outputs) out.set(o.file.split('/').pop()!, { id: e.id, descriptors: rule?.descriptors });
   }
   return out;
 }

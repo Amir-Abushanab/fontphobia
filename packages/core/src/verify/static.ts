@@ -126,7 +126,7 @@ export async function verifyStatic(root: string, usage: UsageFileJson, manifest:
       if (prev) { add('output', 'regression', `${hex(c)} is in both ${prev} and ${o.role}`); break; }
       seen.set(c, o.role);
     }
-    checkCss(root, e, add);
+    if (e.adapter !== 'next-font-local') checkCss(root, e, add); // next/font writes its own CSS
 
     const face = usage.faces[e.id];
     if (!face) { add('coverage', 'warning', `usage.json has no face ${e.id}; shaping wasn't checked (rerun audit)`); continue; }

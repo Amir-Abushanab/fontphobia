@@ -414,15 +414,16 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
         for (const id of hitsA) usedInAfter.add(id);
         const drawn = Object.keys(o.usage.pages[t.page]?.faces ?? {}).filter((id) => entryIds.has(id));
         let c = await compare(t, base, b, a, drawn.some(roundingOk), o.manifest, outDir, ours);
-        // Pixels only, at identical layout: load both once more. Browsers occasionally rasterize a
-        // glyph a pixel differently between loads (seen with Fraunces in Linux Chromium); a
-        // difference that doesn't come back is noise, one that does is reported.
-        if (c.class === 'regression' && !c.moved && c.causes.every((x) => /^pixels differ/.test(x))) {
+        // Pixels only, at identical layout: load both again. Browsers occasionally rasterize a glyph a
+        // pixel differently between loads; a difference that doesn't come back is noise.
+        // Measured: the original Fraunces against itself differs by a pixel on about one load in four
+        // in Linux Chromium, sometimes twice running. Up to three more loads; any identical one wins.
+        for (let attempt = 0; attempt < 3 && c.class === 'regression' && !c.moved && c.causes.every((x) => /^pixels differ/.test(x)); attempt++) {
           const [cb2, ca2] = await Promise.all([context(t.browser, t, overlay, baseline ? 'plain' : 'before', root, new Set(), local, snapshots), context(t.browser, t, overlay, 'plain', root, new Set(), local, snapshots)]);
           try {
             const [b2, a2] = await Promise.all([capture(cb2, beforeUrl, t.engine), capture(ca2, url, t.engine)]);
             const again = await compare(t, base, b2, a2, drawn.some(roundingOk), o.manifest, outDir, ours);
-            if (again.class === 'identical') c = { ...c, class: 'flaky', causes: [`${c.causes.join('; ')}; didn't reproduce on a second load`] };
+            if (again.class === 'identical') c = { ...c, class: 'flaky', causes: [`${c.causes.join('; ')}; identical on load ${attempt + 2}`] };
           } finally { await Promise.all([cb2.close().catch(() => {}), ca2.close().catch(() => {})]); }
         }
         comparisons.push(c);

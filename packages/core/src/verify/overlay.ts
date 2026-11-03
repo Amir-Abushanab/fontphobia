@@ -34,6 +34,8 @@ export interface Overlay {
 
 const sha = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
 const URL_RE = /url\(\s*(["']?)(.*?)\1\s*\)/gi;
+/** A file name with `.`, `_` and `-` removed, for matching outputs through bundler renames. */
+export const squash = (name: string): string => name.replace(/[._-]/g, '').toLowerCase();
 
 function dataBytes(u: string): Uint8Array | undefined {
   const m = u.match(/^data:[^,]*?(;base64)?,(.*)$/is);
@@ -59,7 +61,9 @@ export function createOverlay(manifest: Manifest): Overlay {
     if (/^data:/i.test(url)) { const b = dataBytes(url); return b ? bySha.get(sha(b)) ?? [] : []; }
     let name: string;
     try { name = decodeURIComponent(posix.basename(new URL(url, 'http://x/').pathname)); } catch { return []; }
-    return byStem.filter(([stem]) => name.includes(stem)).map(([, r]) => r);
+    // Bundlers rename: Vite appends a hash, Next turns dots into underscores (`x_core_1a2b3c4d-s.p.….woff2`).
+    const flat = squash(name);
+    return byStem.filter(([stem]) => flat.includes(squash(stem))).map(([, r]) => r);
   };
   const outputOf = (url: string): OutputRef | undefined => outputsOf(url)[0];
 
@@ -88,7 +92,8 @@ export function createOverlay(manifest: Manifest): Overlay {
     rule.walkDecls((d) => { decls[d.prop.toLowerCase()] = d.value; });
     return (refs.find((r) => origStyle.get(r.entry.id) === styleOf(decls)) ?? refs[0])!.entry;
   };
-  const maybe = (css: string) => byStem.some(([stem]) => css.includes(stem)) || /url\(\s*["']?data:/i.test(css);
+  // Cheap pre-check before parsing: the hash8 survives every bundler rename seen so far.
+  const maybe = (css: string) => byStem.some(([stem]) => css.includes(stem.split('.').pop()!)) || /url\(\s*["']?data:/i.test(css);
 
   const restoreCss = (css: string, hits?: Set<string>): string | undefined => {
     if (!maybe(css)) return undefined;
@@ -103,6 +108,13 @@ export function createOverlay(manifest: Manifest): Overlay {
       changed = true;
       if (done.has(e.id)) { r.remove(); return; }
       done.add(e.id);
+      if (!e.declaration) {
+        // next/font writes the CSS itself (§6.3): keep its rule, load the source font instead.
+        const ext = posix.extname(e.source.file).slice(1).toLowerCase();
+        const format = ext === 'ttf' ? 'truetype' : ext === 'otf' ? 'opentype' : ext;
+        r.walkDecls(/^src$/i, (d) => { d.value = `url("${sourceUrl(e)}") format("${format}")`; });
+        return;
+      }
       const node = postcss.parse(restored(e)).first!;
       r.replaceWith(node);
     });

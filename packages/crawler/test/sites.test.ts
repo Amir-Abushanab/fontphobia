@@ -136,6 +136,41 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
     }, 600_000);
   }
 
+  // M7, next-font-local (§6.3): the localFont() path points at one subset file per face; Next's
+  // fallback face is unchanged; Next renames the file (dots to underscores) and the audit folds it.
+  it('next: build --write repoints localFont(), renders identically, check passes, revert is byte-exact', async () => {
+    const root = join(sites, 'next');
+    if (!existsSync(join(root, 'node_modules'))) throw new Error('run pnpm install in fixtures/sites/next first');
+    const fontsJs = join(root, 'app/fonts.js');
+    const original = readFileSync(fontsJs);
+    const opts = { root, fontphobiaVersion: 'test', fontSizeSweep: false, viewports: [1280], rebuild: true, cache: false };
+    const u1 = (await audit(opts)).usage as unknown as UsageFileJson;
+    const id = Object.keys(u1.faces).find((k) => u1.faces[k]!.source.adapter === 'next-font-local')!;
+    expect(u1.faces[id]!.source).toMatchObject({ adapter: 'next-font-local', file: 'app/fonts.js', line: 4, fontFile: 'fonts/DejaVuSans.ttf' });
+    let fonts: string[] = [];
+    try {
+      const b = await buildProject(root, u1, {}, { version: 'test', write: true });
+      expect(b.notWritten).toEqual([]);
+      const f = b.plan.faces.find((x) => x.id === id)!;
+      expect(f.files!.map((x) => x.role)).toEqual(['core']); // one file per face, no rest
+      expect(readFileSync(fontsJs, 'utf8')).toMatch(/src: '\.\.\/fonts\/DejaVuSans\.core\.[0-9a-f]{8}\.woff2'/);
+      const u2 = (await audit(opts)).usage as unknown as UsageFileJson;
+      expect(u2.faces[id]!.chars).toBe(u1.faces[id]!.chars);
+      expect(u2.faces[id]!.files.every((x) => /DejaVuSans_core_[0-9a-f]{8}/.test(x.url))).toBe(true);
+      expect((await buildProject(root, u2, {}, { version: 'test' })).unchanged).toBe(true);
+      const linux = process.platform === 'darwin' && (await findRuntime());
+      const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1, 2], browsers: linux ? ['linux-chromium'] : ['chromium'] });
+      expect(v.static.findings).toEqual([]);
+      expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated' && c.class !== 'flaky').map((c) => `${c.page} DPR ${c.dpr}: ${c.causes.join('; ')}`)).toEqual([]);
+      expect(v.ok).toBe(true);
+      expect((await checkProject({ root, usage: u1 })).issues).toEqual([]);
+    } finally {
+      if (existsSync(join(root, 'fontphobia.manifest.json'))) fonts = revertProject(root, { write: true }).fonts;
+      for (const x of fonts) rmSync(join(root, x), { force: true });
+    }
+    expect(readFileSync(fontsJs).equals(original)).toBe(true);
+  }, 900_000);
+
   // M7, google-fonts self-host (§6.5): needs the network (Google's CSS and files).
   it('astro: --allow self-host serves Fraunces from the site, renders identically, and revert restores the Google link', async () => {
     const root = join(sites, 'astro');

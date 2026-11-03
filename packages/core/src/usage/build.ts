@@ -82,7 +82,7 @@ export interface BuildOptions {
    * faces fold back into the original face, so words that span core and extended stay whole and a
    * rebuild plans from the same usage as the first build.
    */
-  generated?: Map<string, { id: string; descriptors: Record<string, string> }>;
+  generated?: Map<string, { id: string; descriptors?: Record<string, string> }>;
 }
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
@@ -102,12 +102,13 @@ const isSpace = (ch: string) => /\s/u.test(ch);
 
 /**
  * The generated face a served file belongs to: by exact name, or by `<stem>.<role>.<hash8>` inside a
- * bundler's renamed file (Vite: `inter.core.d5804d01.BFg9czMi.woff2`).
+ * bundler's renamed file (Vite: `inter.core.d5804d01.BFg9czMi.woff2`; Next: `inter_core_d5804d01-s.p.….woff2`).
  */
-function generatedFor(gen: Map<string, { id: string; descriptors: Record<string, string> }>, name: string) {
+function generatedFor(gen: Map<string, { id: string; descriptors?: Record<string, string> }>, name: string) {
   const exact = gen.get(name);
   if (exact) return exact;
-  for (const [file, g] of gen) if (name.includes(file.replace(/\.woff2$/, ''))) return g;
+  const flat = name.replace(/[._-]/g, '').toLowerCase();
+  for (const [file, g] of gen) if (flat.includes(file.replace(/\.woff2$/, '').replace(/[._-]/g, '').toLowerCase())) return g;
   return undefined;
 }
 
