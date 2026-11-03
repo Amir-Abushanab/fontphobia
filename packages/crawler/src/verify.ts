@@ -421,13 +421,20 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
         // Pixels only, at identical layout: load both again. Browsers occasionally rasterize a glyph a
         // pixel differently between loads; a difference that doesn't come back is noise.
         // Measured: the original Fraunces against itself differs by a pixel on about one load in four
-        // in Linux Chromium, sometimes twice running. Up to three more loads; any identical one wins.
+        // in Linux Chromium, sometimes twice running. Up to three more loads; any identical one wins,
+        // and so does any earlier load of one side whose pixels match a load of the other (a pixel that
+        // toggles at random makes every same-attempt pair differ about one time in fifty; a real
+        // change never matches at all).
+        const loadsB = [b.snap.png], loadsA = [a.snap.png];
+        const same = (x: PNG, y: PNG) => x.width === y.width && x.height === y.height && x.data.equals(y.data);
         for (let attempt = 0; attempt < 3 && c.class === 'regression' && !c.moved && c.causes.every((x) => /^pixels differ/.test(x)); attempt++) {
           const [cb2, ca2] = await Promise.all([context(t.browser, t, overlay, baseline ? 'plain' : 'before', root, new Set(), local, snapshots), context(t.browser, t, overlay, 'plain', root, new Set(), local, snapshots)]);
           try {
             const [b2, a2] = await Promise.all([capture(cb2, beforeUrl, t.engine), capture(ca2, url, t.engine)]);
             const again = await compare(t, base, b2, a2, drawn.some(roundingOk), o.manifest, outDir, ours);
+            loadsB.push(b2.snap.png); loadsA.push(a2.snap.png);
             if (again.class === 'identical') c = { ...c, class: 'flaky', causes: [`${c.causes.join('; ')}; identical on load ${attempt + 2}`] };
+            else if (loadsB.some((x) => loadsA.some((y) => same(x, y)))) c = { ...c, class: 'flaky', causes: [`${c.causes.join('; ')}; a load of the original and a load of the new files are pixel-identical (${loadsB.length} loads each)`] };
             else {
               // The noise floor: does the original differ from itself between two loads?
               const self = await compare(t, base, b, b2, false, o.manifest, join(outDir, 'noise'), ours);
