@@ -5,7 +5,7 @@ import { availableParallelism } from 'node:os';
 import { resolve } from 'node:path';
 import { chromium, type Browser } from 'playwright-core';
 import {
-  findBlock, findLocalFontCalls, generatedFaces, readManifest, buildUsage, classifyFace, detectCss, detectProject, fontFacts, globToRegExp, harfbuzzVersion,
+  adobeFaceFacts, findBlock, findLocalFontCalls, isTypekitSheet, type AdobeFaceFacts, generatedFaces, readManifest, buildUsage, classifyFace, detectCss, detectProject, fontFacts, globToRegExp, harfbuzzVersion,
   htmlPages, indexFontFiles, isGlob, routesFromFiles, scanOffDom, usageToJson,
   type FaceSource, type FontFacts, type OffDomHit, type Project, type Visit,
 } from '@fontphobia/core';
@@ -50,6 +50,8 @@ export interface CrawlInfo {
   viewports: number[];
   fontSizes: number[];
   durationMs: number;
+  /** adobe-fonts (§6.6): what the kit files hold, measured in memory (never written). */
+  adobe?: AdobeFaceFacts[];
 }
 
 export interface AuditResult {
@@ -274,6 +276,19 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       declarations: css.map((s) => ({ file: s.file, line: s.line, family: s.rule.family, weight: s.rule.descriptors['font-weight'], style: s.rule.descriptors['font-style'], files: s.files.map((f) => f.path ?? f.url), manual: s.manual })),
       offDom: offDom.length ? offDom : undefined,
     });
+    // adobe-fonts (§6.6): the kit files, from this crawl's downloads (or fetched again, in memory).
+    const adobe: AdobeFaceFacts[] = [];
+    for (const [id, f] of Object.entries(json.faces)) {
+      if (!isTypekitSheet(f.sheet)) continue;
+      const file = f.files[0];
+      if (!file) continue;
+      let bytes = file.sha256 ? bodies.get(file.sha256) : undefined;
+      if (!bytes) {
+        try { const r = await fetch(new URL(file.url, 'https://use.typekit.net/').href, { signal: AbortSignal.timeout(30_000) }); if (r.ok) bytes = new Uint8Array(await r.arrayBuffer()); } catch { /* offline */ }
+      }
+      if (bytes) { try { adobe.push(await adobeFaceFacts(f, bytes, { kit: f.sheet, id })); } catch { /* not a font */ } }
+    }
+    if (adobe.length) crawl.adobe = adobe;
     return { usage: json, crawl, offDom, project };
   } finally {
     await browser?.close().catch(() => {});

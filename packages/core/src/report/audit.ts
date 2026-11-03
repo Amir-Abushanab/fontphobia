@@ -1,5 +1,6 @@
 // The audit report: terminal text and report.md, from usage.json plus crawl facts (§1.5, §7).
 import { parseUnicodeRange, codePointsOf, formatUnicodeRange } from '../css/unicode-range.ts';
+import { adobeFindings, isTypekitSheet, type AdobeFaceFacts, type AdobeUsage } from '../adapters/adobe.ts';
 
 type UsageJson = {
   meta: { fontphobia: string; chrome: string; framework: string; mode: string; viewports: number[]; fontSizes: number[] };
@@ -31,6 +32,7 @@ export interface CrawlFacts {
   viewports: number[];
   fontSizes: number[];
   durationMs: number;
+  adobe?: AdobeFaceFacts[];
 }
 
 export const kb = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(2)} MB` : n >= 1024 ? `${(n / 1024).toFixed(1)} KB` : `${n} B`);
@@ -88,7 +90,7 @@ export function auditFindings(u: UsageJson, crawl: CrawlFacts): Finding[] {
   for (const f of Object.values(u.unloaded)) if (f.descriptors['unicode-range']) slices.set(f.family, (slices.get(f.family) ?? 0) + 1);
   for (const [fam, n] of slices) out.push({ kind: 'unused slices', text: `${fam}: ${n} unicode-range slice(s) no page needs; they only download when one does, so they're left alone` });
   for (const [id, f] of Object.entries(u.unloaded)) {
-    if (f.descriptors['unicode-range']) continue;
+    if (f.descriptors['unicode-range'] || isTypekitSheet(f.sheet)) continue; // Adobe kits: in the adobe-fonts findings
     const decl = u.declarations?.find((d) => d.family === f.family && f.urls.some((x) => d.files.some((y) => x.endsWith(y.split('/').pop()!))));
     out.push({ kind: 'never loaded', text: `${f.family} ${f.descriptors['font-weight'] ?? '400'} ${f.descriptors['font-style'] ?? 'normal'} (${id}) is declared${decl ? ` in ${decl.file}:${decl.line}` : f.sheet !== 'inline' ? ` in ${f.sheet}` : ''} but no page draws text with it; left alone` });
   }
@@ -109,6 +111,7 @@ export function auditFindings(u: UsageJson, crawl: CrawlFacts): Finding[] {
   for (const h of u.offDom ?? []) out.push({ kind: 'off-DOM', text: `${h.file}:${h.line} uses fonts outside the DOM (${h.kind}); those files keep working because outputs are new files` });
   for (const [id, f] of Object.entries(u.faces)) if (f.wordsTruncated) out.push({ kind: 'usage.json', text: `${id}: word list capped` });
   for (const [id, f] of Object.entries(u.faces)) if (f.source.adapter === 'unknown') out.push({ kind: 'source', text: `${id} (${f.files[0]?.url ?? f.family}): no declaration found in the repo` });
+  if ([...Object.values(u.faces), ...Object.values(u.unloaded)].some((f) => isTypekitSheet((f as { sheet?: string }).sheet))) out.push(...adobeFindings(u as unknown as AdobeUsage, crawl.adobe ?? []));
   const notes = new Set<string>();
   for (const pg of Object.values(u.pages)) for (const n of pg.notes) notes.add(n);
   for (const n of notes) out.push({ kind: 'note', text: n });

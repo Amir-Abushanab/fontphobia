@@ -38,4 +38,6 @@ export * from './check/check.ts';
 export * from './build/fingerprint.ts';
 export * from './adapters/fontsource.ts';
 export * from './adapters/google.ts';
+export * from './adapters/google-url.ts';
+export * from './adapters/adobe.ts';
 export * from './adapters/next-font.ts';
