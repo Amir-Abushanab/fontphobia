@@ -2,7 +2,7 @@
 
 Shrink a site's web fonts without changing how anything renders. See [PLAN.md](PLAN.md).
 
-Status: **M6**. `audit` crawls a site in your installed Google Chrome and writes `.fontphobia/usage.json` and `report.md`. `build` plans the subsets from that file (no browser), shows the sizes, opt-ins and the diff, and `--write` writes the fonts, the CSS edits and `fontphobia.manifest.json` (css adapter). `verify` checks the written files and shaping, then compares every page before and after in Chrome, pixel for pixel. `check` says whether the subsets are still up to date (static, for a postbuild script or CI; `--url` crawls production). `fontphobia/vite` keeps the outputs out of asset inlining and warns in dev; `fontphobia/astro` runs `check` after the build. `revert` undoes the edits. The other adapters are M7.
+Status: **M6**. `audit` crawls a site in your installed Google Chrome and writes `.fontphobia/usage.json` and `report.md`. `build` plans the subsets from that file (no browser), shows the sizes, opt-ins and the diff, and `--write` writes the fonts, the CSS edits and `fontphobia.manifest.json` (css adapter). `verify` checks the written files and shaping, then compares every page before and after in Chrome, pixel for pixel. `check` says whether the subsets are still up to date (static, for a postbuild script or CI; `--url` crawls production). `fontphobia/vite` keeps the outputs out of asset inlining and warns in dev; `fontphobia/astro` runs `check` after the build. `revert` undoes the edits. Fontsource imports are ejected into a local stylesheet that uses the subsets (`revert` restores the import). The other adapters are in progress (M7).
 
 ```sh
 pnpm install

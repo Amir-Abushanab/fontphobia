@@ -12,6 +12,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { detectCss } from '../adapters/css.ts';
+import { resolveFontsource } from '../adapters/fontsource.ts';
 import { cssDemands, newDemands, otherFaces } from '../build/fingerprint.ts';
 import { readManifest, type Manifest, type ManifestEntry } from '../build/manifest.ts';
 import { codePointsOf, parseUnicodeRange } from '../css/unicode-range.ts';
@@ -130,10 +131,17 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
     facts.push(f);
   }
 
+  // fontsource ejects (§6.2): the installed package must be the version the copy was made from.
+  for (const [file, ej] of Object.entries(manifest.ejects ?? {})) {
+    const pkg = resolveFontsource(root, ej.imports[0]?.file ?? file, ej.specifier);
+    if (!pkg) add({ kind: 'source', file, message: `${ej.package} isn't installed any more (${file} was ejected from it)` });
+    else if (pkg.version !== ej.version) add({ kind: 'source', file, message: `${ej.package} is ${pkg.version} now; ${file} was ejected from ${ej.version}` });
+  }
+
   // 2. Other @font-face rules, against the build's fingerprint.
   const css = detectCss(root);
   if (manifest.others) {
-    const now = otherFaces(root, css);
+    const now = otherFaces(root, css.filter((c) => !manifest.ejects?.[c.file]));
     const key = (x: { file: string; family: string; sha256: string }) => `${x.file}\u0000${x.family}\u0000${x.sha256}`;
     const before = new Set(manifest.others.map(key)), after = new Set(now.map(key));
     const fam = (x: { file: string; family: string }) => `${x.family} in ${x.file}`;

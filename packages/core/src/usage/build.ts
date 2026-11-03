@@ -100,6 +100,17 @@ function faceKey(f: CapturedFace): string {
 const isSkippable = (cp: number) => cp < 0x20 || (cp >= 0x7f && cp < 0xa0);
 const isSpace = (ch: string) => /\s/u.test(ch);
 
+/**
+ * The generated face a served file belongs to: by exact name, or by `<stem>.<role>.<hash8>` inside a
+ * bundler's renamed file (Vite: `inter.core.d5804d01.BFg9czMi.woff2`).
+ */
+function generatedFor(gen: Map<string, { id: string; descriptors: Record<string, string> }>, name: string) {
+  const exact = gen.get(name);
+  if (exact) return exact;
+  for (const [file, g] of gen) if (name.includes(file.replace(/\.woff2$/, ''))) return g;
+  return undefined;
+}
+
 export function buildUsage(visits: Visit[], facts: Map<string, FontFacts>, opts: BuildOptions = {}): Usage {
   const faces = new Map<string, FaceUsage>();
   const pages = new Map<string, PageUsage>();
@@ -130,7 +141,7 @@ export function buildUsage(visits: Visit[], facts: Map<string, FontFacts>, opts:
     const live: Live[] = [];
     const families = new Map<string, Live[]>();
     for (const f of v.faces) {
-      const gen = opts.generated?.size ? f.urls.map((x) => opts.generated!.get(pathOf(x).split(/[?#]/)[0]!.split('/').pop()!)).find(Boolean) : undefined;
+      const gen = opts.generated?.size ? f.urls.map((x) => generatedFor(opts.generated!, pathOf(x).split(/[?#]/)[0]!.split('/').pop()!)).find(Boolean) : undefined;
       const key = gen ? `fontphobia:${gen.id}` : faceKey(f);
       let u = faces.get(key);
       if (!u) {

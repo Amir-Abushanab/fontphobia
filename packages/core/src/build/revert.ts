@@ -1,11 +1,12 @@
 // `revert` (§9): put every original @font-face and preload back from the manifest, byte for byte.
 // The generated fonts stay; the result lists them for you to delete.
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { findBlock } from './css.ts';
 import { MANIFEST_FILE, readManifest } from './manifest.ts';
 
-export interface RevertResult { files: string[]; fonts: string[]; problems: string[] }
+export interface RevertResult { files: string[]; fonts: string[]; problems: string[]; /** Generated stylesheets removed. */ removed: string[] }
 
 export function revertProject(root: string, o: { write?: boolean } = {}): RevertResult {
   const m = readManifest(root);
@@ -14,7 +15,24 @@ export function revertProject(root: string, o: { write?: boolean } = {}): Revert
   const read = (f: string) => { let t = texts.get(f); if (t === undefined) { t = readFileSync(join(root, f), 'utf8'); texts.set(f, t); } return t; };
   const problems: string[] = [];
   const touched = new Set<string>();
+  const deleted: string[] = [];
+  // fontsource ejects (§6.2): imports back to the package; the generated copy goes if unchanged.
+  for (const [file, ej] of Object.entries(m.ejects ?? {}).sort(([a], [b]) => (a < b ? -1 : 1))) {
+    for (const i of ej.imports) {
+      if (!existsSync(join(root, i.file))) { problems.push(`${i.file} is gone (import of ${ej.specifier})`); continue; }
+      const t = read(i.file);
+      const m2 = new RegExp(`(["'])${i.to.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\1`).exec(t);
+      if (!m2) { problems.push(`the import of ${i.to} is gone from ${i.file}`); continue; }
+      texts.set(i.file, t.slice(0, m2.index + 1) + i.from + t.slice(m2.index + 1 + i.to.length));
+      touched.add(i.file);
+    }
+    if (existsSync(join(root, file))) {
+      if (createHash('sha256').update(readFileSync(join(root, file))).digest('hex') === ej.sha256) deleted.push(file);
+      else problems.push(`${file} was edited after the build; delete it yourself once nothing imports it`);
+    }
+  }
   for (const e of Object.values(m.entries).sort((a, b) => (a.id < b.id ? -1 : 1))) {
+    if (m.ejects?.[e.stylesheet]) continue; // the whole copy goes
     if (!existsSync(join(root, e.stylesheet))) { problems.push(`${e.stylesheet} is gone (${e.id})`); continue; }
     const text = read(e.stylesheet);
     const span = findBlock(text, e.id);
@@ -32,8 +50,9 @@ export function revertProject(root: string, o: { write?: boolean } = {}): Revert
   }
   if (o.write) {
     for (const f of touched) writeFileSync(join(root, f), texts.get(f)!);
+    for (const f of deleted) unlinkSync(join(root, f));
     if (!problems.length) unlinkSync(join(root, MANIFEST_FILE));
   }
   const fonts = [...new Set(Object.values(m.entries).flatMap((e) => e.outputs.map((x) => x.file)))].filter((f) => existsSync(join(root, f))).sort();
-  return { files: [...touched].sort(), fonts, problems };
+  return { files: [...touched].sort(), fonts, problems, removed: deleted.sort() };
 }

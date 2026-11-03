@@ -9,6 +9,7 @@ import { listFiles } from '../project/detect.ts';
 import { planAll, type FacePlan, type Plan, type PlanConfig, type UsageFileJson } from '../plan/planner.ts';
 import { resolveSources } from '../plan/sources.ts';
 import { cssBlock, findBlock } from './css.ts';
+import { ejectName, findFontsourceImports, fontsourceRules, resolveFontsource, sameFile, type FontsourcePackage } from '../adapters/fontsource.ts';
 import { cssDemands, demandKeys, otherFaces } from './fingerprint.ts';
 import { applyEdits, type Edit } from './edits.ts';
 import { MANIFEST_FILE, MANIFEST_VERSION, manifestJson, readManifest, type Manifest, type ManifestEntry } from './manifest.ts';
@@ -28,6 +29,8 @@ export interface BuildResult {
   edits: Edit[];
   /** Outputs of an earlier build that nothing references any more (deleted on write). */
   stale: string[];
+  /** Stylesheets fontphobia generates (fontsource ejects), repo paths. `exists`: already there with this text. */
+  generated: { file: string; bytes: number; exists: boolean }[];
   /** Planned faces this version can't write yet, with why. */
   notWritten: { id: string; reason: string }[];
   /** Nothing would change. */
@@ -123,8 +126,22 @@ export async function buildProject(root: string, usage: UsageFileJson, cfg: Plan
     if (!preloadOwner.has(n)) preloadOwner.set(n, f.id);
   }
 
+  // fontsource (§6.2): eject the package CSS into the project, with blocks for the used slices.
+  const generated = new Map<string, string>();
+  const ejects: NonNullable<Manifest['ejects']> = {};
+  const fsFaces = plan.faces.filter((f) => f.status === 'planned' && f.adapter === 'fontsource');
+  if (fsFaces.length) {
+    const r = ejectFontsource(root, fsFaces, prev, outputs, sources, o.version);
+    Object.assign(entries, r.entries);
+    for (const [k, v] of r.fonts) fonts.set(k, v);
+    edits.push(...r.edits);
+    for (const [k, v] of r.generated) generated.set(k, v);
+    Object.assign(ejects, r.ejects);
+    notWritten.push(...r.notWritten);
+  }
+
   for (const face of plan.faces) {
-    if (face.status !== 'planned') continue;
+    if (face.status !== 'planned' || face.adapter === 'fontsource') continue;
     if (face.adapter !== 'css') { notWritten.push({ id: face.id, reason: face.adapter === 'manual' ? 'manual: fontphobia prints the @font-face to paste (M7)' : `writing ${face.adapter} faces arrives in M7` }); continue; }
     const p = prev?.entries[face.id];
     const loc = locate(root, face, usage, p, css);
@@ -140,7 +157,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfg: Plan
       descriptors: face.descriptors,
       // Rest, extended, core: WebKit takes a segmented family's primary font (underline skip-ink,
       // emphasis marks) from the last rule; Chrome from the first rule covering U+0020 (M5 notes).
-      files: [...placed].reverse().map(({ f, at }) => ({ url: (at as { url: string }).url, unicodeRange: f.unicodeRange, family: cfg.mutation?.kind === 'ext-family' && cfg.mutation.face === face.id && f.role === 'ext' ? cfg.mutation.family : undefined })),
+      files: [...placed].reverse().map(({ f, at }) => ({ url: (at as { url: string }).url, unicodeRange: f.role === 'core' ? undefined : f.unicodeRange, family: cfg.mutation?.kind === 'ext-family' && cfg.mutation.face === face.id && f.role === 'ext' ? cfg.mutation.family : undefined })),
     });
     if (text.slice(loc.start, loc.end) !== block) edits.push({ file: loc.file, start: loc.start, end: loc.end, text: block, why: `${face.id}: ${face.files!.map((f) => f.role).join(' + ')}` });
     for (const { f, at } of placed) fonts.set((at as { file: string }).file, outputs.get(f.name)!);
@@ -171,7 +188,14 @@ export async function buildProject(root: string, usage: UsageFileJson, cfg: Plan
   // Entries this run didn't plan (face not in this usage.json) stay as they are.
   for (const [id, e] of Object.entries(prev?.entries ?? {})) if (!entries[id]) entries[id] = e;
 
-  const manifest: Manifest = { version: MANIFEST_VERSION, fontphobia: o.version, harfbuzz: harfbuzzVersion(), chrome: usage.meta.chrome, entries, others: otherFaces(root, css, edits), demands: demandKeys(cssDemands(root)) };
+  // Ejects this run didn't touch stay (their entries were kept above).
+  for (const [k, v] of Object.entries(prev?.ejects ?? {})) if (!ejects[k] && Object.values(entries).some((e) => e.stylesheet === k)) ejects[k] = v;
+  const manifest: Manifest = {
+    version: MANIFEST_VERSION, fontphobia: o.version, harfbuzz: harfbuzzVersion(), chrome: usage.meta.chrome, entries,
+    ejects: Object.keys(ejects).length ? ejects : undefined,
+    others: otherFaces(root, css.filter((c) => !generated.has(c.file) && !ejects[c.file]), edits), demands: demandKeys(cssDemands(root)),
+  };
+  const generatedList = [...generated].sort(([a], [b]) => (a < b ? -1 : 1)).map(([file, text]) => ({ file, bytes: Buffer.byteLength(text), exists: existsSync(join(root, file)) && readFileSync(join(root, file), 'utf8') === text }));
   const fontList = [...fonts].sort(([a], [b]) => (a < b ? -1 : 1)).map(([file, bytes]) => {
     const abs = join(root, file);
     return { file, bytes: bytes.byteLength, exists: existsSync(abs) && sha(readFileSync(abs)) === sha(bytes) };
@@ -181,7 +205,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfg: Plan
     .filter((x) => existsSync(join(root, x.file)) && sha(readFileSync(join(root, x.file))) === x.sha256).map((x) => x.file);
   const json = manifestJson(manifest);
   const manifestSame = existsSync(join(root, MANIFEST_FILE)) && readFileSync(join(root, MANIFEST_FILE), 'utf8') === json;
-  const unchanged = !edits.length && fontList.every((f) => f.exists) && !stale.length && (manifestSame || !Object.keys(entries).length);
+  const unchanged = !edits.length && fontList.every((f) => f.exists) && generatedList.every((g) => g.exists) && !stale.length && (manifestSame || !Object.keys(entries).length);
 
   if (o.write && !unchanged) {
     for (const [file, bytes] of fonts) {
@@ -190,9 +214,88 @@ export async function buildProject(root: string, usage: UsageFileJson, cfg: Plan
       mkdirSync(dirname(abs), { recursive: true });
       writeFileSync(abs, bytes);
     }
+    for (const [file, text] of generated) { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), text); }
     applyEdits(root, edits);
     for (const f of stale) unlinkSync(join(root, f));
     if (Object.keys(entries).length) writeFileSync(join(root, MANIFEST_FILE), json);
   }
-  return { plan, manifest, fonts: fontList, edits, stale, notWritten, unchanged };
+  return { plan, manifest, fonts: fontList, generated: generatedList, edits, stale, notWritten, unchanged };
+}
+
+/**
+ * fontsource eject (§6.2). For each imported package CSS that declares a planned slice: a generated
+ * copy in the project (`src/styles/fontphobia/<package>.css`) whose planned rules are marked blocks
+ * pointing at `./files/<outputs>`, and whose other rules point back at the package's files; the
+ * imports are pointed at the copy. Rerunning regenerates the copy from the package, so it's idempotent.
+ */
+function ejectFontsource(root: string, faces: FacePlan[], prev: Manifest | undefined, outputs: Map<string, Uint8Array>, sources: Map<string, { bytes: Uint8Array }>, version: string) {
+  const entries: Record<string, ManifestEntry> = {};
+  const fonts = new Map<string, Uint8Array>();
+  const edits: Edit[] = [];
+  const generated = new Map<string, string>();
+  const ejects: NonNullable<Manifest['ejects']> = {};
+  const notWritten: BuildResult['notWritten'] = [];
+  const genDir = existsSync(join(root, 'src')) ? 'src/styles/fontphobia' : 'fontphobia';
+
+  // Candidates: earlier ejects (their imports now point at the copy), then fresh imports.
+  type Cand = { specifier: string; pkg: FontsourcePackage; imports: { file: string; start?: number; end?: number; to?: string }[] };
+  const cands = new Map<string, Cand>();
+  for (const [file, ej] of Object.entries(prev?.ejects ?? {})) {
+    const pkg = resolveFontsource(root, ej.imports[0]?.file ?? file, ej.specifier);
+    if (pkg) cands.set(ej.specifier, { specifier: ej.specifier, pkg, imports: ej.imports.map((i) => ({ file: i.file, to: i.to })) });
+  }
+  for (const imp of findFontsourceImports(root)) {
+    let c = cands.get(imp.specifier);
+    if (!c) { const pkg = resolveFontsource(root, imp.file, imp.specifier); if (!pkg) continue; c = { specifier: imp.specifier, pkg, imports: [] }; cands.set(imp.specifier, c); }
+    c.imports.push({ file: imp.file, start: imp.start, end: imp.end });
+  }
+
+  const byCand = new Map<string, { face: FacePlan; rule: ReturnType<typeof fontsourceRules>[number] }[]>();
+  for (const face of faces) {
+    let hit: { spec: string; rule: ReturnType<typeof fontsourceRules>[number] } | undefined;
+    for (const c of cands.values()) {
+      // The slice file names the rule: italic and normal slices are different files.
+      const rule = fontsourceRules(root, c.pkg).find((r) => sameFile(root, r.file, face.source!.file));
+      if (rule) { hit = { spec: c.specifier, rule }; break; }
+    }
+    if (!hit) { notWritten.push({ id: face.id, reason: `couldn't find the import of the fontsource package that loads ${face.source!.file}` }); continue; }
+    (byCand.get(hit.spec) ?? byCand.set(hit.spec, []).get(hit.spec)!).push({ face, rule: hit.rule });
+  }
+
+  for (const [spec, planned] of byCand) {
+    const c = cands.get(spec)!;
+    const genFile = `${genDir}/${ejectName(spec)}.css`;
+    const filesDir = `${genDir}/files`;
+    const rules = fontsourceRules(root, c.pkg);
+    let out = `/* fontphobia: ${spec}@${c.pkg.version}, ejected (generated; rerun \`fontphobia build\`; \`fontphobia revert\` restores the import) */\n`;
+    let at = 0;
+    const toPkg = (u: string, file: string) => posix.relative(genDir, file) + (u.match(/[?#].*$/)?.[0] ?? '');
+    for (const r of rules) {
+      out += c.pkg.text.slice(at, r.start);
+      at = r.end;
+      const hit = planned.find((x) => x.rule.start === r.start);
+      if (!hit) { out += r.text.replace(r.url, toPkg(r.url, r.file)); continue; }
+      const { face } = hit;
+      const placed = face.files!.map((f) => ({ f, file: `${filesDir}/${f.name}`, url: `./files/${f.name}` }));
+      out += cssBlock({ id: face.id, version, declaration: r.text, sourceUrl: r.url, indent: '', eol: '\n', descriptors: face.descriptors, files: [...placed].reverse().map((p) => ({ url: p.url, unicodeRange: p.f.role === 'core' ? undefined : p.f.unicodeRange })) });
+      for (const p of placed) fonts.set(p.file, outputs.get(p.f.name)!);
+      entries[face.id] = {
+        id: face.id, adapter: 'fontsource', family: face.family, stylesheet: genFile, declaration: r.text,
+        source: { file: face.source!.file, sha256: face.source!.sha256, bytes: sources.get(face.id)!.bytes.byteLength },
+        outputs: placed.map((p) => ({ role: p.f.role, file: p.file, url: p.url, sha256: p.f.sha256, bytes: p.f.bytes, unicodeRange: p.f.unicodeRange, hintRefs: p.f.hintRefs })),
+        plan: { features: face.features, axes: face.axes, descriptors: face.descriptors, hinting: face.hinting, optIns: (face.optIns ?? []).filter((x) => x.applied).map((x) => x.id), rename: face.license?.rename },
+      };
+    }
+    out += c.pkg.text.slice(at);
+    generated.set(genFile, out);
+    const imports: { file: string; from: string; to: string }[] = [];
+    for (const i of c.imports) {
+      let rel = posix.relative(posix.dirname(i.file), genFile);
+      if (!rel.startsWith('.')) rel = './' + rel;
+      if (i.start !== undefined && i.end !== undefined) edits.push({ file: i.file, start: i.start, end: i.end, text: rel, why: `${spec} → ${genFile}` });
+      imports.push({ file: i.file, from: spec, to: i.to ?? rel });
+    }
+    ejects[genFile] = { package: c.pkg.name, version: c.pkg.version, specifier: spec, css: c.pkg.css, sha256: sha(out), imports: imports.sort((a, b) => (a.file < b.file ? -1 : 1)) };
+  }
+  return { entries, fonts, edits, generated, ejects, notWritten };
 }

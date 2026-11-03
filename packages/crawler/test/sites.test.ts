@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { buildProject, checkProject, codePointsOf, parseUnicodeRange, revertProject, type UsageFileJson } from '@fontphobia/core';
-import { audit, runCommand, verify } from '../src/index.ts';
+import { audit, findRuntime, runCommand, verify } from '../src/index.ts';
 import { writeGoldenUsage } from './golden.ts';
 
 const sites = fileURLToPath(new URL('../../../fixtures/sites/', import.meta.url));
@@ -49,13 +49,18 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
     it(`${name}: build --write, rebuild the site, and it renders from the subsets; revert is byte-exact`, async () => {
       const cssFile = join(root, name === 'astro' ? 'src/styles/fonts.css' : 'src/styles.css');
       const original = readFileSync(cssFile);
+      const importerFile = join(root, name === 'astro' ? 'src/layouts/Layout.astro' : 'src/routes/__root.tsx');
+      const importerOriginal = readFileSync(importerFile);
       const opts = { root, fontphobiaVersion: 'test', fontSizeSweep: false, viewports: [1280], rebuild: true };
       const u1 = (await audit(opts)).usage as unknown as UsageFileJson;
       let fonts: string[] = [];
       try {
         const b = await buildProject(root, u1, {}, { version: 'test', write: true });
         expect(b.plan.faces.find((f) => f.family === 'Fixture Sans')!.status).toBe('planned');
-        expect(b.notWritten.map((n) => n.reason)).toEqual([expect.stringMatching(/fontsource faces arrives in M7/), expect.stringMatching(/fontsource faces arrives in M7/)]);
+        // M7: fontsource ejected into the project, the import pointed at the copy (§6.2).
+        expect(b.notWritten).toEqual([]);
+        expect(b.generated.map((g) => g.file)).toEqual(['src/styles/fontphobia/fontsource-variable-inter.css']);
+        expect(readFileSync(importerFile, 'utf8')).toMatch(/import '\.\.\/styles\/fontphobia\/fontsource-variable-inter\.css'/);
         const r2 = await audit(opts); // rebuilds the site with the edited CSS
         const u2 = r2.usage as unknown as UsageFileJson;
         const id = Object.keys(u1.faces).find((k) => u1.faces[k]!.family === 'Fixture Sans')!;
@@ -63,16 +68,31 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
         const served = Object.values(u2.pages).flatMap((p) => p.fonts.filter((f) => f.faces.includes(id)));
         expect(served.length).toBeGreaterThan(0);
         for (const f of served) { expect(f.status).toBe(200); expect(f.url).toMatch(/dejavu-sans-latin\.(core|ext|rest)\.[0-9a-f]{8}\.woff2$/); }
+        // The ejected Inter slices fold back to the same faces, served from the subsets.
+        for (const [fid, f] of Object.entries(u1.faces).filter(([, f]) => f.source.adapter === 'fontsource')) {
+          expect(u2.faces[fid]?.chars, fid).toBe(f.chars);
+          expect(u2.faces[fid]!.files.every((x) => /\.(core|rest)\.[0-9a-f]{8}/.test(x.url))).toBe(true);
+        }
         expect((await buildProject(root, u2, {}, { version: 'test' })).unchanged).toBe(true);
-        // M5: the built site renders exactly as with the original font, page by page.
-        const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1, 2] });
+        // M5: the built site renders exactly as with the original font, page by page. On macOS the
+        // comparison runs in the Linux image when it can: CoreText draws some variable composite
+        // glyphs from small subsets a few pixels differently (PLAN, M7 notes, open issue).
+        const linux = process.platform === 'darwin' && (await findRuntime());
+        const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1, 2], browsers: linux ? ['linux-chromium'] : ['chromium'] });
         expect(v.static.findings).toEqual([]);
         expect(v.browser!.loads).toEqual([]);
-        // Only pages that draw a generated face are compared: Fixture Sans is on one page.
-        expect(v.browser!.pages).toEqual(u1.faces[id]!.pages);
+        // Every page draws a generated face now (Inter is ejected too).
+        expect(v.browser!.pages).toEqual(Object.keys(u1.pages).sort());
         expect(v.browser!.comparisons.length).toBe(2 * v.browser!.pages.length);
         expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated').map((c) => `${c.page} DPR ${c.dpr} ${c.class}: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`)).toEqual([]);
         expect(v.ok).toBe(true);
+
+        // An updated fontsource package makes the ejected copy out of date.
+        const mf = join(root, 'fontphobia.manifest.json');
+        const mText = readFileSync(mf, 'utf8');
+        writeFileSync(mf, mText.replace(/("specifier": "@fontsource-variable\/inter",\s*\n\s*)?"version": "5\.3\.0"/, (m) => m.replace('5.3.0', '5.0.0')));
+        expect((await checkProject({ root, usage: u1 })).issues.map((i) => i.message)).toContainEqual(expect.stringMatching(/^@fontsource-variable\/inter is 5\.3\.0 now; src\/styles\/fontphobia\/fontsource-variable-inter\.css was ejected from 5\.0\.0$/));
+        writeFileSync(mf, mText);
 
         // M6: check after the HTML exists passes now, and catches new content. Astro runs it in
         // astro:build:done through fontphobia/astro; TanStack Start (no hook) as a postbuild step.
@@ -96,7 +116,8 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
           } else {
             expect((await runCommand('pnpm run build', root)).code).toBe(0);
             const r = await checkProject({ root, usage: u1 });
-            expect(r.issues.map((i) => i.message)).toEqual([expect.stringMatching(/^Fixture Sans: • \(U\+2022\) would load the rest file \(in .*dist\/client\/index\.html/)]);
+            // Static check can't tell which face draws the bullet: Inter (ejected) is on the page too.
+            expect(r.issues.map((i) => i.message)).toContainEqual(expect.stringMatching(/^Fixture Sans: • \(U\+2022\) would load the rest file \(in .*dist\/client\/index\.html/));
             expect(r.command).toBe('pnpm dlx fontphobia@test --write');
           }
         } finally {
@@ -106,8 +127,11 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       } finally {
         if (existsSync(join(root, 'fontphobia.manifest.json'))) fonts = revertProject(root, { write: true }).fonts;
         for (const f of fonts) rmSync(join(root, f), { force: true });
+        rmSync(join(root, 'src/styles/fontphobia'), { recursive: true, force: true });
       }
       expect(readFileSync(cssFile).equals(original)).toBe(true);
+      expect(readFileSync(importerFile).equals(importerOriginal)).toBe(true);
+      expect(existsSync(join(root, 'src/styles/fontphobia/fontsource-variable-inter.css'))).toBe(false);
       expect(existsSync(join(root, 'fontphobia.manifest.json'))).toBe(false);
     }, 600_000);
   }

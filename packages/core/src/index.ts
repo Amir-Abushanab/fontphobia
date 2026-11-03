@@ -36,3 +36,4 @@ export * from './verify/overlay.ts';
 export * from './plan/hintrefs.ts';
 export * from './check/check.ts';
 export * from './build/fingerprint.ts';
+export * from './adapters/fontsource.ts';

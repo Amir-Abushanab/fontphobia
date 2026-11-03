@@ -24,7 +24,7 @@ export interface ManifestOutput {
 
 export interface ManifestEntry {
   id: string;
-  adapter: 'css';
+  adapter: 'css' | 'fontsource';
   family: string;
   /** Stylesheet (or component) holding the marked block. */
   stylesheet: string;
@@ -49,6 +49,11 @@ export interface Manifest {
    * reports one added, removed or edited since (§12). Hash of the rule text, whitespace collapsed.
    */
   others?: { file: string; family: string; sha256: string }[];
+  /**
+   * fontsource ejects (§6.2), by generated stylesheet: the package CSS it copies, the imports pointed
+   * at it (`from` is the original specifier), and its sha256 (revert deletes it only if unchanged).
+   */
+  ejects?: Record<string, { package: string; version: string; specifier: string; css: string; sha256: string; imports: { file: string; from: string; to: string }[] }>;
   /** Features and axis values the CSS asked for when this was built ("family|feature|tag", "family|axis|wght=700"; family * = any). */
   demands?: string[];
 }

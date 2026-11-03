@@ -75,7 +75,11 @@ export function checkCss(root: string, e: ManifestEntry, add: (kind: VerifyFindi
     const r = rules.find((x) => firstUrl(x) === o.url);
     if (!r) { add('css', 'regression', `no rule in the block loads ${o.url} (${o.role})`); continue; }
     const range = r.descriptors['unicode-range'];
-    if (!range || formatUnicodeRange(parseUnicodeRange(range)) !== formatUnicodeRange(parseUnicodeRange(o.unicodeRange))) add('css', 'regression', `${o.role} rule's unicode-range isn't the file's cmap`);
+    const rng = (x?: string) => (x ? formatUnicodeRange(parseUnicodeRange(x)) : '');
+    // Core keeps the original rule's unicode-range (or none); the others have their file's cmap.
+    if (o.role === 'core' ? rng(range) !== rng(orig.descriptors['unicode-range']) : !range || rng(range) !== rng(o.unicodeRange)) {
+      add('css', 'regression', o.role === 'core' ? `core rule's unicode-range should be the original's (${orig.descriptors['unicode-range'] ?? 'none'})` : `${o.role} rule's unicode-range isn't the file's cmap`);
+    }
     if (norm(unquote(r.family)) !== norm(unquote(orig.family))) add('css', 'regression', `${o.role} rule has font-family ${JSON.stringify(r.family)}, the original is ${JSON.stringify(orig.family)}: its characters fall back`);
     for (const k of new Set([...Object.keys(orig.descriptors), ...Object.keys(r.descriptors)])) {
       if (changed.has(k) || k === 'font-family') continue;

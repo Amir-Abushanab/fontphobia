@@ -26,6 +26,8 @@ export interface SubsetOptions {
   hinting?: boolean;
   /** Rewrite the family in the internal names (OFL Reserved Font Names, §11). */
   rename?: { from: string; to: string };
+  /** Raw hb_subset flags OR'd in (diagnostics, e.g. 0x2 retain glyph ids). */
+  flags?: number;
 }
 
 export const DEFAULT_NAME_IDS = [0, 1, 2, 3, 4, 5, 6, 13, 14, 16, 17, 25] as const;
@@ -78,6 +80,7 @@ export function hbSubset(sfnt: Uint8Array, opts: SubsetOptions): Uint8Array {
     // Keep .notdef's outline: a character no installed font has is drawn as the primary font's
     // .notdef box, so an empty one changes those boxes and the line height around them (M6 notes).
     flags |= FLAG_NOTDEF_OUTLINE;
+    flags |= opts.flags ?? 0;
     w.hb_subset_input_set_flags(input, flags);
 
     const u = w.hb_subset_input_unicode_set(input);

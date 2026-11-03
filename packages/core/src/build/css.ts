@@ -22,7 +22,17 @@ export function blockIds(text: string): string[] {
   return [...text.matchAll(/\/\* fontphobia:begin (\S+) /g)].map((m) => m[1]!);
 }
 
-export interface BlockFile { url: string; unicodeRange: string; /** Tests only (the ext-family mutation). */ family?: string }
+export interface BlockFile {
+  url: string;
+  /**
+   * The file's unicode-range. Undefined (core): keep the original rule's own unicode-range, or none.
+   * Characters no font has then still reach this face and draw as its .notdef, as they did unsplit;
+   * core is the last rule, which browsers check first, so everything else falls through as before.
+   */
+  unicodeRange?: string;
+  /** Tests only (the ext-family mutation). */
+  family?: string;
+}
 
 /**
  * The marked block replacing `declaration`. `sourceUrl` is the src url that points at the source font;
@@ -49,10 +59,10 @@ export function cssBlock(o: { id: string; version: string; declaration: string; 
       const p = d.prop.toLowerCase();
       if (p === 'src') d.value = src;
       else if (p === 'font-family' && f.family) d.value = `'${f.family}'`;
-      else if (p === 'unicode-range') { d.value = f.unicodeRange; hasRange = true; }
+      else if (p === 'unicode-range') { if (f.unicodeRange !== undefined) d.value = f.unicodeRange; hasRange = true; }
       else if (o.descriptors?.[p] !== undefined) d.value = o.descriptors[p]!;
     });
-    if (!hasRange) r.append({ prop: 'unicode-range', value: f.unicodeRange });
+    if (!hasRange && f.unicodeRange !== undefined) r.append({ prop: 'unicode-range', value: f.unicodeRange });
     return r.toString().replace(/\r?\n/g, o.eol);
   });
   return [beginMarker(o.id, o.version), ...rules, endMarker(o.id)].join(o.eol + o.indent);

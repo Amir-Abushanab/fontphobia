@@ -170,6 +170,7 @@ async function runBuild(o: BuildFlags & { prompt?: boolean }) {
       ? `Wrote ${newFonts.length} font file(s), edited ${nEdit} file(s)${r.stale.length ? `, deleted ${r.stale.length} outdated output(s)` : ''} and wrote ${MANIFEST_FILE}:`
       : `Would write ${newFonts.length} font file(s), edit ${nEdit} file(s)${r.stale.length ? `, delete ${r.stale.length} outdated output(s)` : ''} and write ${MANIFEST_FILE}:`);
     for (const f of newFonts) out.push(`  ${f.file}  ${kb(f.bytes)}`);
+    for (const g of r.generated.filter((x) => !x.exists)) out.push(`  ${g.file}  (generated stylesheet)`);
     for (const f of r.stale) out.push(`  - ${f}`);
     if (r.edits.length) out.push('', formatEdits(root, r.edits));
   }
@@ -302,6 +303,7 @@ cli
     const r = revertProject(root, { write: !o.dryRun });
     const L = [`${o.dryRun ? 'Would restore' : 'Restored'} ${r.files.length} file(s): ${r.files.join(', ') || 'none'}`];
     if (r.problems.length) { L.push('Problems (manifest kept):'); for (const p of r.problems) L.push(`  ${p}`); }
+    if (r.removed.length) L.push(`${o.dryRun ? 'Would remove' : 'Removed'} generated stylesheet(s): ${r.removed.join(', ')}`);
     if (r.fonts.length) L.push(`Generated fonts left for you to delete:`, ...r.fonts.map((f) => `  ${f}`));
     process.stdout.write(L.join('\n') + '\n');
     if (r.problems.length) process.exitCode = 1;
