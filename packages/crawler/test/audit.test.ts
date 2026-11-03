@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { buildProject, canonicalJson, codePointsOf, parseUnicodeRange, type UsageFileJson } from '@fontphobia/core';
+import { buildProject, canonicalJson, checkUsage, codePointsOf, parseUnicodeRange, type UsageFileJson } from '@fontphobia/core';
 import { audit, launchChrome, resolveStatic, startServer, type AuditResult } from '../src/index.ts';
 import { writeGoldenUsage } from './golden.ts';
 
@@ -220,5 +220,12 @@ describe.skipIf(!chrome)('after build --write (M4)', () => {
     }
     const b2 = await buildProject(root, u2, {}, { version: 'test', write: true });
     expect(b2.unchanged).toBe(true);
-  }, 240_000);
+
+    // M6, check's exact mode: a crawl of the built site against the written files.
+    expect((await checkUsage(root, u2)).issues).toEqual([]);
+    const about = join(root, 'about/index.html');
+    writeFileSync(about, readFileSync(about, 'utf8').replace('Only ASCII here', 'Only ASCII here, Жизнь'));
+    const u3 = (await audit(opts)).usage as unknown as UsageFileJson;
+    expect((await checkUsage(root, u3)).issues.map((i) => i.message)).toEqual([expect.stringMatching(/^Inter: Ж \(U\+0416\), .* drawn on \d+ page\(s\) came from the rest file$/)]);
+  }, 300_000);
 });

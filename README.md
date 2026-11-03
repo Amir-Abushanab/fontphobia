@@ -2,7 +2,7 @@
 
 Shrink a site's web fonts without changing how anything renders. See [PLAN.md](PLAN.md).
 
-Status: **M5**. `audit` crawls a site in your installed Google Chrome and writes `.fontphobia/usage.json` and `report.md`. `build` plans the subsets from that file (no browser), shows the sizes, opt-ins and the diff, and `--write` writes the fonts, the CSS edits and `fontphobia.manifest.json` (css adapter). `verify` checks the written files and shaping, then compares every page before and after in Chrome, pixel for pixel. `revert` undoes the edits. `check` is M6; the other adapters are M7.
+Status: **M6**. `audit` crawls a site in your installed Google Chrome and writes `.fontphobia/usage.json` and `report.md`. `build` plans the subsets from that file (no browser), shows the sizes, opt-ins and the diff, and `--write` writes the fonts, the CSS edits and `fontphobia.manifest.json` (css adapter). `verify` checks the written files and shaping, then compares every page before and after in Chrome, pixel for pixel. `check` says whether the subsets are still up to date (static, for a postbuild script or CI; `--url` crawls production). `fontphobia/vite` keeps the outputs out of asset inlining and warns in dev; `fontphobia/astro` runs `check` after the build. `revert` undoes the edits. The other adapters are M7.
 
 ```sh
 pnpm install
@@ -13,6 +13,7 @@ node packages/cli/src/cli.ts audit --cwd path/to/site   # builds if needed (asks
 node packages/cli/src/cli.ts build --cwd path/to/site   # plans from .fontphobia/usage.json; --write applies; --allow limit-axes etc.
 node packages/cli/src/cli.ts verify --cwd path/to/site  # rebuilds if needed, compares before/after; diffs in .fontphobia/verify/
 node packages/cli/src/cli.ts verify --hinting --browsers chromium,webkit,linux-firefox  # + Linux engines via Apple container / Docker / Podman
+node packages/cli/src/cli.ts check --cwd path/to/site   # exits 1 with the reason and command when the subsets are out of date
 node packages/cli/src/cli.ts revert --cwd path/to/site  # puts the original @font-face rules back
 node packages/cli/src/cli.ts --cwd path/to/site         # audit + build, asks before writing, then verify
 node packages/cli/src/cli.ts inspect fixtures/fonts/InterVariable.ttf

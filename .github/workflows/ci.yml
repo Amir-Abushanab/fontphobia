@@ -63,6 +63,7 @@ jobs:
           # M5: same pixels as the original fonts on this OS's Chrome; exits 1 on any difference.
           npx fontphobia verify --cwd site --viewports 360,1280 | tee verify.txt
           grep -q 'Verify passed' verify.txt
+          npx fontphobia check --cwd site | grep -q 'up to date'
           npx fontphobia revert --cwd site
           git diff --no-index --exit-code "$GITHUB_WORKSPACE/fixtures/sites/static-css/styles.css" site/styles.css
 
@@ -85,7 +86,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
         working-directory: fixtures/sites/tanstack-start
       # The crawl, then the golden plans whose fontsource sources live in the fixtures' node_modules.
-      - run: pnpm vitest run packages/crawler/test/sites.test.ts packages/core/test/plan.test.ts
+      - run: pnpm vitest run packages/crawler/test/sites.test.ts packages/core/test/plan.test.ts packages/cli/test/vite.test.ts
         env:
           FONTPHOBIA_SITES: '1'
       # M5: WebKit (Playwright's build) on the host, and Chromium with hinting, Firefox and WebKit in the

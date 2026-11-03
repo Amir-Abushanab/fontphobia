@@ -23,6 +23,8 @@ export interface Config {
   rename?: Record<string, string>;
   licenses?: { allow?: string[] };
   /** `verify` (§10.3): engines, page cap (default 200), viewports and device pixel ratios. */
+  /** `check` (§12): characters never reported (strings that never render), and whether a stale build fails. */
+  check?: { allowChars?: string; mode?: 'warn' | 'error' };
   verify?: { browsers?: ('chromium' | 'firefox' | 'webkit' | 'linux-chromium' | 'linux-firefox' | 'linux-webkit')[]; hinting?: boolean; maxPages?: number; viewports?: number[]; dprs?: number[] };
 }
 

@@ -1,12 +1,12 @@
 // M2 acceptance: the Astro and TanStack Start fixtures are built and crawled with no config, and
 // TanStack's SSR-only route is crawled in server mode. M4–M5: build --write, verify, revert. Opt-in: FONTPHOBIA_SITES=1, after
 // `pnpm install` in each fixture (the `sites` CI job does both).
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { buildProject, codePointsOf, parseUnicodeRange, revertProject, type UsageFileJson } from '@fontphobia/core';
-import { audit, verify } from '../src/index.ts';
+import { buildProject, checkProject, codePointsOf, parseUnicodeRange, revertProject, type UsageFileJson } from '@fontphobia/core';
+import { audit, runCommand, verify } from '../src/index.ts';
 import { writeGoldenUsage } from './golden.ts';
 
 const sites = fileURLToPath(new URL('../../../fixtures/sites/', import.meta.url));
@@ -73,6 +73,36 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
         expect(v.browser!.comparisons.length).toBe(2 * v.browser!.pages.length);
         expect(v.browser!.comparisons.filter((c) => c.class !== 'identical').map((c) => `${c.page} DPR ${c.dpr} ${c.class}: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`)).toEqual([]);
         expect(v.ok).toBe(true);
+
+        // M6: check after the HTML exists passes now, and catches new content. Astro runs it in
+        // astro:build:done through fontphobia/astro; TanStack Start (no hook) as a postbuild step.
+        const page = join(root, name === 'astro' ? 'src/pages/index.astro' : 'src/routes/index.tsx');
+        const pageText = readFileSync(page, 'utf8');
+        const config = join(root, 'astro.config.mjs');
+        const configText = name === 'astro' ? readFileSync(config, 'utf8') : '';
+        try {
+          if (name === 'astro') {
+            writeFileSync(config, `import { defineConfig } from 'astro/config';\nimport fontphobia from ${JSON.stringify(fileURLToPath(new URL('../../cli/src/astro.ts', import.meta.url)))};\nexport default defineConfig({ integrations: [fontphobia()] });\n`);
+            const ok = await runCommand('pnpm run build', root);
+            expect(ok.output).toMatch(/subsets are up to date/);
+            expect(ok.code).toBe(0);
+          } else expect((await checkProject({ root, usage: u1 })).issues).toEqual([]);
+          // A bullet in the code sample: Fixture Sans has it only in its rest file.
+          writeFileSync(page, pageText.replace('const x = 42;', 'const x = 42; •'));
+          if (name === 'astro') {
+            const stale = await runCommand('pnpm run build', root);
+            expect(stale.code).not.toBe(0);
+            expect(stale.output).toMatch(/Fixture Sans: • \(U\+2022\) would load the rest file/);
+          } else {
+            expect((await runCommand('pnpm run build', root)).code).toBe(0);
+            const r = await checkProject({ root, usage: u1 });
+            expect(r.issues.map((i) => i.message)).toEqual([expect.stringMatching(/^Fixture Sans: • \(U\+2022\) would load the rest file \(in .*dist\/client\/index\.html/)]);
+            expect(r.command).toBe('pnpm dlx fontphobia@test --write');
+          }
+        } finally {
+          writeFileSync(page, pageText);
+          if (name === 'astro') writeFileSync(config, configText);
+        }
       } finally {
         if (existsSync(join(root, 'fontphobia.manifest.json'))) fonts = revertProject(root, { write: true }).fonts;
         for (const f of fonts) rmSync(join(root, f), { force: true });

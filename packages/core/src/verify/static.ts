@@ -57,7 +57,7 @@ const list = (cps: number[], n = 8) => cps.slice(0, n).map(hex).join(' ') + (cps
 const norm = (v: string) => v.replace(/\s+/g, ' ').trim().toLowerCase();
 
 /** The @font-face rules in the entry's marked block must be the original rule, with only src, unicode-range and the planned descriptors changed. */
-function checkCss(root: string, e: ManifestEntry, add: (kind: VerifyFindingKind, severity: VerifyFinding['severity'], m: string) => void) {
+export function checkCss(root: string, e: ManifestEntry, add: (kind: VerifyFindingKind, severity: VerifyFinding['severity'], m: string) => void) {
   const file = join(root, e.stylesheet);
   if (!existsSync(file)) return add('css', 'regression', `${e.stylesheet} is gone`);
   const text = readFileSync(file, 'utf8');

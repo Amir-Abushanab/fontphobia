@@ -25,5 +25,10 @@
   },
   "dependencies": {
     "playwright-core": "1.64.1"
+  },
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./vite": "./dist/vite.mjs",
+    "./astro": "./dist/astro.mjs"
   }
 }

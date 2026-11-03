@@ -34,3 +34,5 @@ export * from './build/revert.ts';
 export * from './verify/static.ts';
 export * from './verify/overlay.ts';
 export * from './plan/hintrefs.ts';
+export * from './check/check.ts';
+export * from './build/fingerprint.ts';

@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-// fontphobia CLI: audit (M2), build and revert (M3–M4), verify (M5). `check` arrives in M6.
+// fontphobia CLI: audit (M2), build and revert (M3–M4), verify (M5), check (M6).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { cac } from 'cac';
 import {
+  checkProject, checkUsage, formatCheck,
   auditMarkdown, buildProject, canonicalJson, formatAudit, formatEdits, formatPlan, kb, MANIFEST_FILE, revertProject, type UsageFileJson, formatInspection, formatUnicodeRange, harfbuzzVersion, inspectFont, parseUnicodeRange,
   rangesFromCodePoints, subsetFont, codePointsOf, type AxisSetting, type SubsetOptions,
 } from '@fontphobia/core';
@@ -255,6 +256,42 @@ buildOptions(cli
   .option('--ci', 'Never prompt')
   .option('--json', 'Machine-readable output'))
   .action((o: BuildFlags) => runBuild(o));
+
+interface CheckFlags { cwd?: string; dist?: string; url?: string; usage?: string; allowChars?: string; mode?: string; json?: boolean; outDir?: string; viewports?: string; maxPages?: number }
+
+async function runCheck(o: CheckFlags) {
+  const root = resolve(o.cwd ?? '.');
+  const { config } = await loadConfig(root, selfUrl());
+  const mode = o.mode ?? config.check?.mode ?? 'error';
+  if (mode !== 'warn' && mode !== 'error') throw new Error(`Unknown --mode ${mode}; use warn or error`);
+  const usageFile = resolve(root, o.usage ?? join(o.outDir ?? '.fontphobia', 'usage.json'));
+  const usage = existsSync(usageFile) ? (JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson) : undefined;
+  let r;
+  if (o.url) {
+    // Exact mode: crawl production in Chrome and compare what it draws with the written files.
+    const { audit } = await import('@fontphobia/crawler');
+    const log = (m: string) => { if (!o.json) process.stderr.write(`  ${m}\n`); };
+    const a = await audit({ root, url: o.url, fontphobiaVersion: pkg.version, log, cache: false, viewports: list(o.viewports)?.map(Number) ?? config.viewports, maxPages: o.maxPages ?? config.maxPages, locales: config.locales });
+    r = await checkUsage(root, a.usage as unknown as UsageFileJson);
+  } else {
+    r = await checkProject({ root, outputDir: o.dist ? resolve(root, o.dist) : config.dist ? resolve(root, config.dist) : undefined, usage, allowChars: o.allowChars ?? config.check?.allowChars });
+  }
+  process.stdout.write((o.json ? JSON.stringify(r, null, 2) : formatCheck(r)) + '\n');
+  if (!r.ok && mode === 'error') process.exitCode = 1;
+}
+
+cli
+  .command('check', 'Are the subsets up to date? Static by default (no browser; for postbuild and CI); --url crawls production')
+  .option('--cwd <dir>', 'Project root (default: current directory)')
+  .option('--dist <dir>', 'Built site whose text is checked (default: what the framework profile finds)')
+  .option('--url <origin>', 'Exact mode: crawl this site in Chrome and compare what it draws')
+  .option('--usage <file>', 'usage.json from the audit (default .fontphobia/usage.json)')
+  .option('--allow-chars <chars>', 'Characters never reported (strings that never render)')
+  .option('--mode <mode>', 'error (default: exit 1 when out of date) or warn')
+  .option('--viewports <list>', 'Viewport widths for --url')
+  .option('--max-pages <n>', 'Page cap for --url')
+  .option('--json', 'Machine-readable output')
+  .action((o: CheckFlags) => runCheck(o));
 
 cli
   .command('revert', 'Put the original @font-face declarations and preloads back from fontphobia.manifest.json')

@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsdown';
 
 export default defineConfig({
-  entry: { cli: 'src/cli.ts', index: 'src/index.ts' },
+  entry: { cli: 'src/cli.ts', index: 'src/index.ts', vite: 'src/vite.ts', astro: 'src/astro.ts' },
   format: 'esm',
   platform: 'node',
   target: 'node22',

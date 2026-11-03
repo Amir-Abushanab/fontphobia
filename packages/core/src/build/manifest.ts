@@ -44,6 +44,13 @@ export interface Manifest {
   /** Chrome version of the crawl the plan came from. */
   chrome: string;
   entries: Record<string, ManifestEntry>;
+  /**
+   * Every other @font-face in the repo when this was built (outside the marked blocks): `check`
+   * reports one added, removed or edited since (§12). Hash of the rule text, whitespace collapsed.
+   */
+  others?: { file: string; family: string; sha256: string }[];
+  /** Features and axis values the CSS asked for when this was built ("family|feature|tag", "family|axis|wght=700"; family * = any). */
+  demands?: string[];
 }
 
 export function readManifest(root: string): Manifest | undefined {

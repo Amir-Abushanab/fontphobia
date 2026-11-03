@@ -9,6 +9,7 @@ import { listFiles } from '../project/detect.ts';
 import { planAll, type FacePlan, type Plan, type PlanConfig, type UsageFileJson } from '../plan/planner.ts';
 import { resolveSources } from '../plan/sources.ts';
 import { cssBlock, findBlock } from './css.ts';
+import { cssDemands, demandKeys, otherFaces } from './fingerprint.ts';
 import { applyEdits, type Edit } from './edits.ts';
 import { MANIFEST_FILE, MANIFEST_VERSION, manifestJson, readManifest, type Manifest, type ManifestEntry } from './manifest.ts';
 
@@ -170,7 +171,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfg: Plan
   // Entries this run didn't plan (face not in this usage.json) stay as they are.
   for (const [id, e] of Object.entries(prev?.entries ?? {})) if (!entries[id]) entries[id] = e;
 
-  const manifest: Manifest = { version: MANIFEST_VERSION, fontphobia: o.version, harfbuzz: harfbuzzVersion(), chrome: usage.meta.chrome, entries };
+  const manifest: Manifest = { version: MANIFEST_VERSION, fontphobia: o.version, harfbuzz: harfbuzzVersion(), chrome: usage.meta.chrome, entries, others: otherFaces(root, css, edits), demands: demandKeys(cssDemands(root)) };
   const fontList = [...fonts].sort(([a], [b]) => (a < b ? -1 : 1)).map(([file, bytes]) => {
     const abs = join(root, file);
     return { file, bytes: bytes.byteLength, exists: existsSync(abs) && sha(readFileSync(abs)) === sha(bytes) };
