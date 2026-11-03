@@ -11,6 +11,8 @@ import { writeGoldenUsage } from './golden.ts';
 
 const sites = fileURLToPath(new URL('../../../fixtures/sites/', import.meta.url));
 const enabled = !!process.env.FONTPHOBIA_SITES;
+// CI uploads diff images of failing comparisons from here.
+const outDir = (name: string) => (process.env.VERIFY_ARTIFACTS ? join(process.env.VERIFY_ARTIFACTS, name) : undefined);
 
 type Face = { family: string; chars: string; source: { adapter: string; file?: string; line?: number }; pages: string[] };
 const chars = (r: string) => new Set([...codePointsOf(parseUnicodeRange(r))].map((c) => String.fromCodePoint(c)));
@@ -78,7 +80,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
         // comparison runs in the Linux image when it can: CoreText draws some variable composite
         // glyphs from small subsets a few pixels differently (PLAN, M7 notes, open issue).
         const linux = process.platform === 'darwin' && (await findRuntime());
-        const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1, 2], browsers: linux ? ['linux-chromium'] : ['chromium'] });
+        const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1, 2], browsers: linux ? ['linux-chromium'] : ['chromium'], outDir: outDir(root.split('/').pop()! + '-' + Date.now()) });
         expect(v.static.findings).toEqual([]);
         expect(v.browser!.loads).toEqual([]);
         // Every page draws a generated face now (Inter is ejected too).
@@ -159,7 +161,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       expect(u2.faces[id]!.files.every((x) => /DejaVuSans_core_[0-9a-f]{8}/.test(x.url))).toBe(true);
       expect((await buildProject(root, u2, {}, { version: 'test' })).unchanged).toBe(true);
       const linux = process.platform === 'darwin' && (await findRuntime());
-      const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1, 2], browsers: linux ? ['linux-chromium'] : ['chromium'] });
+      const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1, 2], browsers: linux ? ['linux-chromium'] : ['chromium'], outDir: outDir(root.split('/').pop()! + '-' + Date.now()) });
       expect(v.static.findings).toEqual([]);
       expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated' && c.class !== 'flaky').map((c) => `${c.page} DPR ${c.dpr}: ${c.causes.join('; ')}`)).toEqual([]);
       expect(v.ok).toBe(true);
@@ -191,7 +193,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       expect(u2.faces[id]!.files.every((f) => f.url.startsWith('/fonts/fontphobia/'))).toBe(true);
       expect((await buildProject(root, u2, {}, { version: 'test' })).unchanged).toBe(true); // stays self-hosted
       const linux = process.platform === 'darwin' && (await findRuntime());
-      const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1], browsers: linux ? ['linux-chromium'] : ['chromium'] });
+      const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1], browsers: linux ? ['linux-chromium'] : ['chromium'], outDir: outDir(root.split('/').pop()! + '-' + Date.now()) });
       expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated' && c.class !== 'flaky').map((c) => `${c.browser} ${c.page} DPR ${c.dpr}: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`)).toEqual([]);
       expect(v.ok).toBe(true);
     } finally {

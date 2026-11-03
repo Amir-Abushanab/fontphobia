@@ -424,6 +424,11 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
             const [b2, a2] = await Promise.all([capture(cb2, beforeUrl, t.engine), capture(ca2, url, t.engine)]);
             const again = await compare(t, base, b2, a2, drawn.some(roundingOk), o.manifest, outDir, ours);
             if (again.class === 'identical') c = { ...c, class: 'flaky', causes: [`${c.causes.join('; ')}; identical on load ${attempt + 2}`] };
+            else {
+              // The noise floor: does the original differ from itself between two loads?
+              const self = await compare(t, base, b, b2, false, o.manifest, join(outDir, 'noise'), ours);
+              if (self.class !== 'identical' && self.pixels >= again.pixels) c = { ...c, class: 'flaky', causes: [`${c.causes.join('; ')}; the original fonts differ from themselves between loads by ${self.pixels} px`] };
+            }
           } finally { await Promise.all([cb2.close().catch(() => {}), ca2.close().catch(() => {})]); }
         }
         comparisons.push(c);

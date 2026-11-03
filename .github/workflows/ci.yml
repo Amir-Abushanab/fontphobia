@@ -96,6 +96,7 @@ jobs:
       - run: pnpm vitest run packages/crawler/test/sites.test.ts packages/core/test/plan.test.ts packages/cli/test/vite.test.ts
         env:
           FONTPHOBIA_SITES: '1'
+          VERIFY_ARTIFACTS: ${{ runner.temp }}/verify
       # M5: WebKit (Playwright's build) on the host, and Chromium with hinting, Firefox and WebKit in the
       # pinned Playwright image through Docker (verify --hinting / linux-*).
       - run: pnpm --filter @fontphobia/crawler exec playwright-core install --with-deps webkit
