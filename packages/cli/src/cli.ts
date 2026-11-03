@@ -262,7 +262,7 @@ buildOptions(cli
   .option('--json', 'Machine-readable output'))
   .action((o: BuildFlags) => runBuild(o));
 
-interface CheckFlags { cwd?: string; dist?: string; url?: string; usage?: string; allowChars?: string; mode?: string; json?: boolean; outDir?: string; viewports?: string; maxPages?: number }
+interface CheckFlags { cwd?: string; dist?: string; url?: string; usage?: string; allowChars?: string; mode?: string; strict?: boolean; json?: boolean; outDir?: string; viewports?: string; maxPages?: number }
 
 async function runCheck(o: CheckFlags) {
   const root = resolve(o.cwd ?? '.');
@@ -277,9 +277,9 @@ async function runCheck(o: CheckFlags) {
     const { audit } = await import('@fontphobia/crawler');
     const log = (m: string) => { if (!o.json) process.stderr.write(`  ${m}\n`); };
     const a = await audit({ root, url: o.url, fontphobiaVersion: pkg.version, log, cache: false, viewports: list(o.viewports)?.map(Number) ?? config.viewports, maxPages: o.maxPages ?? config.maxPages, locales: config.locales });
-    r = await checkUsage(root, a.usage as unknown as UsageFileJson);
+    r = await checkUsage(root, a.usage as unknown as UsageFileJson, { strict: o.strict ?? config.check?.strict });
   } else {
-    r = await checkProject({ root, outputDir: o.dist ? resolve(root, o.dist) : config.dist ? resolve(root, config.dist) : undefined, usage, allowChars: o.allowChars ?? config.check?.allowChars });
+    r = await checkProject({ root, outputDir: o.dist ? resolve(root, o.dist) : config.dist ? resolve(root, config.dist) : undefined, usage, allowChars: o.allowChars ?? config.check?.allowChars, strict: o.strict ?? config.check?.strict });
   }
   process.stdout.write((o.json ? JSON.stringify(r, null, 2) : formatCheck(r)) + '\n');
   if (!r.ok && mode === 'error') process.exitCode = 1;
@@ -292,7 +292,8 @@ cli
   .option('--url <origin>', 'Exact mode: crawl this site in Chrome and compare what it draws')
   .option('--usage <file>', 'usage.json from the audit (default .fontphobia/usage.json)')
   .option('--allow-chars <chars>', 'Characters never reported (strings that never render)')
-  .option('--mode <mode>', 'error (default: exit 1 when out of date) or warn')
+  .option('--mode <mode>', 'error (default: exit 1 when the site would render differently) or warn')
+  .option('--strict', 'Also exit 1 when characters would load the rest file (renders correctly, downloads more)')
   .option('--viewports <list>', 'Viewport widths for --url')
   .option('--max-pages <n>', 'Page cap for --url')
   .option('--json', 'Machine-readable output')

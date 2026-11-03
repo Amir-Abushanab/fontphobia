@@ -226,6 +226,9 @@ describe.skipIf(!chrome)('after build --write (M4)', () => {
     const about = join(root, 'about/index.html');
     writeFileSync(about, readFileSync(about, 'utf8').replace('Only ASCII here', 'Only ASCII here, Жизнь'));
     const u3 = (await audit(opts)).usage as unknown as UsageFileJson;
-    expect((await checkUsage(root, u3)).issues.map((i) => i.message)).toEqual([expect.stringMatching(/^Inter: Ж \(U\+0416\), .* drawn on \d+ page\(s\) came from the rest file$/)]);
+    const exact = await checkUsage(root, u3);
+    expect(exact.issues.map((i) => `${i.severity} ${i.message}`)).toEqual([expect.stringMatching(/^warning Inter: Ж \(U\+0416\), .* drawn on \d+ page\(s\) came from the rest file$/)]);
+    expect(exact.ok).toBe(true);
+    expect((await checkUsage(root, u3, { strict: true })).ok).toBe(false);
   }, 300_000);
 });

@@ -39,6 +39,12 @@ describe('check (§12)', () => {
     const about = join(root, 'about/index.html');
     writeFileSync(about, readFileSync(about, 'utf8').replace('Only ASCII here', 'Only ASCII here, Жизнь'));
     expect((await kinds(root)).join('\n')).toMatch(/^chars: Inter: Ж \(U\+0416\).* would load the rest file \(in about\/index\.html\)/m);
+    // It still renders (the rest file has it): a warning, which fails only with strict.
+    const lazy = await checkProject({ root, usage });
+    expect(lazy.issues.map((i) => i.severity)).toEqual(['warning']);
+    expect(lazy.ok).toBe(true);
+    expect(formatCheck(lazy)).toMatch(/renders as built, but this downloads more than it should/);
+    expect((await checkProject({ root, usage, strict: true })).ok).toBe(false);
 
     appendFileSync(join(root, 'styles.css'), "\n@font-face { font-family: 'New'; src: url('./fonts/Inter-Regular-hinted.woff2') format('woff2'); }\n.alt { font-family: Inter; font-feature-settings: 'ss02'; }\n");
     const k = (await kinds(root)).join('\n');

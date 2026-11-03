@@ -103,23 +103,30 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
         const config = join(root, 'astro.config.mjs');
         const configText = name === 'astro' ? readFileSync(config, 'utf8') : '';
         try {
+          const withIntegration = (opts: string) => writeFileSync(config, `import { defineConfig } from 'astro/config';\nimport fontphobia from ${JSON.stringify(fileURLToPath(new URL('../../cli/src/astro.ts', import.meta.url)))};\nexport default defineConfig({ integrations: [fontphobia(${opts})] });\n`);
           if (name === 'astro') {
-            writeFileSync(config, `import { defineConfig } from 'astro/config';\nimport fontphobia from ${JSON.stringify(fileURLToPath(new URL('../../cli/src/astro.ts', import.meta.url)))};\nexport default defineConfig({ integrations: [fontphobia()] });\n`);
+            withIntegration('');
             const ok = await runCommand('pnpm run build', root);
             expect(ok.output).toMatch(/subsets are up to date/);
             expect(ok.code).toBe(0);
           } else expect((await checkProject({ root, usage: u1 })).issues).toEqual([]);
-          // A bullet in the code sample: Fixture Sans has it only in its rest file.
+          // A bullet in the code sample: Fixture Sans has it only in its rest file. It still renders,
+          // so the build warns; with strict it fails.
           writeFileSync(page, pageText.replace('const x = 42;', 'const x = 42; •'));
           if (name === 'astro') {
-            const stale = await runCommand('pnpm run build', root);
-            expect(stale.code).not.toBe(0);
-            expect(stale.output).toMatch(/Fixture Sans: • \(U\+2022\) would load the rest file/);
+            const warned = await runCommand('pnpm run build', root);
+            expect(warned.code).toBe(0);
+            expect(warned.output).toMatch(/Fixture Sans: • \(U\+2022\) would load the rest file/);
+            withIntegration('{ strict: true }');
+            const strict = await runCommand('pnpm run build', root);
+            expect(strict.code).not.toBe(0);
+            expect(strict.output).toMatch(/Fixture Sans: • \(U\+2022\) would load the rest file/);
           } else {
             expect((await runCommand('pnpm run build', root)).code).toBe(0);
             const r = await checkProject({ root, usage: u1 });
             // Static check can't tell which face draws the bullet: Inter (ejected) is on the page too.
             expect(r.issues.map((i) => i.message)).toContainEqual(expect.stringMatching(/^Fixture Sans: • \(U\+2022\) would load the rest file \(in .*dist\/client\/index\.html/));
+            expect(r.ok).toBe(true);
             expect(r.command).toBe('pnpm dlx fontphobia@test --write');
           }
         } finally {

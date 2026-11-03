@@ -25,7 +25,12 @@ import { checkCss } from '../verify/static.ts';
 
 export type CheckKind = 'source' | 'output' | 'block' | 'face' | 'feature' | 'axis' | 'chars';
 
-export interface CheckIssue { kind: CheckKind; id?: string; file?: string; message: string }
+/**
+ * `error`: the site would render differently, or the files no longer match the build.
+ * `warning`: it renders the same but downloads more than it should (characters served by the rest
+ * file). Warnings fail only with `strict`, since the character check is approximate.
+ */
+export interface CheckIssue { kind: CheckKind; severity: 'error' | 'warning'; id?: string; file?: string; message: string }
 
 export interface CheckOptions {
   root: string;
@@ -35,9 +40,12 @@ export interface CheckOptions {
   usage?: UsageFileJson;
   /** Characters never reported (strings that never render). */
   allowChars?: string;
+  /** Fail on warnings too (characters that would load the rest file). */
+  strict?: boolean;
 }
 
 export interface CheckResult {
+  /** No errors (no issues at all, with `strict`). */
   ok: boolean;
   issues: CheckIssue[];
   /** The command that brings the subsets up to date. */
@@ -103,7 +111,7 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
     return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: ['no fontphobia.manifest.json: nothing has been built to check'] };
   }
   const issues: CheckIssue[] = [];
-  const add = (i: CheckIssue) => issues.push(i);
+  const add = (i: Omit<CheckIssue, 'severity'> & { severity?: CheckIssue['severity'] }) => issues.push({ severity: 'error', ...i });
   const allow = new Set([...(o.allowChars ?? '')].map((c) => c.codePointAt(0)!));
 
   // 1. Sources, outputs and blocks, as built.
@@ -232,24 +240,31 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
       const cps = [...m.cps].sort((a, b) => a - b);
       const lazy = cps.every((c) => f.rest.has(c));
       add({
-        kind: 'chars', id, file: [...m.files][0],
+        kind: 'chars', severity: lazy ? 'warning' : 'error', id, file: [...m.files][0],
         message: `${f.e.family}: ${show(cps)} ${lazy ? 'would load the rest file' : 'would render in a fallback font'} (in ${[...m.files].slice(0, 3).join(', ')}${m.files.size > 3 ? ` and ${m.files.size - 3} more` : ''})`,
       });
     }
   }
 
   return {
-    ok: !issues.length, issues, command: rerunCommand(root, manifest.fontphobia),
+    ok: !issues.some((i) => o.strict || i.severity === 'error'), issues, command: rerunCommand(root, manifest.fontphobia),
     checked: { entries: facts.length, outputs, styleFiles: styleFiles.size, textFiles }, notes,
   };
 }
 
 export function formatCheck(r: CheckResult): string {
   const L: string[] = [];
-  if (r.ok) L.push(`fontphobia: subsets are up to date (${r.checked.entries} face(s), ${r.checked.outputs} file(s), ${r.checked.textFiles} built file(s) read)`);
+  const errors = r.issues.filter((i) => i.severity === 'error'), warnings = r.issues.filter((i) => i.severity === 'warning');
+  if (!r.issues.length) L.push(`fontphobia: subsets are up to date (${r.checked.entries} face(s), ${r.checked.outputs} file(s), ${r.checked.textFiles} built file(s) read)`);
   else {
-    L.push(`fontphobia: subsets are out of date (${r.issues.length} reason(s)):`);
-    for (const i of r.issues) L.push(`  - ${i.message}`);
+    if (errors.length) {
+      L.push(`fontphobia: subsets are out of date (${errors.length} reason(s)):`);
+      for (const i of errors) L.push(`  - ${i.message}`);
+    }
+    if (warnings.length) {
+      L.push(errors.length ? 'Also, these render correctly but download more than they should:' : `fontphobia: the site renders as built, but ${warnings.length === 1 ? 'this downloads' : 'these download'} more than ${warnings.length === 1 ? 'it' : 'they'} should${r.ok ? '' : ' (strict)'}:`);
+      for (const i of warnings) L.push(`  - ${i.message}`);
+    }
     L.push(`Run: ${r.command}`);
   }
   for (const n of r.notes) L.push(`  note: ${n}`);
@@ -261,7 +276,7 @@ export function formatCheck(r: CheckResult): string {
  * character a generated face drew must be in its core or extended file, every feature it used must
  * be kept, and every axis value it rendered must be inside the files' ranges.
  */
-export async function checkUsage(root: string, usage: UsageFileJson): Promise<CheckResult> {
+export async function checkUsage(root: string, usage: UsageFileJson, o: { strict?: boolean } = {}): Promise<CheckResult> {
   const manifest = readManifest(root);
   if (!manifest || !Object.keys(manifest.entries).length) return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: ['no fontphobia.manifest.json: nothing has been built to check'] };
   const issues: CheckIssue[] = [];
@@ -278,18 +293,19 @@ export async function checkUsage(root: string, usage: UsageFileJson): Promise<Ch
       if (existsSync(p)) outs.push(await fontFacts(new Uint8Array(readFileSync(p))));
     }
     const missing = [...rangeSet(face.chars)].filter((c) => !kept.has(c));
-    if (missing.length) issues.push({ kind: 'chars', id: e.id, message: `${e.family}: ${show(missing)} drawn on ${face.pages.length} page(s) ${missing.every((c) => rest.has(c)) ? 'came from the rest file' : "aren't in any of its files"}` });
+    const lazy = missing.every((c) => rest.has(c));
+    if (missing.length) issues.push({ kind: 'chars', severity: lazy ? 'warning' : 'error', id: e.id, message: `${e.family}: ${show(missing)} drawn on ${face.pages.length} page(s) ${lazy ? 'came from the rest file' : "aren't in any of its files"}` });
     const have = new Set(outs.flatMap((x) => [...x.features]));
     // Only features the source has: CSS can ask for small caps a font doesn't have (Chrome synthesizes them).
     const srcPath = join(root, e.source.file);
     const srcFeatures = existsSync(srcPath) ? (await fontFacts(new Uint8Array(readFileSync(srcPath)))).features : new Set<string>();
     const dropped = face.features.filter((t) => srcFeatures.has(t) && !have.has(t));
-    if (outs.length && dropped.length) issues.push({ kind: 'feature', id: e.id, message: `${e.family}: the site uses ${dropped.map((t) => `'${t}'`).join(', ')}, which its subsets don't keep` });
+    if (outs.length && dropped.length) issues.push({ kind: 'feature', severity: 'error', id: e.id, message: `${e.family}: the site uses ${dropped.map((t) => `'${t}'`).join(', ')}, which its subsets don't keep` });
     for (const [tag, vals] of Object.entries(face.rendered.axes ?? {})) {
       const a = outs[0]?.axes.find((x) => x.tag === tag);
       const out = vals.filter((v) => (a ? v < a.min || v > a.max : e.plan.axes?.[tag] !== undefined));
-      if (out.length) issues.push({ kind: 'axis', id: e.id, message: `${e.family}: ${tag} ${out.join(', ')} rendered, outside its subsets (${a ? `${a.min}–${a.max}` : 'axis pinned'})` });
+      if (out.length) issues.push({ kind: 'axis', severity: 'error', id: e.id, message: `${e.family}: ${tag} ${out.join(', ')} rendered, outside its subsets (${a ? `${a.min}–${a.max}` : 'axis pinned'})` });
     }
   }
-  return { ok: !issues.length, issues, command: rerunCommand(root, manifest.fontphobia), checked: { entries: Object.keys(manifest.entries).length, outputs, styleFiles: 0, textFiles: 0 }, notes: [] };
+  return { ok: !issues.some((i) => o.strict || i.severity === 'error'), issues, command: rerunCommand(root, manifest.fontphobia), checked: { entries: Object.keys(manifest.entries).length, outputs, styleFiles: 0, textFiles: 0 }, notes: [] };
 }
