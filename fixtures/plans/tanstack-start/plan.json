@@ -87,30 +87,30 @@
     {
       "adapter": "fontsource",
       "bytes": {
-        "core": 39964,
+        "core": 40088,
         "ext": 0,
         "now": 48256,
-        "rest": 10344
+        "rest": 10496
       },
       "family": "Inter Variable",
       "features": [],
       "files": [
         {
-          "bytes": 39964,
+          "bytes": 40088,
           "count": 205,
           "hintRefs": "U+2BC",
-          "name": "inter-latin-wght-normal.core.894f9158.woff2",
+          "name": "inter-latin-wght-normal.core.d5804d01.woff2",
           "role": "core",
-          "sha256": "894f91588c7073b5c7b31ef15a0810ff8e961d76f2a33129f4105bdcf9ff7b7a",
+          "sha256": "d5804d016eb40172cc1a148c47a6aa95e65e8465fd28b1fdd6e79b3134308156",
           "unicodeRange": "U+20-7E, U+A0-AC, U+AE-FF, U+131, U+152-153, U+304, U+308, U+2013-2014, U+2018-2019, U+201C-201D, U+2026, U+2032-2033, U+2212"
         },
         {
-          "bytes": 10344,
+          "bytes": 10496,
           "count": 19,
           "hintRefs": "U+30, U+43, U+45, U+48, U+4C, U+4F, U+51, U+53-55, U+5A, U+62-6B, U+6E-73, U+75-76, U+78-7A, U+2019",
-          "name": "inter-latin-wght-normal.rest.6fe834a4.woff2",
+          "name": "inter-latin-wght-normal.rest.ca9e7c8b.woff2",
           "role": "rest",
-          "sha256": "6fe834a4c38430657fc1a0aaed91b072ddb0a66f9d4b5f3f4a939f0325a53b4d",
+          "sha256": "ca9e7c8bd54329a4463a9c8c129769fa7a6cbcf78b0e199192c1cd4880b29e3c",
           "unicodeRange": "U+2BB-2BC, U+2C6, U+2DA, U+2DC, U+2002, U+2009, U+200B, U+201A, U+201E, U+2022, U+2039-203A, U+2044, U+20AC, U+2122, U+2191, U+2193, U+FEFF"
         }
       ],
@@ -136,13 +136,13 @@
           "applied": false,
           "change": "changes text layout on Linux at 1× and rasterization on Windows",
           "id": "drop-hinting",
-          "saving": 0
+          "saving": -24
         },
         {
           "applied": false,
           "change": "wght 400–900; text widths shift up to ~0.02% (whole pixels on Linux at 1×)",
           "id": "limit-axes",
-          "saving": 8844
+          "saving": 8828
         }
       ],
       "source": {
@@ -155,28 +155,28 @@
     {
       "adapter": "fontsource",
       "bytes": {
-        "core": 16508,
+        "core": 16648,
         "ext": 0,
         "now": 85068,
-        "rest": 74892
+        "rest": 74904
       },
       "family": "Inter Variable",
       "features": [],
       "files": [
         {
-          "bytes": 16508,
+          "bytes": 16648,
           "count": 128,
-          "name": "inter-latin-ext-wght-normal.core.9ad26dc4.woff2",
+          "name": "inter-latin-ext-wght-normal.core.97bf0e2d.woff2",
           "role": "core",
-          "sha256": "9ad26dc40f1d219d520cc7d623cba54ce5b9e54d29625b69494b7a04ff858d13",
+          "sha256": "97bf0e2d7edce3777f2101874de45090d0aeac2dee56f388c8a2a681a9e4e1cf",
           "unicodeRange": "U+100-130, U+132-148, U+14A-151, U+154-17F, U+21A, U+304, U+308, U+2020"
         },
         {
-          "bytes": 74892,
+          "bytes": 74904,
           "count": 594,
-          "name": "inter-latin-ext-wght-normal.rest.e7919bc4.woff2",
+          "name": "inter-latin-ext-wght-normal.rest.07e6f7b4.woff2",
           "role": "rest",
-          "sha256": "e7919bc44f532c302fcc15b5f3e5dd04cead4ff16a4876ac8c38da575761cad9",
+          "sha256": "07e6f7b4eae34ae2d479a9d91cd9ee61f91689da0882d06e7003866d786e4a87",
           "unicodeRange": "U+180-1C3, U+1C5-219, U+21B-254, U+256-27B, U+27E-284, U+286-290, U+292-2A4, U+2A6-2BA, U+2BD-2C5, U+2C7-2CC, U+2CE-2D7, U+2DD-2FF, U+1D00, U+1D0D, U+1D1B, U+1D43, U+1D47-1D49, U+1D4D, U+1D4F-1D50, U+1D52, U+1D56-1D58, U+1D5B, U+1D62-1D65, U+1D9C, U+1DA0, U+1DBB, U+1DBF, U+1E00-1E9B, U+1E9D-1E9F, U+1EF2-1EFF, U+20A0-20AB, U+20AD-20AF, U+20B1-20B5, U+20B8-20BA, U+20BC-20BF, U+2113, U+2C7C, U+2C7F, U+A7FF"
         }
       ],
@@ -202,13 +202,13 @@
           "applied": false,
           "change": "changes text layout on Linux at 1× and rasterization on Windows",
           "id": "drop-hinting",
-          "saving": -24
+          "saving": -68
         },
         {
           "applied": false,
           "change": "wght 400–700; text widths shift up to ~0.02% (whole pixels on Linux at 1×)",
           "id": "limit-axes",
-          "saving": 4440
+          "saving": 4356
         }
       ],
       "source": {
@@ -224,13 +224,13 @@
       "applied": false,
       "faces": 2,
       "id": "limit-axes",
-      "saving": 13284
+      "saving": 13184
     },
     {
       "applied": false,
       "faces": 3,
       "id": "drop-hinting",
-      "saving": 17564
+      "saving": 17496
     },
     {
       "applied": false,

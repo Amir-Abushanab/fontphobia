@@ -9,7 +9,7 @@ import { firefox, webkit, type Browser, type BrowserContext, type CDPSession, ty
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 import {
-  codePointsOf, createOverlay, detectProject, parseUnicodeRange,
+  codePointsOf, createOverlay, detectProject, nameStrings, parseUnicodeRange, woff2Decompress,
   type Manifest, type Overlay, type StaticVerify, type UsageFileJson,
 } from '@fontphobia/core';
 import { launchChrome } from './audit.ts';
@@ -20,7 +20,11 @@ import { worktreeBaseline, type Baseline } from './baseline.ts';
 /** Host browsers, and the same engines in the pinned Playwright Linux image (`linux-*`, via a container runtime). */
 export type Engine = 'chromium' | 'firefox' | 'webkit' | 'linux-chromium' | 'linux-firefox' | 'linux-webkit';
 export const ENGINES: Engine[] = ['chromium', 'firefox', 'webkit', 'linux-chromium', 'linux-firefox', 'linux-webkit'];
-export type CompareClass = 'identical' | 'sub-pixel rounding' | 'regression' | 'content changed' | 'failed';
+/**
+ * `unrelated`: pixels differ only in text drawn with fonts fontphobia didn't change (Google Fonts,
+ * system fonts), at identical layout. Our files can't cause that; the browser's rasterizer can (CI).
+ */
+export type CompareClass = 'identical' | 'sub-pixel rounding' | 'unrelated' | 'regression' | 'content changed' | 'failed';
 
 export interface VerifyOptions extends SiteOptions {
   root: string;
@@ -347,6 +351,14 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
   const dprsFor = (e: Engine) => (e === 'linux-chromium' && o.hinting && !o.browsers?.includes('linux-chromium') ? [1] : dprs);
   const outDir = o.outDir ?? join(root, '.fontphobia', 'verify');
   const limitFaces = new Set(Object.values(o.manifest.entries).filter((e) => e.plan.optIns.includes('limit-axes')).map((e) => e.id));
+  // The internal family names of fontphobia's files, as getPlatformFontsForNode reports them.
+  const ours = new Set<string>();
+  for (const e of Object.values(o.manifest.entries)) {
+    if (e.plan.rename) ours.add(e.plan.rename.to.toLowerCase());
+    const out = e.outputs[0];
+    if (!out || !existsSync(join(root, out.file))) continue;
+    try { const n = nameStrings(await woff2Decompress(new Uint8Array(readFileSync(join(root, out.file))))); for (const id of [1, 16, 21]) { const v = n.get(id); if (v) ours.add(v.toLowerCase()); } } catch { /* verifyStatic reports it */ }
+  }
   const roundingOk = (id: string) => limitFaces.has(id) && !(o.staticResult?.shaping.find((s) => s.id === id)?.regressions);
 
   // A verify of an old build checks nothing: rebuild whenever the source is newer (§M4: build --write edits it).
@@ -401,7 +413,7 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
         const [b, a] = await Promise.all([capture(cb, beforeUrl, t.engine), capture(ca, url, t.engine)]);
         for (const id of hitsA) usedInAfter.add(id);
         const drawn = Object.keys(o.usage.pages[t.page]?.faces ?? {}).filter((id) => entryIds.has(id));
-        comparisons.push(await compare(t, base, b, a, drawn.some(roundingOk), o.manifest, outDir));
+        comparisons.push(await compare(t, base, b, a, drawn.some(roundingOk), o.manifest, outDir, ours));
         if (t.dpr === dprsFor(t.engine)[0] && t.engine === engines[0]) record(t.page, b.snap.fonts, a.snap.fonts, hitsA);
       } catch (e) {
         comparisons.push({ ...base, causes: [(e as Error).message.split('\n')[0]!] });
@@ -471,7 +483,7 @@ async function compare(
   t: { page: string; viewport: number; dpr: number; engine: Engine },
   base: Comparison,
   b: Awaited<ReturnType<typeof capture>>, a: Awaited<ReturnType<typeof capture>>,
-  roundingOk: boolean, manifest: Manifest, outDir: string,
+  roundingOk: boolean, manifest: Manifest, outDir: string, ours: Set<string>,
 ): Promise<Comparison> {
   const B = b.snap, A = a.snap;
   const r: Comparison = { ...base, class: 'identical', nodes: B.nodes.length };
@@ -531,6 +543,7 @@ async function compare(
   const renames = new Map(Object.values(manifest.entries).filter((e) => e.plan.rename).map((e) => [e.plan.rename!.to, e.plan.rename!.from]));
   const fam = (k: string) => renames.get(k) ?? k;
   let fallback = false;
+  let unrelated = 0;
   for (const i of flagged) {
     const n = A.nodes[i]!;
     const ob = B.nodes[i]!.owner;
@@ -540,6 +553,12 @@ async function compare(
       const names = new Set([...before.keys()].map(fam));
       const extra = [...after].filter(([k]) => !names.has(fam(k)));
       if (extra.length) { cause = `fallback font: ${extra.map(([k, g]) => `${k} drew ${g} glyph(s)`).join(', ')}`; fallback = true; }
+    }
+    // Same fonts before and after, none of them ours, and the box didn't move: not our doing.
+    if (!cause && !moved.includes(i) && before && after && before.size) {
+      const names = [...before.keys(), ...after.keys()].map((k) => fam(k).replace(/^system /, '').toLowerCase());
+      const same = before.size === after.size && [...before.keys()].every((k) => after.has(k));
+      if (same && !names.some((n) => ours.has(n))) { cause = `unrelated: drawn only with ${[...before.keys()].map((k) => k.replace(/^system /, '')).join(', ')}, which fontphobia didn't change`; unrelated++; }
     }
     if (!cause) {
       if (moved.includes(i)) {
@@ -555,7 +574,7 @@ async function compare(
 
   // §10.3 classification. Rounding: limit-axes only, nothing vertical, under 1 CSS px, and shaping agreed.
   const rounding = !fallback && !vertical && maxDx < 1 && roundingOk && r.causes.every((c) => /^width changed|^pixels differ/.test(c));
-  r.class = rounding ? 'sub-pixel rounding' : 'regression';
+  r.class = flagged.length && unrelated === flagged.length && !moved.length ? 'unrelated' : rounding ? 'sub-pixel rounding' : 'regression';
   mkdirSync(outDir, { recursive: true });
   const name = `${slug(t.page)}@${t.viewport}x${t.dpr}.${t.engine}.png`;
   writeFileSync(join(outDir, name), PNG.sync.write(diff));

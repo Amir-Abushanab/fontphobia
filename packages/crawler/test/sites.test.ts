@@ -71,7 +71,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
         // Only pages that draw a generated face are compared: Fixture Sans is on one page.
         expect(v.browser!.pages).toEqual(u1.faces[id]!.pages);
         expect(v.browser!.comparisons.length).toBe(2 * v.browser!.pages.length);
-        expect(v.browser!.comparisons.filter((c) => c.class !== 'identical').map((c) => `${c.page} DPR ${c.dpr} ${c.class}: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`)).toEqual([]);
+        expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated').map((c) => `${c.page} DPR ${c.dpr} ${c.class}: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`)).toEqual([]);
         expect(v.ok).toBe(true);
 
         // M6: check after the HTML exists passes now, and catches new content. Astro runs it in

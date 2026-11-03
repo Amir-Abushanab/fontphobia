@@ -33,6 +33,7 @@ export const DEFAULT_NAME_IDS = [0, 1, 2, 3, 4, 5, 6, 13, 14, 16, 17, 25] as con
 const SETS = { DROP_TABLE_TAG: 3, NAME_ID: 4, NAME_LANG_ID: 5, LAYOUT_FEATURE_TAG: 6 } as const;
 const FLAG_NO_HINTING = 0x1;
 const FLAG_GLYPH_NAMES = 0x80;
+const FLAG_NOTDEF_OUTLINE = 0x40;
 /** Always dropped (§8.9): no effect on rendering. */
 const ALWAYS_DROP = ['DSIG'];
 
@@ -74,6 +75,9 @@ export function hbSubset(sfnt: Uint8Array, opts: SubsetOptions): Uint8Array {
     // Keep glyph names (post format 2). Dropping them (HarfBuzz's default) changes how Chrome on macOS
     // rasterizes the text: ~1,700 pixels differ on a short Inter paragraph (M5 notes).
     flags |= FLAG_GLYPH_NAMES;
+    // Keep .notdef's outline: a character no installed font has is drawn as the primary font's
+    // .notdef box, so an empty one changes those boxes and the line height around them (M6 notes).
+    flags |= FLAG_NOTDEF_OUTLINE;
     w.hb_subset_input_set_flags(input, flags);
 
     const u = w.hb_subset_input_unicode_set(input);
