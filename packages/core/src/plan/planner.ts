@@ -406,7 +406,8 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
   const refsOn = !allow.has('drop-hint-refs');
   const build = async (role: Role, set: Set<number>, o: Omit<SubsetOptions, 'unicodes'>, withRefs = refsOn): Promise<PlannedFile | undefined> => {
     if (!set.size) return undefined;
-    const key = `${role}|${fmt(set)}|${JSON.stringify(o)}|${withRefs}`;
+    // Core never carries references, so it's the same file either way.
+    const key = `${role}|${fmt(set)}|${JSON.stringify(o)}|${withRefs && role !== 'core'}`;
     const hit = cache.get(key);
     if (hit) return hit;
     // For FreeType's auto-hinter, outside the unicode-range: the reference letters (core has them

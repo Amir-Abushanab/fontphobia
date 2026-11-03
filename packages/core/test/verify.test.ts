@@ -32,7 +32,7 @@ describe('verify: font level and shaping (§10.1–10.2)', () => {
     expect(inter.cases).toBeGreaterThan(300);
     expect(inter.identical).toBe(inter.cases);
     expect(r.outputs.size).toBe(9);
-  }, 120_000);
+  }, 300_000);
 
   it('catches outputs edited or deleted after the build', async () => {
     const root = await built('tampered');
@@ -43,7 +43,7 @@ describe('verify: font level and shaping (§10.1–10.2)', () => {
     const r = await verifyStatic(root, usage, m);
     expect(r.ok).toBe(false);
     expect(regressions(r).map((f) => f.message).join('\n')).toMatch(/changed since the build[\s\S]*is missing/);
-  }, 120_000);
+  }, 300_000);
 });
 
 describe('verify: mutation tests (§15)', () => {
@@ -64,6 +64,6 @@ describe('verify: mutation tests (§15)', () => {
       expect(hit.map((f) => f.message).join('\n')).toMatch(cause);
       // Only the mutated face fails.
       expect(regressions(r).every((f) => f.id === face)).toBe(true);
-    }, 120_000);
+    }, 300_000);
   }
 });

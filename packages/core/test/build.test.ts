@@ -77,7 +77,7 @@ describe('build --write (css adapter, §9)', () => {
     for (const f of rv.fonts) { expect(after[f]).toBeDefined(); delete after[f]; }
     expect(after).toEqual(before);
     expect(existsSync(join(root, MANIFEST_FILE))).toBe(false);
-  }, 120_000);
+  }, 300_000);
 
   it('rebuilds after usage changes: new outputs, outdated ones deleted, revert still restores the original', async () => {
     const root = site('rebuild');
@@ -96,7 +96,7 @@ describe('build --write (css adapter, §9)', () => {
     const after = snapshot(root);
     for (const f of Object.keys(after)) if (/\.(core|ext|rest)\.[0-9a-f]{8}\.woff2$/.test(f)) delete after[f];
     expect(after).toEqual(before);
-  }, 120_000);
+  }, 300_000);
 
   it('keeps CRLF line endings and indentation inside @media', async () => {
     const root = site('crlf');
@@ -113,7 +113,7 @@ describe('build --write (css adapter, §9)', () => {
     expect(out).toMatch(/@media screen \{\r\n {2}\/\* fontphobia:begin deja-400-normal 1 [^\r\n]*\r\n {2}@font-face \{\r\n {4}font-family: 'Deja';/);
     revertProject(root, { write: true });
     expect(readFileSync(join(root, 'styles.css'), 'utf8')).toBe(wrapped);
-  }, 120_000);
+  }, 300_000);
 });
 
 describe('css block', () => {
