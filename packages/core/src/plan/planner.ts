@@ -13,7 +13,7 @@ import { checkShaping, type ShapeCase } from '../shape/equivalence.ts';
 import { hbSubset, subsetFont, type AxisSetting, type SubsetOptions } from '../subset/subset.ts';
 import { deriveName, detectLicense, licenseRefusal, type License } from './license.ts';
 import { localeChars } from './locale.ts';
-import { cmapAliases, hintRefs, reverseCmap } from './hintrefs.ts';
+import { cmapAliases, hintRefs, macosReferenceGlyphs, reverseCmap } from './hintrefs.ts';
 
 // ─── Input: usage.json as written by `audit` (§7.6) ─────────────────────────────────────────────
 
@@ -340,6 +340,7 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
   const { face: hbFace, font: hbFont } = loadFont(sfnt);
   const cmap = new Set(hbFace.collectUnicodes());
   const byGlyph = reverseCmap(hbFont, cmap);
+  const refGlyphs = macosReferenceGlyphs(hbFont);
   const ur = face.descriptors['unicode-range'] ? parseUnicodeRange(face.descriptors['unicode-range']) : undefined;
   const servable = new Set([...cmap].filter((c) => !isControl(c) && (!ur || inRanges(ur, c))));
 
@@ -417,8 +418,10 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
     // For FreeType's auto-hinter, outside the unicode-range: the reference letters (core has them
     // already) and every code point sharing a glyph with one in the file.
     const base = role === 'core' || !withRefs ? [] : hintRefs(set, cmap);
-    const refs = [...new Set([...base, ...cmapAliases([...set, ...base], hbFont, byGlyph)])].sort((a, b) => a - b);
-    const r = await subsetFont(sfnt, { ...o, unicodes: [...set, ...refs] });
+    // macOS's reference glyphs come with their code points when the source maps them (outside the unicode-range too).
+    const macRefs = refGlyphs.flatMap((g) => byGlyph.get(g) ?? []).filter((c) => !set.has(c));
+    const refs = [...new Set([...base, ...macRefs, ...cmapAliases([...set, ...base, ...macRefs], hbFont, byGlyph)])].sort((a, b) => a - b);
+    const r = await subsetFont(sfnt, { ...o, unicodes: [...set, ...refs], glyphs: refGlyphs });
     const h = sha256(r.woff2);
     const refSet = new Set(refs);
     const served = r.unicodes.filter((c) => !refSet.has(c));

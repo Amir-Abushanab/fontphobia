@@ -33,6 +33,17 @@ export function hintRefs(set: Iterable<number>, cmap: Set<number>): number[] {
   return [...out].filter((c) => cmap.has(c) && !have.has(c)).sort((a, b) => a - b);
 }
 
+/**
+ * Glyphs macOS looks up by name: Chrome and Safari draw some glyphs differently (54–102 pixels on
+ * Inter's "ă" at 16 px) when the font has no glyph named "X" or "o". Found by delta-debugging the
+ * glyph set; they're found by name, not cmap (fontsource's latin-ext slice has them unmapped), which
+ * is also why dropping glyph names changed rendering (M5/M7 notes). Kept in every file, unmapped.
+ */
+export const MACOS_REFERENCE_GLYPHS = ['X', 'o'];
+export function macosReferenceGlyphs(font: { glyphFromName(name: string): number | undefined }): number[] {
+  return MACOS_REFERENCE_GLYPHS.map((n) => font.glyphFromName(n)).filter((g): g is number => g !== undefined && g > 0);
+}
+
 /** Glyph → every source code point that maps to it. */
 export function reverseCmap(font: { nominalGlyph(cp: number): number | undefined }, cmap: Iterable<number>): Map<number, number[]> {
   const out = new Map<number, number[]>();

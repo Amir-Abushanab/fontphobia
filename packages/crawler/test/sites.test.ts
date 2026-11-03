@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { buildProject, checkProject, codePointsOf, parseUnicodeRange, revertProject, type UsageFileJson } from '@fontphobia/core';
-import { audit, findRuntime, runCommand, verify } from '../src/index.ts';
+import { audit, runCommand, verify } from '../src/index.ts';
 import { writeGoldenUsage } from './golden.ts';
 
 const sites = fileURLToPath(new URL('../../../fixtures/sites/', import.meta.url));
@@ -76,11 +76,8 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
           expect(u2.faces[fid]!.files.every((x) => /\.(core|rest)\.[0-9a-f]{8}/.test(x.url))).toBe(true);
         }
         expect((await buildProject(root, u2, {}, { version: 'test' })).unchanged).toBe(true);
-        // M5: the built site renders exactly as with the original font, page by page. On macOS the
-        // comparison runs in the Linux image when it can: CoreText draws some variable composite
-        // glyphs from small subsets a few pixels differently (PLAN, M7 notes, open issue).
-        const linux = process.platform === 'darwin' && (await findRuntime());
-        const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1, 2], browsers: linux ? ['linux-chromium'] : ['chromium'], outDir: outDir(root.split('/').pop()! + '-' + Date.now()) });
+        // M5: the built site renders exactly as with the original font, page by page.
+        const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1, 2], outDir: outDir(root.split('/').pop()! + '-' + Date.now()) });
         expect(v.static.findings).toEqual([]);
         expect(v.browser!.loads).toEqual([]);
         // Every page draws a generated face now (Inter is ejected too).
@@ -167,8 +164,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       expect(u2.faces[id]!.chars).toBe(u1.faces[id]!.chars);
       expect(u2.faces[id]!.files.every((x) => /DejaVuSans_core_[0-9a-f]{8}/.test(x.url))).toBe(true);
       expect((await buildProject(root, u2, {}, { version: 'test' })).unchanged).toBe(true);
-      const linux = process.platform === 'darwin' && (await findRuntime());
-      const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1, 2], browsers: linux ? ['linux-chromium'] : ['chromium'], outDir: outDir(root.split('/').pop()! + '-' + Date.now()) });
+      const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1, 2], outDir: outDir(root.split('/').pop()! + '-' + Date.now()) });
       expect(v.static.findings).toEqual([]);
       expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated' && c.class !== 'flaky').map((c) => `${c.page} DPR ${c.dpr}: ${c.causes.join('; ')}`)).toEqual([]);
       expect(v.ok).toBe(true);
@@ -199,8 +195,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       expect(u2.faces[id]!.chars).toBe(u1.faces[id]!.chars);
       expect(u2.faces[id]!.files.every((f) => f.url.startsWith('/fonts/fontphobia/'))).toBe(true);
       expect((await buildProject(root, u2, {}, { version: 'test' })).unchanged).toBe(true); // stays self-hosted
-      const linux = process.platform === 'darwin' && (await findRuntime());
-      const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1], browsers: linux ? ['linux-chromium'] : ['chromium'], outDir: outDir(root.split('/').pop()! + '-' + Date.now()) });
+      const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1], outDir: outDir(root.split('/').pop()! + '-' + Date.now()) });
       expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated' && c.class !== 'flaky').map((c) => `${c.browser} ${c.page} DPR ${c.dpr}: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`)).toEqual([]);
       expect(v.ok).toBe(true);
     } finally {
