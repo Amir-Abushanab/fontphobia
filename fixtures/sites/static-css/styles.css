@@ -1,0 +1,51 @@
+/* Fixture: `css` adapter. Fonts are copied into fonts/ by the test (see fixtures/fonts). */
+@font-face {
+  font-family: 'Inter';
+  src: url('./fonts/InterVariable.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  /* The same file registered as the italic face: attribution is per face, not per family. */
+  font-family: 'Inter';
+  src: url('./fonts/InterVariable.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Deja';
+  src: url('./fonts/DejaVuSans.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  /* Declared, never used: reported and left alone. */
+  font-family: 'Unused';
+  src: url('./fonts/Inter-Regular-hinted.woff2') format('woff2');
+}
+@font-feature-values Inter { @styleset { open-digits: 1; } }
+@counter-style ticks { system: cyclic; symbols: '✓' '✔'; suffix: ' '; }
+
+html { font-family: Inter, sans-serif; }
+/* Form controls don't inherit fonts by default; these do. #plain keeps the system font. */
+form *, button { font: inherit; }
+code, .deja { font-family: Deja, monospace; }
+.btn { font-weight: 500; }
+.btn:hover { font-weight: 800; }
+@media print { .print-heavy { font-weight: 900; } }
+@keyframes pulse { from { font-weight: 300; } to { font-weight: 600; } }
+.pulse { animation: pulse 2s infinite alternate; }
+.fw { text-transform: full-width; }
+.firstline::first-line { font-family: Deja; }
+.clip { width: 40px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.hy { width: 70px; hyphens: auto; }
+.caps { font-family: Deja; font-variant-caps: small-caps; }
+.emph { text-emphasis: filled sesame; }
+.secret { -webkit-text-security: square; }
+.nums { font-variant-numeric: tabular-nums; }
+.digits { font-variant-alternates: styleset(open-digits); }
+.fluid { font-size: clamp(1rem, 2vw + 1rem, 3rem); }
+.roman { list-style-type: upper-roman; }
+.ticks { list-style-type: ticks; }
+@media (min-width: 40em) { .wide-only { font-weight: 650; } }

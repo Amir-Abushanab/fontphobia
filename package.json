@@ -9,6 +9,7 @@
     "test": "vitest run",
     "golden": "vitest run packages/core/test/golden.test.ts",
     "golden:update": "UPDATE_GOLDEN=1 vitest run packages/core/test/golden.test.ts",
+    "plans:update": "UPDATE_GOLDEN=1 FONTPHOBIA_SITES=1 vitest run packages/crawler/test/audit.test.ts packages/crawler/test/sites.test.ts && UPDATE_GOLDEN=1 vitest run packages/core/test/plan.test.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {

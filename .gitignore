@@ -7,3 +7,8 @@ spikes/**/shots/
 /*.log
 .DS_Store
 spikes/08-dlx/*.tgz
+fixtures/sites/*/.fontphobia/
+.astro/
+.tanstack/
+.nitro/
+.output/

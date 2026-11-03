@@ -1,0 +1,20 @@
+---
+import '@fontsource-variable/inter';
+import '../styles/fonts.css';
+const { title = 'Astro' } = Astro.props;
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400..700&display=swap" />
+		<title>{title}</title>
+	</head>
+	<body style="font-family: 'Inter Variable', sans-serif">
+		<nav><a href="/">Home</a> · <a href="/about">About</a> · <a href="/posts/1">Post 1</a> · <a href="/posts/2">Post 2</a></nav>
+		<slot />
+	</body>
+</html>

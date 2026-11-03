@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Edge cases</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<h1 id="h">Edge cases</h1>
+<p id="ligatures"><code>a -&gt; b != c</code></p>
+<p id="italic-bold"><em>italic <strong>bold</strong></em></p>
+<p id="accents" lang="ro">Țară și școală, café</p>
+<p id="vi" lang="vi">Tiếng Việt ở đây</p>
+<p id="cjk">日本語のテキスト</p>
+<p id="nfd">cafe&#x301; nai&#x308;ve</p>
+<p id="emoji">Snow ☃ and 😀</p>
+<p id="hy" class="hy" lang="en">extraordinarily incomprehensibilities</p>
+<div id="clip" class="clip"><span>truncated text that overflows</span></div>
+<p id="q"><q>quoted</q> and <span lang="de"><q>zitiert</q></span></p>
+<p id="caps" class="caps">small caps</p>
+<p id="fvs" style="font-variation-settings: 'opsz' 28">optical size 28</p>
+<button id="btn" class="btn">Hover me</button>
+<p class="pulse">Pulsing</p>
+<p class="print-heavy">Print heavy</p>
+<p class="wide-only">Wide only</p>
+<p class="fluid">Fluid type</p>
+<p class="fw">AB</p>
+<p class="firstline">First line in another font</p>
+<p class="emph">Emphasis</p>
+<p><span class="secret">hidden</span></p>
+<p class="nums">0123 tabular</p>
+<p class="digits">open 4 digits</p>
+<ol class="roman"><li>one</li><li>two</li></ol>
+<ul class="ticks"><li>tick</li></ul>
+<form>
+  <input id="pw" type="password" value="secret" placeholder="Pässword">
+  <input id="email" type="email" value="ä@example.com">
+  <input id="date" type="date" value="2026-11-02">
+  <select><option>Øption one</option><option>Ωption two</option></select>
+  <textarea>Textarea ñ</textarea>
+</form>
+<div contenteditable="true">Editable ÿ</div>
+<input id="plain" value="Plain ¿">
+</body>
+</html>

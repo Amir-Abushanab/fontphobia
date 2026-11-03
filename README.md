@@ -2,15 +2,36 @@
 
 Shrink a site's web fonts without changing how anything renders. See [PLAN.md](PLAN.md).
 
-Status: **M1** (font core). `inspect` and the low-level `subset` work. The crawler, planner, `build`, `verify` and `check` are M2–M6.
+Status: **M5**. `audit` crawls a site in your installed Google Chrome and writes `.fontphobia/usage.json` and `report.md`. `build` plans the subsets from that file (no browser), shows the sizes, opt-ins and the diff, and `--write` writes the fonts, the CSS edits and `fontphobia.manifest.json` (css adapter). `verify` checks the written files and shaping, then compares every page before and after in Chrome, pixel for pixel. `revert` undoes the edits. `check` is M6; the other adapters are M7.
 
 ```sh
 pnpm install
-pnpm test                      # unit, shaping-equivalence and golden-hash tests
-pnpm --filter fontphobia build # bundles packages/cli/dist/cli.mjs + HarfBuzz WASM
+pnpm test                      # unit, golden-hash and crawler tests (crawler tests need Google Chrome)
+pnpm --filter fontphobia build # bundles packages/cli/dist + HarfBuzz WASM
 
+node packages/cli/src/cli.ts audit --cwd path/to/site   # builds if needed (asks if the build is stale), crawls every page
+node packages/cli/src/cli.ts build --cwd path/to/site   # plans from .fontphobia/usage.json; --write applies; --allow limit-axes etc.
+node packages/cli/src/cli.ts verify --cwd path/to/site  # rebuilds if needed, compares before/after; diffs in .fontphobia/verify/
+node packages/cli/src/cli.ts verify --hinting --browsers chromium,webkit,linux-firefox  # + Linux engines via Apple container / Docker / Podman
+node packages/cli/src/cli.ts revert --cwd path/to/site  # puts the original @font-face rules back
+node packages/cli/src/cli.ts --cwd path/to/site         # audit + build, asks before writing, then verify
 node packages/cli/src/cli.ts inspect fixtures/fonts/InterVariable.ttf
 node packages/cli/src/cli.ts subset fixtures/fonts/InterVariable.ttf --unicodes U+20-7E --features +tnum -o inter.ascii.woff2
 ```
 
-Layout: `packages/core` (font I/O, inspect, subset, shaping equivalence; no browser), `packages/cli` (the published `fontphobia` package), `fixtures/fonts`, and `spikes/` (M0 research, not part of the build).
+Framework fixtures (Astro, TanStack Start) have their own lockfiles:
+
+```sh
+(cd fixtures/sites/astro && pnpm install) && (cd fixtures/sites/tanstack-start && pnpm install)
+FONTPHOBIA_SITES=1 pnpm vitest run packages/crawler/test/sites.test.ts packages/core/test/plan.test.ts
+pnpm plans:update   # re-crawl the fixtures and rewrite fixtures/plans/*/{usage,plan}.json
+```
+
+Layout:
+- `packages/core`: font I/O, inspect, subset, shaping equivalence, the CSS model, usage building, project detection and reports. No browser.
+- `packages/crawler`: Chrome via `playwright-core`, the static server and server mode.
+- `packages/cli`: the published `fontphobia` package.
+- `fixtures/fonts` and `fixtures/sites`: test fonts and fixture sites.
+- `spikes/`: M0 research, not part of the build.
+
+Set `FONTPHOBIA_CHROME` to use a different Chrome or Chromium binary.
