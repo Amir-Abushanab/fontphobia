@@ -178,10 +178,10 @@ async function runBuild(o: BuildFlags & { prompt?: boolean }) {
       const d = [...g.dropped.families.map((f) => `${f} (no page uses it)`), ...Object.entries(g.dropped.weights).map(([f, w]) => `${f} ${w.join(', ')} (nothing asks for ${w.length > 1 ? 'these weights' : 'this weight'})`), ...Object.entries(g.dropped.axes).map(([f, a]) => `${f} ${a.join(', ')} axis (every use is at the default; limit-axes)`)];
       out.push('', `Google Fonts URL tightened (fonts still come from Google): drops ${d.join('; ')}.`);
     }
-    for (const g of r.manifest.nextGoogle ?? []) {
+    for (const g of r.manifest.options ?? []) {
       if (!r.edits.some((e) => e.file === g.file && e.text === g.to)) continue;
       const d = [...(g.dropped.weights.length ? [`weight ${g.dropped.weights.join(', ')} (nothing asks for ${g.dropped.weights.length > 1 ? 'them' : 'it'})`] : []), ...(g.dropped.axes.length ? [`axes ${g.dropped.axes.join(', ')} (every use is at the default; limit-axes)`] : [])];
-      out.push('', `${g.family} (next/font/google, ${g.file}): drops ${d.join('; ')}. \`fontphobia verify\` compares against HEAD built in a git worktree.`);
+      out.push('', `${g.family} (${g.adapter === 'astro-fonts' ? 'Astro fonts[]' : 'next/font/google'}, ${g.file}): drops ${d.join('; ')}. \`fontphobia verify\` compares against HEAD built in a git worktree.`);
     }
   }
   if (r.snippets.length) {

@@ -105,7 +105,8 @@ export function desiredWeights(texts: { text: string }[], seen: number[] = []): 
     if (v === 'lighter') { lighter = true; return true; }
     return ['inherit', 'initial', 'unset', 'revert', 'revert-layer', ''].includes(v);
   };
-  for (const { text } of texts) {
+  for (const { text: raw } of texts) {
+    const text = raw.replace(/@font-face\s*\{[^}]*\}/gi, ''); // descriptors (`font-weight: 100 900`) aren't requests
     for (const m of text.matchAll(/font-weight\s*:\s*([^;}\n"'`]+)/gi)) if (!add(m[1]!)) return undefined;
     for (const m of text.matchAll(/\bfontWeight\s*[:=]\s*([^,;}\n]+)/g)) if (!add(m[1]!)) return undefined;
     for (const m of text.matchAll(/(?:^|[;{\s])font\s*:\s*([^;}\n]+)/g)) for (const t of m[1]!.split(/\s+/)) {

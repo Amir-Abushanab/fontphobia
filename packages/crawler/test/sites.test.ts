@@ -162,8 +162,6 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       expect(f.files!.map((x) => x.role)).toEqual(['core']); // one file per face, no rest
       expect(readFileSync(fontsJs, 'utf8')).toMatch(/src: '\.\.\/fonts\/DejaVuSans\.core\.[0-9a-f]{8}\.woff2'/);
       const u2 = (await audit(opts)).usage as unknown as UsageFileJson;
-      // Google sometimes serves a face from an on-the-fly /l/font?kit= URL instead (spike 6): say which if the ids differ.
-      expect(Object.keys(u2.faces).filter((k) => k.startsWith('fraunces'))).toContain(id);
       expect(u2.faces[id]!.chars).toBe(u1.faces[id]!.chars);
       expect(u2.faces[id]!.files.every((x) => /DejaVuSans_core_[0-9a-f]{8}/.test(x.url))).toBe(true);
       expect((await buildProject(root, u2, {}, { version: 'test' })).unchanged).toBe(true);
@@ -197,7 +195,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       const u1 = (await audit(opts)).usage as unknown as UsageFileJson;
       expect(Object.values(u1.faces).filter((f) => f.source.adapter === 'next-font-google').map((f) => f.family)).toContain('Lato');
       const b = await buildProject(root, u1, {}, { version: 'test', write: true });
-      expect(b.manifest.nextGoogle).toEqual([{ file: 'app/fonts.js', family: 'Lato', from: call.slice(5, -1), to: `{ subsets: ['latin'], weight: ['400', '700', '900'] }`, dropped: { weights: [100, 300], axes: [] } }]);
+      expect(b.manifest.options).toEqual([{ adapter: 'next-font-google', file: 'app/fonts.js', family: 'Lato', from: call.slice(5, -1), to: `{ subsets: ['latin'], weight: ['400', '700', '900'] }`, dropped: { weights: [100, 300], axes: [] } }]);
       const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1], outDir: outDir('next-google-' + Date.now()) });
       expect(v.browser!.baseline).toBe('worktree');
       expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated' && c.class !== 'flaky').map((c) => `${c.page} DPR ${c.dpr}: ${c.causes.join('; ')}`)).toEqual([]);
@@ -205,6 +203,39 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       expect((await checkProject({ root, usage: u1 })).issues).toEqual([]);
       expect(revertProject(root, { write: true }).problems).toEqual([]);
       expect(readFileSync(join(root, 'app/fonts.js'), 'utf8')).toContain(`export const lato = ${call};`);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }, 900_000);
+
+  // M7, astro-fonts (§6.8): the Astro fixture with a Fonts API family, in its own git repo (verify
+  // compares against HEAD built in a worktree). Needs the network (Astro fetches Lato from Google).
+  it('astro: narrows a Fonts API weights list, renders identically against HEAD, revert restores the config', async () => {
+    const fixture = join(sites, 'astro');
+    const root = mkdtempSync(join(tmpdir(), 'fontphobia-astro-fonts-'));
+    try {
+      cpSync(fixture, root, { recursive: true, filter: (p) => !/[\\/](node_modules|dist|\.astro|\.fontphobia)$/.test(p) });
+      cpSync(join(fixture, 'node_modules'), join(root, 'node_modules'), { recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE });
+      const entry = `{ provider: fontProviders.google(), name: 'Lato', cssVariable: '--font-lato', weights: [100, 300, 400, 700, 900], styles: ['normal'] }`;
+      writeFileSync(join(root, 'astro.config.mjs'), `import { defineConfig, fontProviders } from 'astro/config';\n\nexport default defineConfig({\n  fonts: [${entry}],\n});\n`);
+      const layout = join(root, 'src/layouts/Layout.astro');
+      writeFileSync(layout, readFileSync(layout, 'utf8').replace("import '@fontsource-variable/inter';", "import { Font } from 'astro:assets';\nimport '@fontsource-variable/inter';").replace('<title>', '<Font cssVariable="--font-lato" preload />\n\t\t<title>').replace('<nav>', '<nav style="font-family: var(--font-lato)">'));
+      const sh = async (args: string[]) => { const r = await runCommand(`git -c user.email=t@example.com -c user.name=t ${args.join(' ')}`, root); if (r.code) throw new Error(r.output); };
+      writeFileSync(join(root, '.gitignore'), 'node_modules/\ndist/\n.astro/\n.fontphobia/\n');
+      await sh(['init', '-q']); await sh(['add', '-A']); await sh(['commit', '-qm', 'fixture']);
+      const opts = { root, fontphobiaVersion: 'test', fontSizeSweep: false, viewports: [1280], rebuild: true, cache: false };
+      const u1 = (await audit(opts)).usage as unknown as UsageFileJson;
+      expect(Object.values(u1.faces).filter((f) => f.source.adapter === 'astro-fonts').length).toBeGreaterThan(0);
+      const b = await buildProject(root, u1, {}, { version: 'test', write: true });
+      expect(b.manifest.options?.map((r) => [r.adapter, r.family, r.dropped.weights])).toEqual([['astro-fonts', 'Lato', [100, 300]]]);
+      expect(readFileSync(join(root, 'astro.config.mjs'), 'utf8')).toContain('weights: [400, 700, 900]');
+      const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1], outDir: outDir('astro-fonts-' + Date.now()) });
+      expect(v.browser!.baseline).toBe('worktree');
+      expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated' && c.class !== 'flaky').map((c) => `${c.page} DPR ${c.dpr}: ${c.causes.join('; ')}`)).toEqual([]);
+      expect(v.ok).toBe(true);
+      expect((await checkProject({ root, usage: u1 })).issues.filter((i) => i.severity === 'error')).toEqual([]);
+      expect(revertProject(root, { write: true }).problems).toEqual([]);
+      expect(readFileSync(join(root, 'astro.config.mjs'), 'utf8')).toContain(entry);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

@@ -15,7 +15,9 @@ describe('next/font/google calls', () => {
     writeFileSync(join(root, 'fonts.js'), `import { Lato, Roboto_Mono as Mono } from 'next/font/google';\nexport const a = Lato({ subsets: ['latin'], weight: ["300", "400"] });\nexport const b = Mono({ subsets: ['latin'] });\n`);
     const calls = findGoogleFontCalls(root);
     expect(calls.map((c) => [c.family, c.line, c.arg])).toEqual([['Lato', 2, `{ subsets: ['latin'], weight: ["300", "400"] }`], ['Roboto Mono', 3, `{ subsets: ['latin'] }`]]);
-    expect(literalProp(calls[0]!.arg, 'weight')).toMatchObject({ values: ['300', '400'], quote: '"', array: true });
+    expect(literalProp(calls[0]!.arg, 'weight')).toMatchObject({ values: ['300', '400'], quote: '"', array: true, numeric: false });
+    expect(literalProp(`{ weights: [400, 700] }`, 'weights')).toMatchObject({ values: ['400', '700'], array: true, numeric: true });
+    expect(literalProp(`{ weights: [400, '700'] }`, 'weights')).toBeUndefined();
     expect(literalProp(`{ weight: '400' }`, 'weight')).toMatchObject({ values: ['400'], array: false });
     expect(literalProp(`{ weight: w }`, 'weight')).toBeUndefined();
     expect(literalProp(`{ weight: ['400', w] }`, 'weight')).toBeUndefined();
@@ -42,14 +44,33 @@ describe('build, check and revert', () => {
     const r = await buildProject(root, usage([400, 700, 900]), {}, { version: '1', write: true });
     // 400, 700, 900 asked for (bolder of 700 is 900); 100 and 300 match nothing.
     expect(readFileSync(join(root, 'fonts.js'), 'utf8')).toBe(src.replace(`['100', '300', '400', '700', '900']`, `['400', '700', '900']`));
-    expect(r.manifest.nextGoogle).toEqual([{ file: 'fonts.js', family: 'Lato', from: `{\n  subsets: ['latin'],\n  weight: ['100', '300', '400', '700', '900'],\n}`, to: `{\n  subsets: ['latin'],\n  weight: ['400', '700', '900'],\n}`, dropped: { weights: [100, 300], axes: [] } }]);
+    expect(r.manifest.options).toEqual([{ adapter: 'next-font-google', file: 'fonts.js', family: 'Lato', from: `{\n  subsets: ['latin'],\n  weight: ['100', '300', '400', '700', '900'],\n}`, to: `{\n  subsets: ['latin'],\n  weight: ['400', '700', '900'],\n}`, dropped: { weights: [100, 300], axes: [] } }]);
     expect((await buildProject(root, usage([400, 700, 900]), {}, { version: '1' })).unchanged).toBe(true);
     expect((await checkProject({ root })).issues).toEqual([]);
     appendFileSync(join(root, 'globals.css'), '.light { font-weight: 300; }\n');
-    expect((await checkProject({ root })).issues.map((i) => i.message)).toEqual(['Lato 300 is asked for again, but build dropped it from the next/font/google call in fonts.js']);
+    expect((await checkProject({ root })).issues.map((i) => i.message)).toEqual(['Lato 300 is asked for again, but build dropped it from the Lato next/font/google call in fonts.js']);
     const rv = revertProject(root, { write: true });
     expect(rv.problems).toEqual([]);
     expect(readFileSync(join(root, 'fonts.js'), 'utf8')).toBe(src);
     expect(readManifest(root)).toBeUndefined();
+  });
+});
+
+describe('Astro fonts[] (§6.8)', () => {
+  it('finds entries in astro.config and narrows a numeric weights list', async () => {
+    const root = mkdtempSync(join(tmp, 'astro-'));
+    const cfg = `import { defineConfig, fontProviders } from 'astro/config';\nexport default defineConfig({\n  fonts: [\n    { provider: fontProviders.google(), name: 'Lato', cssVariable: '--font-lato', weights: [100, 300, 400, 700, 900], styles: ['normal'] },\n    { provider: fontProviders.google(), name: 'Lora', cssVariable: '--font-lora' },\n  ],\n});\n`;
+    writeFileSync(join(root, 'astro.config.mjs'), cfg);
+    writeFileSync(join(root, 'package.json'), '{"name":"t","private":true}\n');
+    const { findAstroFontsEntries, astroFamily } = await import('../src/index.ts');
+    expect(findAstroFontsEntries(root).map((e) => [e.family, e.line])).toEqual([['Lato', 4], ['Lora', 5]]);
+    expect(astroFamily('Lato-4695a571cd365f71')).toBe('Lato');
+    const u = usage([400, 700]);
+    for (const f of Object.values(u.faces)) { f.family = 'Lato-4695a571cd365f71'; f.source = { adapter: 'astro-fonts' }; }
+    const r = await buildProject(root, u, {}, { version: '1', write: true });
+    expect(readFileSync(join(root, 'astro.config.mjs'), 'utf8')).toBe(cfg.replace('weights: [100, 300, 400, 700, 900]', 'weights: [400, 700, 900]'));
+    expect(r.manifest.options?.map((x) => [x.adapter, x.family, x.dropped.weights])).toEqual([['astro-fonts', 'Lato', [100, 300]]]);
+    expect(revertProject(root, { write: true }).problems).toEqual([]);
+    expect(readFileSync(join(root, 'astro.config.mjs'), 'utf8')).toBe(cfg);
   });
 });

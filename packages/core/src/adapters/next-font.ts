@@ -23,7 +23,7 @@ const CODE = /\.(m?[jt]sx?|cjs)$/i;
 const SKIP = new Set(['node_modules', '.git', '.fontphobia', '.next', 'out', 'dist', 'build', '.vercel', '.turbo', 'coverage']);
 
 /** The index just past the bracket that closes the one at `open`, skipping strings, templates and comments. */
-function closing(text: string, open: number): number {
+export function closing(text: string, open: number): number {
   const pairs: Record<string, string> = { '(': ')', '{': '}', '[': ']' };
   const stack: string[] = [];
   for (let i = open; i < text.length; i++) {
@@ -115,24 +115,32 @@ export function findGoogleFontCalls(root: string): GoogleFontCall[] {
   return out;
 }
 
-/** A property's value in an object literal's text (string or array of strings), with its byte range. */
-export function literalProp(arg: string, key: string): { start: number; end: number; values: string[]; quote: string; array: boolean } | undefined {
+/** A property's value in an object literal's text (a string, number, or array of them), with its byte range. */
+export function literalProp(arg: string, key: string): { start: number; end: number; values: string[]; quote: string; array: boolean; numeric: boolean } | undefined {
   const m = new RegExp(`(?:^|[{,\\s])${key}\\s*:\\s*`).exec(arg);
   if (!m) return undefined;
   const at = m.index + m[0].length;
   const q = arg[at];
   if (q === '"' || q === "'") {
     const e = arg.indexOf(q, at + 1);
-    return e < 0 ? undefined : { start: at, end: e + 1, values: [arg.slice(at + 1, e)], quote: q, array: false };
+    return e < 0 ? undefined : { start: at, end: e + 1, values: [arg.slice(at + 1, e)], quote: q, array: false, numeric: false };
   }
+  const num = /^-?\d+(\.\d+)?/.exec(arg.slice(at));
+  if (num) return { start: at, end: at + num[0].length, values: [num[0]], quote: "'", array: false, numeric: true };
   if (q !== '[') return undefined;
   const e = arg.indexOf(']', at);
   if (e < 0) return undefined;
   const body = arg.slice(at + 1, e);
-  const items = [...body.matchAll(/(["'])([^"'\n]*)\1/g)];
-  if (body.replace(/(["'])([^"'\n]*)\1/g, '').replace(/[\s,]/g, '')) return undefined; // not only string literals
-  return { start: at, end: e + 1, values: items.map((x) => x[2]!), quote: items[0]?.[1] ?? "'", array: true };
+  const TOKEN = /(["'])([^"'\n]*)\1|(-?\d+(?:\.\d+)?)/g;
+  const items = [...body.matchAll(TOKEN)];
+  if (body.replace(TOKEN, '').replace(/[\s,]/g, '')) return undefined; // not only literals
+  const numeric = items.length > 0 && items.every((x) => x[3] !== undefined);
+  if (!numeric && items.some((x) => x[3] !== undefined)) return undefined; // mixed
+  return { start: at, end: e + 1, values: items.map((x) => x[2] ?? x[3]!), quote: items.find((x) => x[1])?.[1] ?? "'", array: true, numeric };
 }
+
+/** An array literal in the style of `p` (quotes, or bare numbers). */
+export const formatLiteralArray = (p: { quote: string; numeric: boolean }, values: string[]) => `[${values.map((v) => (p.numeric ? v : `${p.quote}${v}${p.quote}`)).join(', ')}]`;
 
 /** Next's own data for a Google family (weights, styles, axes), from the project's installed Next. */
 export function nextGoogleFontData(root: string, family: string): { weights: string[]; styles: string[]; axes?: { tag: string; min: number; max: number; defaultValue: number }[] } | undefined {

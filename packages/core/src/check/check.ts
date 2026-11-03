@@ -14,6 +14,7 @@ import { join, relative, sep } from 'node:path';
 import { detectCss } from '../adapters/css.ts';
 import { desiredWeights, matchWeight, namesFamily, neededWeights, repoText } from '../adapters/google-url.ts';
 import { literalProp } from '../adapters/next-font.ts';
+import { optionsLabel, weightKeyOf } from '../build/narrow-options.ts';
 import { resolveFontsource } from '../adapters/fontsource.ts';
 import { cssDemands, newDemands, otherFaces } from '../build/fingerprint.ts';
 import { readManifest, type Manifest, type ManifestEntry } from '../build/manifest.ts';
@@ -109,7 +110,7 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
   const root = o.root;
   const manifest: Manifest | undefined = readManifest(root);
   const notes: string[] = [];
-  if (!manifest || (!Object.keys(manifest.entries).length && !manifest.google?.length && !manifest.nextGoogle?.length)) {
+  if (!manifest || (!Object.keys(manifest.entries).length && !manifest.google?.length && !manifest.options?.length)) {
     return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: ['no fontphobia.manifest.json: nothing has been built to check'] };
   }
   const issues: CheckIssue[] = [];
@@ -176,19 +177,19 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
     }
   }
 
-  // next/font/google (§6.4): the narrowed calls still there, and nothing asks for what they dropped.
-  if (manifest.nextGoogle?.length) {
+  // next/font/google (§6.4) and Astro fonts[] (§6.8): the narrowed options still there, and nothing asks for what they dropped.
+  if (manifest.options?.length) {
     const texts = repoText(root);
     const weights = desiredWeights(texts);
-    for (const r of manifest.nextGoogle) {
+    for (const r of manifest.options) {
       const t = existsSync(join(root, r.file)) ? readFileSync(join(root, r.file), 'utf8') : '';
-      if (!t.includes(r.to)) add({ kind: 'block', file: r.file, message: `the ${r.family} next/font/google call in ${r.file} changed since fontphobia narrowed it; rerun build` });
+      if (!t.includes(r.to)) add({ kind: 'block', file: r.file, message: `${optionsLabel(r)} changed since fontphobia narrowed it; rerun build` });
       if (r.dropped.weights.length) {
-        const all = [...new Set([...(literalProp(r.from, 'weight')?.values ?? []).map(Number)])];
+        const all = [...new Set([...(literalProp(r.from, weightKeyOf(r.adapter))?.values ?? []).map(Number)])];
         const need = weights ? [...new Set([...weights].map((d) => matchWeight(d, all)!))].filter((w) => r.dropped.weights.includes(w)).sort((a, b) => a - b) : r.dropped.weights;
-        if (need.length) add({ kind: 'axis', file: r.file, message: `${r.family} ${need.join(', ')} ${need.length > 1 ? 'are' : 'is'} asked for again${weights ? '' : ' (a font-weight is computed)'}, but build dropped ${need.length > 1 ? 'them' : 'it'} from the next/font/google call in ${r.file}` });
+        if (need.length) add({ kind: 'axis', file: r.file, message: `${r.family} ${need.join(', ')} ${need.length > 1 ? 'are' : 'is'} asked for again${weights ? '' : ' (a font-weight is computed)'}, but build dropped ${need.length > 1 ? 'them' : 'it'} from ${optionsLabel(r)}` });
       }
-      for (const tag of r.dropped.axes) if (texts.some((x) => new RegExp(`["']${tag}["']\\s+-?\\d`).test(x.text))) add({ kind: 'axis', file: r.file, message: `the code sets '${tag}', which build dropped from the ${r.family} next/font/google call (limit-axes)` });
+      for (const tag of r.dropped.axes) if (texts.some((x) => new RegExp(`["']${tag}["']\\s+-?\\d`).test(x.text))) add({ kind: 'axis', file: r.file, message: `the code sets '${tag}', which build dropped from ${optionsLabel(r)} (limit-axes)` });
     }
   }
 

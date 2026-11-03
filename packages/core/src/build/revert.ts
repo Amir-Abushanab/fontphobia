@@ -59,7 +59,7 @@ export function revertProject(root: string, o: { write?: boolean } = {}): Revert
     }
   }
   // next/font/google: each call's options back.
-  for (const r of m.nextGoogle ?? []) {
+  for (const r of m.options ?? []) {
     if (!existsSync(join(root, r.file))) { problems.push(`${r.file} is gone (${r.family} next/font/google call)`); continue; }
     const t = read(r.file);
     const at = t.indexOf(r.to);

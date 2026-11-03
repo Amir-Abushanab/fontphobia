@@ -101,8 +101,15 @@ export function auditFindings(u: UsageJson, crawl: CrawlFacts): Finding[] {
   }
   for (const [t, ps] of preloadIssues) out.push({ kind: 'preload', text: `${t} (${ps.size} page(s))` });
   const bySource = new Map<string, Set<string>>();
-  for (const f of Object.values(u.faces)) bySource.set(f.family, (bySource.get(f.family) ?? new Set()).add(f.source.adapter));
-  for (const [fam, s] of bySource) if (s.size > 1) out.push({ kind: 'duplicate', text: `${fam} loads from more than one source: ${[...s].sort().join(', ')}` });
+  const famOf = (f: string) => f.replace(/^["']|["']$/g, '');
+  for (const f of Object.values(u.faces)) bySource.set(famOf(f.family), (bySource.get(famOf(f.family)) ?? new Set()).add(f.source.adapter));
+  // @nuxt/fonts declares its copies whether or not a page loads them (§6.8).
+  for (const f of Object.values(u.unloaded)) if (f.urls.some((x) => x.includes('/_nuxt/fonts/'))) bySource.set(famOf(f.family), (bySource.get(famOf(f.family)) ?? new Set()).add('nuxt-fonts'));
+  for (const [fam, s] of bySource) {
+    if (s.size < 2) continue;
+    const nuxt = s.has('nuxt-fonts') ? `. @nuxt/fonts doesn't see head <link>s or package imports and resolves ${fam} again: add { name: '${fam}', provider: 'none' } to fonts.families in nuxt.config so only the other source loads it (that changes which file pages load; run fontphobia verify after)` : '';
+    out.push({ kind: 'duplicate', text: `${fam} loads from more than one source: ${[...s].sort().join(', ')}${nuxt}` });
+  }
   const dis = new Set<string>();
   for (const pg of Object.values(u.pages)) for (const d of pg.disagreements) dis.add(d);
   for (const d of dis) out.push({ kind: 'cross-check', text: `Chrome drew text with ${d} where the CSS matching predicted another face; its characters were added to every candidate face` });
