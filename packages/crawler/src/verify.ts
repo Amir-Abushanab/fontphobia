@@ -570,7 +570,12 @@ async function compare(
   const ownersOf = (S: Snapshot) => [...new Set(flagged.map((i) => S.nodes[i]!.owner).filter((x): x is number => x !== undefined))];
   const [fb, fa] = await Promise.all([platformFonts(b.cdp, ownersOf(B)), platformFonts(a.cdp, ownersOf(A))]);
   const renames = new Map(Object.values(manifest.entries).filter((e) => e.plan.rename).map((e) => [e.plan.rename!.to, e.plan.rename!.from]));
-  const fam = (k: string) => renames.get(k) ?? k;
+  // Renamed subsets (OFL Reserved Font Names) report as the new name, or as a named instance of it
+  // ("Mrrwthr Subset Light 18pt" for "Merriweather Light 18pt"): map back by prefix.
+  const fam = (k: string) => {
+    for (const [to, from] of renames) if (k === to || k.startsWith(`${to} `)) return from + k.slice(to.length);
+    return k;
+  };
   let fallback = false;
   let unrelated = 0;
   for (const i of flagged) {

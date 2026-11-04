@@ -102,3 +102,14 @@ describe('stylesheet', () => {
     expect(vue.slice(b[0]!.offset, b[0]!.offset + 12)).toBe('\n@font-face ');
   });
 });
+
+describe('sameFaceDescriptors', () => {
+  it('tells faces that share one variable file apart, and reads unicode-range wildcards', async () => {
+    const { sameFaceDescriptors } = await import('../src/css/face-match.ts');
+    expect(sameFaceDescriptors({ 'font-weight': '400' }, { 'font-weight': '700' })).toBe(false);
+    expect(sameFaceDescriptors({ 'font-weight': '400', 'font-style': 'normal' }, { 'font-weight': '400' })).toBe(true);
+    expect(sameFaceDescriptors({ 'font-weight': '400', 'font-style': 'italic' }, { 'font-weight': '400' })).toBe(false);
+    expect(sameFaceDescriptors({ 'unicode-range': 'U+0-FF, U+131' }, { 'unicode-range': 'U+??,U+131' })).toBe(true);
+    expect(sameFaceDescriptors({ 'unicode-range': 'U+0-FF' }, { 'unicode-range': 'U+100-17F' })).toBe(false);
+  });
+});

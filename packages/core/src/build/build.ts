@@ -12,6 +12,7 @@ import { cssBlock, findBlock } from './css.ts';
 import { findSheetRefs, googleCssFromAudit, googleFileUrl, googleSources, hostedDir, isGoogleSheet, sheetSlug } from '../adapters/google.ts';
 import { parseStylesheet } from '../css/stylesheet.ts';
 import { familyKey } from '../css/values.ts';
+import { sameFaceDescriptors } from '../css/face-match.ts';
 import { findLocalFontCalls, localFontPath, nextFallbackMetrics } from '../adapters/next-font.ts';
 import { ejectName, findFontsourceImports, fontsourceRules, resolveFontsource, sameFile, type FontsourcePackage } from '../adapters/fontsource.ts';
 import { cssDemands, demandKeys, otherFaces } from './fingerprint.ts';
@@ -468,7 +469,7 @@ async function selfHostGoogle(root: string, faces: FacePlan[], usage: UsageFileJ
       at = r.end;
       const text = css.slice(r.start, r.end);
       const url = r.src.find((s) => s.url)?.url;
-      const face = planned.find((f) => !done.has(f.id) && url && info.get(f.id)!.url === url);
+      const face = planned.find((f) => !done.has(f.id) && url && info.get(f.id)!.url === url && sameFaceDescriptors(usage.faces[f.id]?.descriptors ?? parseStylesheet(prev!.entries[f.id]!.declaration).fontFaces[0]!.descriptors, r.descriptors));
       if (!face) { out += text; continue; }
       done.add(face.id);
       const placed = face.files!.map((f) => ({ f, file: `${host.dir}/${f.name}`, url: `./${f.name}` }));

@@ -218,3 +218,4 @@ export function relativeWeight(kw: 'bolder' | 'lighter', parent: number): number
   if (kw === 'bolder') return parent < 350 ? 400 : parent < 550 ? 700 : parent < 900 ? 900 : parent;
   return parent < 100 ? parent : parent < 550 ? 100 : parent < 750 ? 400 : 700;
 }
+

@@ -9,5 +9,5 @@
 </template>
 
 <style>
-body { font-family: Lato, sans-serif; }
+body { font-family: Merriweather, serif; }
 </style>

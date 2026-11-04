@@ -16,6 +16,7 @@ import { astroFamily, findAstroFontsEntries, findAstroFontTags } from '../adapte
 import { closing, findGoogleFontCalls, literalProp } from '../adapters/next-font.ts';
 import { arrayObjects, familyDecls, findNuxtFontsEntries, nuxtConfig } from '../adapters/nuxt-fonts.ts';
 import { familyKey, parseFamilyList, unquote } from '../css/values.ts';
+import { sameFaceDescriptors } from '../css/face-match.ts';
 import { listFiles } from '../project/detect.ts';
 import type { FacePlan, UsageFileJson } from '../plan/planner.ts';
 import { cssBlock } from './css.ts';
@@ -239,7 +240,8 @@ export function ejectFramework(root: string, kind: EjectKind, faces: FacePlan[],
       const url = /url\(\s*["']?([^"')]+)["']?\s*\)/.exec(text)?.[1];
       if (!url) { out += text + '\n'; continue; } // a fallback face: local() only
       const b = base(url);
-      const face = planned.find((f) => !done.has(f.id) && fileOf(f.id) === b);
+      const ruleDescriptors = Object.fromEntries(declsOf(n).map(([k, v]) => [k.toLowerCase(), v]));
+      const face = planned.find((f) => !done.has(f.id) && fileOf(f.id) === b && sameFaceDescriptors(usage.faces[f.id]!.descriptors, ruleDescriptors));
       if (face?.files) {
         done.add(face.id);
         const placed = face.files.map((f) => ({ f, file: `${host.dir}/${f.name}`, url: `${host.url}/${f.name}` }));

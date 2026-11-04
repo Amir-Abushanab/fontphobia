@@ -259,13 +259,13 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
     }
     return root;
   }
-  const ejectRoundTrip = async (root: string, kind: string, files: string[]) => {
+  const ejectRoundTrip = async (root: string, kind: string, files: string[], family = 'Lato') => {
     const original = Object.fromEntries(files.map((f) => [f, readFileSync(join(root, f), 'utf8')]));
     const opts = { root, fontphobiaVersion: 'test', fontSizeSweep: false, viewports: [1280], rebuild: true, cache: false };
     const u1 = (await audit(opts)).usage as unknown as UsageFileJson;
     const b = await buildProject(root, u1, { allow: ['eject'] }, { version: 'test', write: true });
     expect(b.notWritten).toEqual([]);
-    expect(Object.values(b.manifest.ejects ?? {}).filter((e) => e.kind === kind).map((e) => e.package)).toEqual(['Lato']);
+    expect(Object.values(b.manifest.ejects ?? {}).filter((e) => e.kind === kind).map((e) => e.package)).toEqual([family]);
     expect(Object.values(b.manifest.entries).filter((e) => e.adapter === kind).length).toBeGreaterThan(0);
     const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1], outDir: outDir(`${kind}-eject-${Date.now()}`) });
     expect(v.browser!.baseline).toBe('worktree');
@@ -302,10 +302,11 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
     if (!existsSync(join(sites, 'nuxt', 'node_modules'))) throw new Error('run pnpm install in fixtures/sites/nuxt first');
     const root = await tempRepo('nuxt', ['node_modules/', '.nuxt/', '.output/', 'dist', '.fontphobia/cache/'], () => {});
     try {
-      // tighten is reported, not applied: Lato 300 is listed but nothing asks for it.
+      // tighten is reported, not applied: Merriweather 300 is listed but nothing asks for it.
+      // (Not Lato: @nuxt/fonts lists local() first, and Ubuntu runners have Lato installed.)
       const u = (await audit({ root, fontphobiaVersion: 'test', fontSizeSweep: false, viewports: [1280], rebuild: true, cache: false })).usage as unknown as UsageFileJson;
       expect((await buildProject(root, u, {}, { version: 'test' })).suggestions.map((x) => x.kind === 'options' && [x.adapter, x.weights])).toEqual([['nuxt-fonts', [300]]]);
-      await ejectRoundTrip(root, 'nuxt-fonts', ['nuxt.config.ts', 'app/app.vue']);
+      await ejectRoundTrip(root, 'nuxt-fonts', ['nuxt.config.ts', 'app/app.vue'], 'Merriweather');
     } finally { rmSync(root, { recursive: true, force: true }); }
   }, 900_000);
 
