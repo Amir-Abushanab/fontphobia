@@ -14,8 +14,8 @@ import { parseStylesheet } from '../css/stylesheet.ts';
 import { findLocalFontCalls, localFontPath, nextFallbackMetrics } from '../adapters/next-font.ts';
 import { ejectName, findFontsourceImports, fontsourceRules, resolveFontsource, sameFile, type FontsourcePackage } from '../adapters/fontsource.ts';
 import { cssDemands, demandKeys, otherFaces } from './fingerprint.ts';
-import { tightenGoogle } from './google-tighten.ts';
-import { narrowOptions } from './narrow-options.ts';
+import { tightenGoogle, type TightenSuggestion } from './google-tighten.ts';
+import { narrowOptions, type OptionsSuggestion } from './narrow-options.ts';
 import { applyEdits, type Edit } from './edits.ts';
 import { MANIFEST_FILE, MANIFEST_VERSION, manifestJson, readManifest, type Manifest, type ManifestEntry } from './manifest.ts';
 
@@ -38,6 +38,11 @@ export interface BuildResult {
   generated: { file: string; bytes: number; exists: boolean }[];
   /** `manual` faces (§6.7): the @font-face block to paste, and where. Their subset files are in `fonts`. */
   snippets: { id: string; file?: string; line?: number; css: string }[];
+  /**
+   * What the `tighten` opt-in would drop (§6.4, §6.5, §6.8): unused families and weights. Measured and
+   * reported, not applied, since a page the audit never saw could ask for one.
+   */
+  suggestions: (({ kind: 'google' } & TightenSuggestion) | ({ kind: 'options' } & OptionsSuggestion))[];
   /** Planned faces this version can't write yet, with why. */
   notWritten: { id: string; reason: string }[];
   /** Nothing would change. */
@@ -144,6 +149,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
   const edits: Edit[] = [];
   const notWritten: BuildResult['notWritten'] = [];
   const snippets: BuildResult['snippets'] = [];
+  const suggestions: BuildResult['suggestions'] = [];
   let calls: ReturnType<typeof findLocalFontCalls> | undefined;
   // One source can back several faces (normal and italic); its preloads go to the face on the most pages.
   const preloadOwner = new Map<string, string>();
@@ -169,12 +175,14 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
   // Google faces staying on Google: tighten the stylesheet URLs (§6.5).
   let google = prev?.google;
   if (!cfg.allow?.includes('self-host')) {
-    const t = await tightenGoogle(root, usage, prev, { limitAxes: !!cfg.allow?.includes('limit-axes') });
+    const t = await tightenGoogle(root, usage, prev, { limitAxes: !!cfg.allow?.includes('limit-axes'), drop: !!cfg.allow?.includes('tighten') });
+    suggestions.push(...t.suggestions.map((x) => ({ kind: 'google' as const, ...x })));
     edits.push(...t.edits);
     google = t.records.length ? t.records : undefined;
   }
   // next/font/google calls (§6.4) and Astro fonts[] entries (§6.8): narrow their options.
-  const ng = narrowOptions(root, usage, prev, { limitAxes: !!cfg.allow?.includes('limit-axes') });
+  const ng = narrowOptions(root, usage, prev, { limitAxes: !!cfg.allow?.includes('limit-axes'), tighten: !!cfg.allow?.includes('tighten') });
+  suggestions.push(...ng.suggestions.map((x) => ({ kind: 'options' as const, ...x })));
   edits.push(...ng.edits);
   const options = ng.records.length ? ng.records : undefined;
   const fsFaces = plan.faces.filter((f) => f.status === 'planned' && f.adapter === 'fontsource');
@@ -304,7 +312,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
     for (const f of stale) unlinkSync(join(root, f));
     if (Object.keys(entries).length || google || options) writeFileSync(join(root, MANIFEST_FILE), json);
   }
-  return { plan, manifest, fonts: fontList, generated: generatedList, snippets, edits, stale, notWritten, unchanged };
+  return { plan, manifest, fonts: fontList, generated: generatedList, snippets, edits, stale, notWritten, unchanged, suggestions };
 }
 
 /**

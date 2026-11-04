@@ -180,8 +180,18 @@ async function runBuild(o: BuildFlags & { prompt?: boolean }) {
     }
     for (const g of r.manifest.options ?? []) {
       if (!r.edits.some((e) => e.file === g.file && e.text === g.to)) continue;
-      const d = [...(g.dropped.weights.length ? [`weight ${g.dropped.weights.join(', ')} (nothing asks for ${g.dropped.weights.length > 1 ? 'them' : 'it'})`] : []), ...(g.dropped.axes.length ? [`axes ${g.dropped.axes.join(', ')} (every use is at the default; limit-axes)`] : [])];
+      if (g.kind === 'preload') { out.push('', `${g.family} (<Font> in ${g.file}): preloads only the weights and styles pages load; the others stay declared and download when a page needs them. \`fontphobia verify\` compares against HEAD built in a git worktree.`); continue; }
+      const d = [...(g.dropped.weights.length ? [`weight ${g.dropped.weights.join(', ')} (nothing asks for ${g.dropped.weights.length > 1 ? 'them' : 'it'}; tighten)`] : []), ...(g.dropped.axes.length ? [`axes ${g.dropped.axes.join(', ')} (every use is at the default; limit-axes)`] : [])];
       out.push('', `${g.family} (${g.adapter === 'astro-fonts' ? 'Astro fonts[]' : 'next/font/google'}, ${g.file}): drops ${d.join('; ')}. \`fontphobia verify\` compares against HEAD built in a git worktree.`);
+    }
+  }
+  if (r.suggestions.length) {
+    out.push('', 'Not applied: `--allow tighten` would also drop these. Nothing the crawled pages or the code asks for uses them, but a page the audit never saw (or CMS text) could, and would then render a nearby weight or a synthesized style:');
+    for (const x of r.suggestions) {
+      if (x.kind === 'google') {
+        const what = [...x.families, ...Object.entries(x.weights).map(([f, w]) => `${f} ${w.join(', ')}`)].join('; ');
+        out.push(`  Google Fonts ${x.sheet}: ${what}. Saves about ${kb(x.cssBytes)} of Google's CSS; fonts nothing uses never download, so font bytes don't change.`);
+      } else out.push(`  ${x.family} (${x.adapter === 'astro-fonts' ? 'Astro fonts[]' : 'next/font/google'}, ${x.file}): weight ${x.weights.join(', ')}. ${x.adapter === 'astro-fonts' ? 'Astro declares each listed weight' : 'Next downloads and preloads each listed weight of a static family'}.`);
     }
   }
   if (r.snippets.length) {
@@ -261,7 +271,7 @@ verifyOptions(cli
 
 const buildOptions = (c: ReturnType<typeof cli.command>) => c
   .option('--usage <file>', 'usage.json to plan from (default .fontphobia/usage.json)')
-  .option('--allow <opt-in>', 'Enable an opt-in (limit-axes, drop-hinting, split-shaping, drop-hint-refs); repeatable')
+  .option('--allow <opt-in>', 'Enable an opt-in (limit-axes, drop-hinting, split-shaping, drop-hint-refs, self-host, tighten); repeatable')
   .option('--no-remainder', 'No lazy "rest" file: unseen characters fall back to the system font')
   .option('--write, -u', 'Write the fonts, the CSS edits and fontphobia.manifest.json without asking');
 

@@ -1,6 +1,7 @@
 // `astro-fonts` (§6.8): Astro's Fonts API, `fonts: [{ name, cssVariable, provider, weights, … }]` in
 // astro.config. Entries are found by bracket matching, string-literal level like next/font.
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { listFiles } from '../project/detect.ts';
 import { join } from 'node:path';
 import { closing, literalProp } from './next-font.ts';
 
@@ -30,6 +31,25 @@ export function findAstroFontsEntries(root: string): AstroFontsEntry[] {
         if (name && !name.array) out.push({ file, line: text.slice(0, i).split('\n').length, family: name.values[0]!, start: i, end: e, arg });
         i = e - 1;
       }
+    }
+  }
+  return out;
+}
+
+export interface AstroFontTag { file: string; line: number; cssVariable: string; start: number; end: number; text: string; /** Byte range of `preload` / `preload={true}` inside the tag. */ preload?: { start: number; end: number } }
+
+/** `<Font cssVariable="--x" preload />` tags in .astro files. */
+export function findAstroFontTags(root: string): AstroFontTag[] {
+  const out: AstroFontTag[] = [];
+  for (const file of listFiles(root, (r) => /\.astro$/i.test(r), { skip: (_rel, n) => n === 'node_modules' || n === 'dist' || n.startsWith('.') })) {
+    let text: string;
+    try { if (statSync(join(root, file)).size > 1_000_000) continue; text = readFileSync(join(root, file), 'utf8'); } catch { continue; }
+    if (!text.includes('<Font')) continue;
+    for (const m of text.matchAll(/<Font\b[^>]*?\/?>/g)) {
+      const v = /\bcssVariable\s*=\s*["']([^"']+)["']/.exec(m[0]);
+      if (!v) continue;
+      const p = /\spreload(?:\s*=\s*\{\s*true\s*\})?(?=[\s/>])/.exec(m[0]);
+      out.push({ file, line: text.slice(0, m.index).split('\n').length, cssVariable: v[1]!, start: m.index, end: m.index + m[0].length, text: m[0], preload: p ? { start: m.index + p.index + 1, end: m.index + p.index + p[0].length } : undefined });
     }
   }
   return out;

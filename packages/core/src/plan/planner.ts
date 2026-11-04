@@ -486,8 +486,8 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
 
 export async function planAll(usage: UsageFileJson, sources: Map<string, SourceFont>, cfg: PlanConfig = {}, outputs?: Map<string, Uint8Array>): Promise<Plan> {
   if (usage.version !== 1) throw new Error(`usage.json version ${usage.version} isn't supported by this fontphobia; rerun audit`);
-  const unknown = (cfg.allow ?? []).filter((a) => !(OPT_INS as readonly string[]).includes(a) && !['self-host', 'to-local', 'eject', 'add-preloads'].includes(a));
-  if (unknown.length) throw new Error(`Unknown opt-in ${unknown.join(', ')}; known: ${OPT_INS.join(', ')}`);
+  const unknown = (cfg.allow ?? []).filter((a) => !(OPT_INS as readonly string[]).includes(a) && !['self-host', 'tighten', 'to-local', 'eject', 'add-preloads'].includes(a));
+  if (unknown.length) throw new Error(`Unknown opt-in ${unknown.join(', ')}; known: ${[...OPT_INS, 'self-host', 'tighten'].join(', ')}`);
   const faces: FacePlan[] = [];
   // Sequential: wawoff2 is serialized anyway, and the order keeps the output stable.
   for (const id of Object.keys(usage.faces).sort(str)) faces.push(await planFace(id, usage.faces[id]!, usage, sources.get(id), cfg, outputs));

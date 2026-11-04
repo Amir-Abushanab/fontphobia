@@ -96,18 +96,27 @@ describe('build, check and revert with tighten', () => {
     writeFileSync(join(root, 'package.json'), '{"name":"t","private":true}\n');
     const u = usageFor(sheet, { Inter: ['300', '400', '500', '700'], Lora: ['400'] });
 
-    const preview = await buildProject(root, u, {}, { version: '1' });
+    // Default: measured and reported, nothing edited.
+    const def = await buildProject(root, u, {}, { version: '1', write: true });
+    expect(def.edits).toEqual([]);
+    expect(def.suggestions.map((x) => x.kind === 'google' && [x.families, x.weights])).toEqual([[['Lora'], { Inter: [300, 500] }]]);
+    expect(def.suggestions[0]!.kind === 'google' && def.suggestions[0]!.cssBytes).toBeGreaterThan(100);
+    expect(readFileSync(join(root, 'index.html'), 'utf8')).toBe(html);
+    expect(readManifest(root)).toBeUndefined();
+
+    const tighten = { allow: ['tighten'] };
+    const preview = await buildProject(root, u, tighten, { version: '1' });
     const want = `${G}?family=Inter:wght@400;700&family=Lora&display=swap`.replace('&family=Lora', '');
     expect(preview.edits.map((e) => [e.file, e.text])).toEqual([['index.html', want.replace(/&/g, '&amp;')]]);
     expect(readFileSync(join(root, 'index.html'), 'utf8')).toBe(html);
 
-    const r = await buildProject(root, u, {}, { version: '1', write: true });
+    const r = await buildProject(root, u, tighten, { version: '1', write: true });
     expect(r.manifest.google).toEqual([{ from: sheet, to: want, files: ['index.html'], dropped: { families: ['Lora'], weights: { Inter: [300, 500] }, axes: {} } }]);
     expect(readFileSync(join(root, 'index.html'), 'utf8')).toContain(want.replace(/&/g, '&amp;'));
     // verify's "before" loads the original URL in its place.
     expect(createOverlay(r.manifest).originalSheet(want)).toBe(sheet);
 
-    // The next audit sees the tightened URL: nothing more to do, and the original is kept.
+    // The next audit sees the tightened URL: nothing more to do, and the original is kept (with or without the opt-in).
     const u2 = usageFor(want, { Inter: ['400', '700'] });
     const again = await buildProject(root, u2, {}, { version: '1', write: true });
     expect(again.edits).toEqual([]);

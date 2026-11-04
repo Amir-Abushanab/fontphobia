@@ -52,6 +52,8 @@ export interface GoogleUrlRecord {
 /** next-font-google (§6.4) and astro-fonts (§6.8): a font call's or config entry's options narrowed in place. */
 export interface OptionsRecord {
   adapter: 'next-font-google' | 'astro-fonts';
+  /** `preload`: an Astro `<Font>` tag's preload filter (the tag text is `from`/`to`). */
+  kind?: 'preload';
   file: string;
   family: string;
   /** The call's argument (or config entry) as it was before any fontphobia build, and as written. */

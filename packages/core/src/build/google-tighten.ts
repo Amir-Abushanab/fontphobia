@@ -44,10 +44,19 @@ async function axisDefaults(usage: Usage, sheet: string): Promise<Map<string, Re
   return out;
 }
 
-export async function tightenGoogle(root: string, usage: Usage, prev: Manifest | undefined, o: { limitAxes: boolean }): Promise<{ edits: Edit[]; records: GoogleUrlRecord[] }> {
+/** What `--allow tighten` would drop from a Google URL, for the report. `cssBytes`: Google CSS rules it saves (font downloads don't change). */
+export interface TightenSuggestion { sheet: string; families: string[]; weights: Record<string, number[]>; cssBytes: number }
+
+/**
+ * `drop` (the `tighten` opt-in): families and static weights nothing uses. Off by default: it saves
+ * only Google's CSS (browsers never download unused faces), and a page the audit never saw, or text
+ * from a CMS, could ask for one. Then it's measured and reported instead. `limitAxes`: default-only axes.
+ */
+export async function tightenGoogle(root: string, usage: Usage, prev: Manifest | undefined, o: { limitAxes: boolean; drop: boolean }): Promise<{ edits: Edit[]; records: GoogleUrlRecord[]; suggestions: TightenSuggestion[] }> {
   const sheets = [...new Set([...Object.values(usage.faces), ...Object.values(usage.unloaded ?? {})].map((f) => f.sheet).filter(isGoogleSheet))].sort();
   const edits: Edit[] = [];
   const records: GoogleUrlRecord[] = [];
+  const suggestions: TightenSuggestion[] = [];
   const done = new Set<string>();
   let texts: ReturnType<typeof repoText> | undefined;
   for (const sheet of sheets) {
@@ -58,9 +67,19 @@ export async function tightenGoogle(root: string, usage: Usage, prev: Manifest |
       rendered: Object.fromEntries([...new Set([...Object.keys(f.rendered.axes ?? {}), ...Object.keys(f.declared.axes ?? {})])].map((t) => [t, [...(f.rendered.axes?.[t] ?? []), ...(f.declared.axes?.[t] ?? [])]])),
     }));
     const seen = faces.flatMap((f) => [...(f.rendered.weight ?? []), ...(f.declared.weight ?? [])]);
+    const full = { sheet, loaded, named: (fam: string) => namesFamily(texts!, fam), weights: desiredWeights(texts, seen), variationTags: variationTags(texts) };
+    if (!o.drop) {
+      const would = tightenCss2(full);
+      if (would && (would.families.length || Object.keys(would.weights).length)) {
+        const rules = Object.values(usage.unloaded ?? {}).filter((f) => f.sheet === sheet && (would.families.some((x) => familyKey(x) === familyKey(parseFamilyList(f.family)[0] ?? f.family))
+          || (would.weights[parseFamilyList(f.family)[0] ?? f.family] ?? []).includes(Number(f.descriptors['font-weight']))));
+        const cssBytes = rules.reduce((n, f) => n + Object.entries(f.descriptors).reduce((m, [k, v]) => m + k.length + v.length + 5, 14), 0);
+        suggestions.push({ sheet, families: would.families, weights: would.weights, cssBytes });
+      }
+    }
     const t = tightenCss2({
-      sheet, loaded, named: (fam) => namesFamily(texts!, fam), weights: desiredWeights(texts, seen),
-      axisDefaults: o.limitAxes ? await axisDefaults(usage, sheet) : undefined, variationTags: variationTags(texts),
+      ...full, ...(o.drop ? {} : { named: () => ['(kept: tighten not allowed)'], weights: undefined }),
+      axisDefaults: o.limitAxes ? await axisDefaults(usage, sheet) : undefined,
     });
     const earlier = prev?.google?.find((r) => r.to === sheet);
     if (!t) { if (earlier) { records.push(earlier); done.add(earlier.to); } continue; }
@@ -76,5 +95,5 @@ export async function tightenGoogle(root: string, usage: Usage, prev: Manifest |
   }
   // Earlier rewrites the audit didn't see again stay while their URL is still in the repo.
   for (const r of prev?.google ?? []) if (!done.has(r.to) && !records.some((x) => x.to === r.to) && findSheetRefs(root, r.to).length) records.push(r);
-  return { edits, records: records.sort((a, b) => (a.from < b.from ? -1 : 1)) };
+  return { edits, records: records.sort((a, b) => (a.from < b.from ? -1 : 1)), suggestions };
 }

@@ -194,7 +194,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       const opts = { root, fontphobiaVersion: 'test', fontSizeSweep: false, viewports: [1280], rebuild: true, cache: false };
       const u1 = (await audit(opts)).usage as unknown as UsageFileJson;
       expect(Object.values(u1.faces).filter((f) => f.source.adapter === 'next-font-google').map((f) => f.family)).toContain('Lato');
-      const b = await buildProject(root, u1, {}, { version: 'test', write: true });
+      const b = await buildProject(root, u1, { allow: ['tighten'] }, { version: 'test', write: true });
       expect(b.manifest.options).toEqual([{ adapter: 'next-font-google', file: 'app/fonts.js', family: 'Lato', from: call.slice(5, -1), to: `{ subsets: ['latin'], weight: ['400', '700', '900'] }`, dropped: { weights: [100, 300], axes: [] } }]);
       const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1], outDir: outDir('next-google-' + Date.now()) });
       expect(v.browser!.baseline).toBe('worktree');
@@ -210,7 +210,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
 
   // M7, astro-fonts (§6.8): the Astro fixture with a Fonts API family, in its own git repo (verify
   // compares against HEAD built in a worktree). Needs the network (Astro fetches Lato from Google).
-  it('astro: narrows a Fonts API weights list, renders identically against HEAD, revert restores the config', async () => {
+  it('astro: preloads only the Fonts API faces pages load, renders identically against HEAD, revert restores the tag', async () => {
     const fixture = join(sites, 'astro');
     const root = mkdtempSync(join(tmpdir(), 'fontphobia-astro-fonts-'));
     try {
@@ -226,16 +226,19 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       const opts = { root, fontphobiaVersion: 'test', fontSizeSweep: false, viewports: [1280], rebuild: true, cache: false };
       const u1 = (await audit(opts)).usage as unknown as UsageFileJson;
       expect(Object.values(u1.faces).filter((f) => f.source.adapter === 'astro-fonts').length).toBeGreaterThan(0);
+      // Default: the weights stay declared; only the preloads narrow to what pages load.
       const b = await buildProject(root, u1, {}, { version: 'test', write: true });
-      expect(b.manifest.options?.map((r) => [r.adapter, r.family, r.dropped.weights])).toEqual([['astro-fonts', 'Lato', [100, 300]]]);
-      expect(readFileSync(join(root, 'astro.config.mjs'), 'utf8')).toContain('weights: [400, 700, 900]');
+      expect(b.suggestions.map((x) => x.kind === 'options' && x.weights)).toEqual([[100, 300]]);
+      expect(b.manifest.options?.map((r) => [r.adapter, r.kind, r.family])).toEqual([['astro-fonts', 'preload', 'Lato']]);
+      expect(readFileSync(join(root, 'astro.config.mjs'), 'utf8')).toContain(entry);
+      expect(readFileSync(layout, 'utf8')).toContain(`<Font cssVariable="--font-lato" preload={[{ weight: '400', style: 'normal' }]} />`);
       const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1], outDir: outDir('astro-fonts-' + Date.now()) });
       expect(v.browser!.baseline).toBe('worktree');
       expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated' && c.class !== 'flaky').map((c) => `${c.page} DPR ${c.dpr}: ${c.causes.join('; ')}`)).toEqual([]);
       expect(v.ok).toBe(true);
       expect((await checkProject({ root, usage: u1 })).issues.filter((i) => i.severity === 'error')).toEqual([]);
       expect(revertProject(root, { write: true }).problems).toEqual([]);
-      expect(readFileSync(join(root, 'astro.config.mjs'), 'utf8')).toContain(entry);
+      expect(readFileSync(layout, 'utf8')).toContain('<Font cssVariable="--font-lato" preload />');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -285,7 +288,8 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
     let fonts: string[] = [];
     try {
       const u1 = (await audit(opts)).usage as unknown as UsageFileJson;
-      const b = await buildProject(root, u1, {}, { version: 'test', write: true });
+      expect((await buildProject(root, u1, {}, { version: 'test' })).suggestions.map((x) => x.kind === 'google' && x.families)).toEqual([['Lora']]);
+      const b = await buildProject(root, u1, { allow: ['tighten'] }, { version: 'test', write: true });
       expect(b.manifest.google).toEqual([{ from: loose, to: tight, files: ['src/layouts/Layout.astro'], dropped: { families: ['Lora'], weights: {}, axes: {} } }]);
       expect(readFileSync(layout, 'utf8')).toContain(`href="${tight}"`);
       const u2 = (await audit(opts)).usage as unknown as UsageFileJson;
