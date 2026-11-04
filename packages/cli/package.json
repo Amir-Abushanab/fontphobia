@@ -29,6 +29,15 @@
   "exports": {
     ".": "./dist/index.mjs",
     "./vite": "./dist/vite.mjs",
-    "./astro": "./dist/astro.mjs"
+    "./astro": "./dist/astro.mjs",
+    "./nuxt": "./dist/nuxt.mjs",
+    "./react-router": "./dist/react-router.mjs",
+    "./vitepress": "./dist/vitepress.mjs",
+    "./docusaurus": "./dist/docusaurus.mjs",
+    "./eleventy": "./dist/eleventy.mjs",
+    "./next": "./dist/next.mjs",
+    "./rsbuild": "./dist/rsbuild.mjs",
+    "./rspack": "./dist/rspack.mjs",
+    "./webpack": "./dist/webpack.mjs"
   }
 }

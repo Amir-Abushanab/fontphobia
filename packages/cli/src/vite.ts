@@ -22,7 +22,7 @@ export interface FontphobiaViteOptions {
   devWarnings?: boolean;
 }
 
-const OUTPUT_NAME = /\.(core|ext|rest)\.[0-9a-f]{8}\.woff2$/;
+export const OUTPUT_NAME = /\.(core|ext|rest)\.[0-9a-f]{8}\.woff2$/;
 interface ManifestLike { entries: Record<string, { family: string; outputs: { role: string; file: string; unicodeRange: string }[] }> }
 
 function readManifest(root: string): ManifestLike | undefined {

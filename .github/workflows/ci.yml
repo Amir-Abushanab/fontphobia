@@ -85,6 +85,7 @@ jobs:
           cache-dependency-path: |
             pnpm-lock.yaml
             fixtures/sites/*/pnpm-lock.yaml
+            fixtures/integrations/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm install --frozen-lockfile
         working-directory: fixtures/sites/astro
@@ -94,8 +95,10 @@ jobs:
         working-directory: fixtures/sites/next
       - run: pnpm install --frozen-lockfile
         working-directory: fixtures/sites/nuxt
+      - run: pnpm install --frozen-lockfile
+        working-directory: fixtures/integrations
       # The crawl, then the golden plans whose fontsource sources live in the fixtures' node_modules.
-      - run: pnpm vitest run packages/crawler/test/sites.test.ts packages/core/test/plan.test.ts packages/cli/test/vite.test.ts
+      - run: pnpm vitest run packages/crawler/test/sites.test.ts packages/core/test/plan.test.ts packages/cli/test/vite.test.ts packages/cli/test/integrations.test.ts
         env:
           FONTPHOBIA_SITES: '1'
           VERIFY_ARTIFACTS: ${{ runner.temp }}/verify

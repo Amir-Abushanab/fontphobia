@@ -14,3 +14,9 @@ fixtures/sites/*/.fontphobia/
 .output/
 .nuxt/
 fixtures/sites/nuxt/dist
+fixtures/integrations/*/build/
+fixtures/integrations/*/_site/
+fixtures/integrations/*/.docusaurus/
+fixtures/integrations/*/.react-router/
+fixtures/integrations/vitepress/docs/.vitepress/dist/
+fixtures/integrations/vitepress/docs/.vitepress/cache/
