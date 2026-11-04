@@ -106,7 +106,7 @@ export function adobeFindings(u: AdobeUsage, facts: AdobeFaceFacts[]): { kind: s
     const outside = new Set<string>();
     for (const [, f] of faces) for (const ch of f.chars) if (!latin1(ch.codePointAt(0)!)) outside.add(ch);
     const big = kf.filter((f) => f.cmap > 260);
-    if (big.length && outside.size === 0) out.push({ kind: 'adobe-fonts', text: `kit ${name}: the pages use only Basic Latin and Latin-1 characters, but ${big.map((f) => `${f.family} ${f.fvd}`).join(', ')} map${big.length === 1 ? 's' : ''} ${Math.max(...big.map((f) => f.cmap))} characters: if the character set is "All Characters", "Default" (EN, FR, DE, IT, PT, ES) is smaller; check that the site's languages are in it (\`fontphobia apply-kit\` switches it when every character the pages draw is in Default)` });
+    if (big.length && outside.size === 0) out.push({ kind: 'adobe-fonts', text: `kit ${name}: the pages use only Basic Latin and Latin-1 characters, but ${big.map((f) => `${f.family} ${f.fvd}`).join(', ')} map${big.length === 1 ? 's' : ''} ${Math.max(...big.map((f) => f.cmap))} characters: if the character set is "All Characters", "Default" (EN, FR, DE, IT, PT, ES) is smaller; check that the site's languages are in it` });
     else if (outside.size) out.push({ kind: 'adobe-fonts', text: `kit ${name}: the pages use characters beyond Latin-1 (${[...outside].slice(0, 12).join(' ')}${outside.size > 12 ? ' …' : ''}); keep a character set that includes them` });
     const displays = [...new Set(faces.map(([, f]) => f.descriptors['font-display'] ?? 'auto'))];
     out.push({ kind: 'adobe-fonts', text: `kit ${name}: font-display is ${displays.join(', ')} (kit setting; fontphobia never changes it)` });

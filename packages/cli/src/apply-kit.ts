@@ -56,7 +56,7 @@ export async function applyKit(root: string, usage: UsageFileJson, o: { yes?: bo
   const todo = plans.filter((p) => p.changes.length);
   if (!todo.length) return 0;
   o.log('\nThis publishes the kit: every site that uses it changes, including pages the audit didn\'t see.');
-  o.log('apply-kit is experimental: it has been tested against a stand-in for Adobe\'s API, not a real kit. Try it on a kit no other site uses first. Each change is read back from Adobe before it is published.');
+  o.log('Each change is read back from Adobe before it is published; `fontphobia revert` restores the kit.');
   if (!o.yes) {
     if (!o.interactive) { o.log('Not applied: rerun with --yes to apply without asking.'); return 1; }
     if (!(await o.ask('Apply and publish? (y/N) '))) { o.log('Not applied.'); return 1; }

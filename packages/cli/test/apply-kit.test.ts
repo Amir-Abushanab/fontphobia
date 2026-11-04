@@ -59,18 +59,18 @@ const usage = {
 } as unknown as UsageFileJson;
 
 describe('apply-kit', () => {
-  it('removes styles nothing matches, switches to Default, records the previous kit; --check and revert', async () => {
+  it('removes styles nothing matches, leaves the character set, records the previous kit; --check and revert', async () => {
     const root = mkdtempSync(join(tmp, 'site-'));
     writeFileSync(join(root, 'styles.css'), 'body { font-family: inter, serif; }\n');
     const log: string[] = [];
     const o = { ask: async () => false, interactive: false, version: '1', log: (m: string) => log.push(m) };
     // Without --yes and no terminal: shown, not applied.
     expect(await applyKit(root, usage, o)).toBe(1);
-    expect(log.join('\n')).toContain('Inter: variations n3,n4,n7,i4 → n4,n7,i4 character set all → default');
+    expect(log.join('\n')).toContain('Inter: variations n3,n4,n7,i4 → n4,n7,i4 (no weight the site asks for matches n3)');
     expect(posts).toEqual([]);
     expect(await applyKit(root, usage, { ...o, yes: true })).toBe(0);
-    expect(posts).toEqual([{ 'families[0][id]': 'gkmg', 'families[0][variations]': 'n4,n7,i4', 'families[0][subset]': 'default' }, { publish: '1' }]);
-    expect(readManifest(root)!.kits).toEqual([{ kit: 'abc1234', previous: [{ id: 'gkmg', variations: ['n3', 'n4', 'n7', 'i4'], subset: 'all' }], applied: [{ id: 'gkmg', variations: ['n4', 'n7', 'i4'], subset: 'default' }] }]);
+    expect(posts).toEqual([{ 'families[0][id]': 'gkmg', 'families[0][variations]': 'n4,n7,i4', 'families[0][subset]': 'all' }, { publish: '1' }]);
+    expect(readManifest(root)!.kits).toEqual([{ kit: 'abc1234', previous: [{ id: 'gkmg', variations: ['n3', 'n4', 'n7', 'i4'], subset: 'all' }], applied: [{ id: 'gkmg', variations: ['n4', 'n7', 'i4'], subset: 'all' }] }]);
     // The live kit serves the face and every character.
     expect(await applyKit(root, usage, { ...o, check: true })).toBe(0);
     expect(await applyKit(root, { ...usage, faces: { x: { ...usage.faces['inter-400-normal']!, chars: 'Hello ☃' } } } as UsageFileJson, { ...o, check: true })).toBe(1);
@@ -104,7 +104,7 @@ describe('apply-kit', () => {
     expect(readManifest(root)).toBeUndefined();
   });
 
-  it('keeps the character set when the pages draw characters outside Default', async () => {
+  it('changes nothing when every style is used', async () => {
     const root = mkdtempSync(join(tmp, 'site2-'));
     const log: string[] = [];
     reset([{ ...start[0]!, variations: ['n4'] }]);

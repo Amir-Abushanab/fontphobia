@@ -1,12 +1,10 @@
-// `adobe-fonts --apply-kit` (§6.6): the two kit settings the Typekit API v1 can change, applied to
-// the user's kit. Opt-in, token-authenticated, confirmed first (other sites may share the kit):
-// - variations (FVD codes) no weight the site can ask for would match are removed (CSS font
-//   matching per style, as for Google's URL);
-// - `subset: "all"` becomes `"default"` when every character the kit's faces draw is in Adobe's
-//   Default set (EN/FR/DE/IT/PT/ES).
+// `adobe-fonts --apply-kit` (§6.6): kit styles (FVD variations) no weight the site can ask for would
+// match are removed through the Typekit API v1 (CSS font matching per style, as for Google's URL).
+// Opt-in, token-authenticated, confirmed first (other sites may share the kit). Tested on a real kit
+// (2026-11-04): the draft read back exactly as sent, the CDN served the change, revert restored it.
+// The character set isn't changed (see planKit).
 // The previous families go in the manifest; revert puts them back. Fonts are never written to disk.
-// Experimental: tested against a stand-in for the API (written from Adobe's documentation), not a
-// real kit. Every write is read back before anything is published.
+// Every write is read back before anything is published.
 import { matchWeight } from './google-url.ts';
 import { parseStylesheet } from '../css/stylesheet.ts';
 import { loadFont } from '../font/hb.ts';
@@ -48,12 +46,10 @@ export function planKit(kit: string, families: KitFamily[], faces: KitUsageFace[
       const left = f.variations.filter((v) => keep.has(v));
       if (left.length < f.variations.length) { why.push(`no weight the site asks for matches ${f.variations.filter((v) => !keep.has(v)).join(', ')}`); variations = left; }
     }
-    let subset = f.subset;
-    if (f.subset === 'all') {
-      const outside = new Set<string>();
-      for (const x of mine) for (const ch of x.chars) if (!inAdobeDefault(ch.codePointAt(0)!)) outside.add(ch);
-      if (!outside.size) { subset = 'default'; why.push('every character the pages draw with it is in the Default set (EN, FR, DE, IT, PT, ES)'); }
-    }
+    // The character set isn't changed: the API's `subset` doesn't follow the web UI's "Character set"
+    // (a kit set to All Characters in the UI still reads "default", 2026-11-04), so the report says
+    // which setting to pick and you change it on fonts.adobe.com.
+    const subset = f.subset;
     if (why.length) changes.push({ id: f.id, name: f.name ?? f.slug ?? f.id, variations: [f.variations, variations], subset: [f.subset, subset], why });
   }
   return { kit, families, changes };

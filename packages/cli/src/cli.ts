@@ -341,7 +341,7 @@ cli
   });
 
 cli
-  .command('apply-kit', 'Adobe Fonts: remove kit styles nothing uses and switch to the Default character set when it covers the pages (Typekit API; TYPEKIT_TOKEN)')
+  .command('apply-kit', 'Adobe Fonts: remove kit styles nothing uses (Typekit API; TYPEKIT_TOKEN)')
   .option('--cwd <dir>', 'Project root (default: current directory)')
   .option('--usage <file>', 'usage.json (default: .fontphobia/usage.json)')
   .option('--yes', 'Apply and publish without asking')
