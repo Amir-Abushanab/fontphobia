@@ -28,9 +28,9 @@ function lines(r: VerifyResult, root: string, md: boolean): string[] {
   const item = (t: string) => L.push(md ? `- ${t}` : `  ${t}`);
   const st = r.static;
   const outputsOk = !st.findings.some((f) => f.kind === 'output' || f.kind === 'css' || f.kind === 'source');
-  h('Font files and CSS (§10.1)');
+  h('Font files and CSS');
   item(outputsOk ? `${st.outputs} output file(s): bytes match the manifest, they decode and validate, and the CSS loads them with the original descriptors` : 'problems below');
-  h('Shaping equivalence (§10.2)');
+  h('Shaping equivalence');
   for (const s of st.shaping) {
     const extra = s.rounding ? `, ${s.rounding} within limit-axes rounding (outlines ≤ ${s.maxPointDelta?.toFixed(1)} units, advances ≤ ${s.maxAdvanceDelta})` : '';
     item(`${s.id}: ${s.words} word(s), ${s.cases} case(s): ${s.identical} identical${extra}${s.regressions ? `, **${s.regressions} differ**` : ''}`);
@@ -42,7 +42,7 @@ function lines(r: VerifyResult, root: string, md: boolean): string[] {
 
   const b = r.browser;
   if (b) {
-    h(b.baseline === 'worktree' ? 'In the browser (§10.3, worktree: "before" is HEAD built in a git worktree)' : 'In the browser (§10.3, overlay: same build, original fonts swapped back for "before")');
+    h(b.baseline === 'worktree' ? 'In the browser ("before" is HEAD built in a git worktree)' : 'In the browser ("before" is this build with the original fonts swapped back)');
     const count = (k: string) => b.comparisons.filter((c) => c.class === k).length;
     item(`${b.browsers.map((x) => `${x.engine} ${x.version}`).join(', ')} · ${b.pages.length} page(s)${b.skipped ? ` (set cover; ${b.skipped} more not visited)` : ''} · ${b.comparisons.length} comparison(s): ${count('identical')} identical, ${count('sub-pixel rounding')} sub-pixel rounding, ${count('regression')} regression(s)${count('unrelated') ? `, ${count('unrelated')} with pixel noise in text fontphobia didn't touch` : ''}${count('flaky') ? `, ${count('flaky')} flaky (a pixel difference that didn't reproduce)` : ''}${count('content changed') ? `, ${count('content changed')} content changed (left out)` : ''}${count('failed') ? `, ${count('failed')} failed to load` : ''}`);
     for (const c of b.comparisons.filter((x) => x.class === 'regression' || x.class === 'failed')) {

@@ -1,9 +1,27 @@
 {
   "name": "fontphobia",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Shrink a site's web fonts without changing how anything renders.",
-  "type": "module",
+  "keywords": [
+    "fonts",
+    "web fonts",
+    "subset",
+    "woff2",
+    "unicode-range",
+    "performance",
+    "harfbuzz",
+    "cli"
+  ],
+  "author": "Amir Abushanab",
   "license": "MIT",
+  "homepage": "https://github.com/Amir-Abushanab/fontphobia#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Amir-Abushanab/fontphobia.git",
+    "directory": "packages/cli"
+  },
+  "bugs": "https://github.com/Amir-Abushanab/fontphobia/issues",
+  "type": "module",
   "bin": {
     "fontphobia": "./dist/cli.mjs"
   },
@@ -15,7 +33,12 @@
   },
   "scripts": {
     "build": "tsdown",
-    "dev": "node src/cli.ts"
+    "dev": "node src/cli.ts",
+    "prepack": "pnpm run build && node -e \"for (const f of ['README.md', 'LICENSE']) require('fs').copyFileSync('../../' + f, f)\""
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "devDependencies": {
     "@fontphobia/core": "workspace:*",

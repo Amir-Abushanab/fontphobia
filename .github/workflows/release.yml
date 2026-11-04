@@ -1,0 +1,35 @@
+name: Release
+
+# Push a tag `v<version>` matching packages/cli/package.json to publish to npm with provenance.
+# Publishing uses npm trusted publishing (OIDC): on npmjs.com, add this repository and this
+# workflow (release.yml) as a trusted publisher for the `fontphobia` package. No token needed.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write # npm provenance and trusted publishing
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - name: The tag matches the package version
+        run: test "v$(node -p "require('./packages/cli/package.json').version")" = "$GITHUB_REF_NAME"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - name: Pack (prepack builds dist and copies README and LICENSE)
+        run: (cd packages/cli && pnpm pack --pack-destination "$RUNNER_TEMP/pkg")
+      - name: Publish
+        run: |
+          npm install -g npm@11  # trusted publishing needs npm 11.5.1 or later
+          npm publish "$RUNNER_TEMP"/pkg/fontphobia-*.tgz --provenance --access public

@@ -149,11 +149,11 @@ const CAPS: Record<string, Caps> = {
   'next-font-local': { subset: true, split: 'single', rest: false },
   // Each slice is subset on its own; fontsource's slices are the split (§6.2).
   fontsource: { subset: true, split: 'single' },
-  'next-font-google': { subset: false, split: 'single', why: 'Google serves next/font/google files; the to-local opt-in self-hosts them (M7)' },
-  'google-fonts': { subset: false, split: 'single', why: 'Google serves this font; the self-host opt-in moves it to your site (M7)' },
-  'adobe-fonts': { subset: false, split: 'single', why: 'Adobe Fonts serves this kit; report only (§6.6)' },
-  'nuxt-fonts': { subset: false, split: 'single', why: 'a @nuxt/fonts provider serves this font; the eject opt-in self-hosts it (M7)' },
-  'astro-fonts': { subset: false, split: 'single', why: "Astro's font provider serves this font; the eject opt-in self-hosts it (M7)" },
+  'next-font-google': { subset: false, split: 'single', why: 'Google serves this font through next/font/google; --allow eject serves it from your site, split' },
+  'google-fonts': { subset: false, split: 'single', why: 'Google serves this font; --allow self-host serves it from your site, split' },
+  'adobe-fonts': { subset: false, split: 'single', why: "Adobe Fonts serves this kit; Adobe's license allows no changes to the files (see the report, and fontphobia apply-kit)" },
+  'nuxt-fonts': { subset: false, split: 'single', why: '@nuxt/fonts serves this font; --allow eject serves it from your site, split' },
+  'astro-fonts': { subset: false, split: 'single', why: "Astro's Fonts API serves this font; --allow eject serves it from your site, split" },
   unknown: { subset: false, split: 'single', why: "fontphobia couldn't find where this face is declared" },
 };
 
@@ -469,7 +469,7 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
 
   const notes: string[] = [];
   if (unknownLocales.length) notes.push(`CLDR has no characters for ${unknownLocales.join(', ')}`);
-  if (face.wordsTruncated) notes.push('word list was capped (§7.6): the shaping repair saw only part of the text');
+  if (face.wordsTruncated) notes.push('word list was capped: the shaping repair saw only part of the text');
   if (!hinted && !readSfnt(sfnt).tables.has('CFF ')) notes.push('no TrueType hinting to drop');
   if (caps.split === 'single') notes.push(adapter === 'next-font-local' ? 'next/font/local: one file per face (Turbopack can\'t split a localFont() call); characters outside it fall back to the next font' : `${adapter}: one file per slice, no core/extended split`);
   const plan: FacePlan = {

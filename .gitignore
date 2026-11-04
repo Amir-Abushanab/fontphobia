@@ -20,3 +20,5 @@ fixtures/integrations/*/.docusaurus/
 fixtures/integrations/*/.react-router/
 fixtures/integrations/vitepress/docs/.vitepress/dist/
 fixtures/integrations/vitepress/docs/.vitepress/cache/
+packages/cli/README.md
+packages/cli/LICENSE

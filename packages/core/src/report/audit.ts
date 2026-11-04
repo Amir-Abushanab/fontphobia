@@ -178,7 +178,7 @@ export function auditMarkdown(u: UsageJson, crawl: CrawlFacts): string {
   const inserted = Object.entries(u.faces).filter(([, f]) => Object.keys(f.inserted).length);
   if (inserted.length) {
     L.push('');
-    L.push('## Characters added by rules (§7.4)');
+    L.push('## Characters added by CSS rules');
     L.push('');
     for (const [id, f] of inserted) for (const [rule, r] of Object.entries(f.inserted)) L.push(`- \`${id}\` ${rule}: ${sample(r, 10)}`);
   }

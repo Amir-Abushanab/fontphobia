@@ -81,7 +81,7 @@
       "adapter": "google-fonts",
       "family": "Fraunces",
       "id": "fraunces-400-700-normal-113e1c",
-      "reason": "Google serves this font; the self-host opt-in moves it to your site (M7)",
+      "reason": "Google serves this font; --allow self-host serves it from your site, split",
       "status": "skipped"
     },
     {

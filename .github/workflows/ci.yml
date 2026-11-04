@@ -51,6 +51,13 @@ jobs:
           mkdir -p "$out"
           (cd packages/cli && pnpm pack --pack-destination "$out")
           cd "$out"
+          # M8: a cold `pnpm dlx` of the real tarball (empty store and cache) within 15 s.
+          cold="$RUNNER_TEMP/cold"; mkdir -p "$cold/run"
+          start=$SECONDS
+          (cd "$cold/run" && HOME="$cold" XDG_DATA_HOME="$cold/data" XDG_CACHE_HOME="$cold/cache" XDG_CONFIG_HOME="$cold/config" XDG_STATE_HOME="$cold/state" LOCALAPPDATA="$cold/local" pnpm dlx "$(ls "$out"/fontphobia-*.tgz)" --version)
+          took=$((SECONDS - start)); echo "cold pnpm dlx: ${took}s"
+          if [ "$took" -gt 15 ]; then echo "::warning::cold pnpm dlx took ${took}s (budget 15 s)"; fi
+          if [ "$RUNNER_OS" = Linux ] && [ "$took" -gt 15 ]; then exit 1; fi
           echo '{"name":"smoke","private":true}' > package.json
           npm install --no-audit --no-fund ./fontphobia-*.tgz
           npx fontphobia --version

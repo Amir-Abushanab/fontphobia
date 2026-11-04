@@ -30,8 +30,8 @@ cli
   .option('--text <text>', 'Also keep the characters of this text')
   .option('--features <list>', '"default" (HarfBuzz defaults), "*", "+tnum,+ss01" (defaults plus these) or "kern,liga" (only these)', { default: 'default' })
   .option('--name-ids <list>', 'name IDs to keep, or "*" (default 0-6,13,14,16,17,25)')
-  .option('--axis <tag=value>', 'Pin an axis (wght=400) or limit it (wght=400:700). Changes widths slightly (PLAN §8.6). Repeatable')
-  .option('--no-hinting', 'Drop TrueType hinting (changes rendering on Windows and Linux; PLAN §8.8)')
+  .option('--axis <tag=value>', 'Pin an axis (wght=400) or limit it (wght=400:700). Changes widths slightly. Repeatable')
+  .option('--no-hinting', 'Drop TrueType hinting (changes rendering on Windows and Linux)')
   .action(async (file: string, o: { output?: string; unicodes?: string; text?: string; features: string; nameIds?: string; axis?: string | string[]; hinting: boolean }) => {
     if (!o.output) throw new Error('--output is required');
     if (extname(o.output) !== '.woff2') throw new Error('--output must end in .woff2');
@@ -127,7 +127,7 @@ const auditCommand = (c: ReturnType<typeof cli.command>) => c
   .option('--locales <list>', 'Locales whose characters may render (e.g. en,fr,ro)')
   .option('--max-pages <n>', 'Stop discovering pages after n (default 500)')
   .option('--concurrency <n>', 'Parallel page visits')
-  .option('--no-font-size-sweep', "Skip the browser default-font-size sweep (§7.2)")
+  .option('--no-font-size-sweep', "Skip the browser default-font-size sweep")
   .option('--no-cache', 'Visit every page again, ignoring .fontphobia/cache/visits (by default a page is revisited only when something it loads changed)')
   .option('--rebuild', 'Build again even if output exists')
   .option('--ci', "Never prompt (also when CI is set); a stale build is crawled with a warning")
@@ -196,7 +196,7 @@ async function runBuild(o: BuildFlags & { prompt?: boolean }) {
     }
   }
   if (r.snippets.length) {
-    out.push('', `Paste these yourself (fontphobia can measure these faces but not edit where they're declared, §6.7):`);
+    out.push('', `Paste these yourself (fontphobia can measure these faces but not edit where they're declared):`);
     for (const sn of r.snippets) out.push('', `  ${sn.id}${sn.file ? `, replacing the @font-face in ${sn.file}${sn.line ? `:${sn.line}` : ''}` : ''}:`, ...sn.css.split('\n').map((l) => `    ${l}`));
   }
   if (r.notWritten.length) { out.push('', 'Planned but not written'); for (const n of r.notWritten) out.push(`  ${n.id}: ${n.reason}`); }
@@ -255,7 +255,7 @@ const verifyOptions = (c: ReturnType<typeof cli.command>) => c
   .option('--no-browser', 'Only the deterministic checks: font files, CSS and shaping (no Chrome)');
 
 verifyOptions(cli
-  .command('verify', 'Check the written fonts and compare every page before and after, in the browser (§10)')
+  .command('verify', 'Check the written fonts and compare every page before and after, in the browser')
   .option('--cwd <dir>', 'Project root (default: current directory)')
   .option('--usage <file>', 'usage.json from the audit (default .fontphobia/usage.json)')
   .option('--dist <dir>', 'Built site to serve')

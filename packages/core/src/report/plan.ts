@@ -80,7 +80,7 @@ export function formatPlan(plan: Plan, usage: UsageFileJson): string {
   }
   const repaired = planned.filter((f) => f.repair);
   if (repaired.length) {
-    L.push('', 'Shaping repair (§8.3): characters moved into core so words shape exactly as they did unsplit');
+    L.push('', 'Shaping repair: characters moved into core so words shape exactly as they did unsplit');
     for (const f of repaired) {
       const cost = f.optIns?.find((o) => o.id === 'split-shaping')?.saving ?? 0;
       const w = f.repair!.words;
@@ -94,7 +94,7 @@ export function formatPlan(plan: Plan, usage: UsageFileJson): string {
   }
   const renames = planned.filter((f) => f.license?.rename);
   if (renames.length) {
-    L.push('', 'Renamed inside the font (license, §11; CSS font-family unchanged)');
+    L.push('', 'Renamed inside the font (the license reserves the name; CSS font-family unchanged)');
     for (const f of renames) L.push(`  ${f.license!.rename!.from} → ${f.license!.rename!.to}`);
   }
   const offered = plan.optIns.filter((o) => !o.applied && o.saving > 0);

@@ -13,7 +13,7 @@ const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 export function renameTable(sfnt: Uint8Array, from: string, to: string): Uint8Array {
   const t = readSfnt(sfnt).tables.get('name');
   if (!t) throw new Error('Font has no name table');
-  if (readSfnt(sfnt).tables.has('CFF ')) throw new Error("Can't rename a CFF font yet: its PostScript name lives in the CFF table too (§11)");
+  if (readSfnt(sfnt).tables.has('CFF ')) throw new Error("Can't rename a CFF font yet: its PostScript name lives in the CFF table too");
   const d = new DataView(t.buffer, t.byteOffset, t.byteLength);
   const format = d.getUint16(0), count = d.getUint16(2), strOff = d.getUint16(4);
   const recs: { head: number[]; bytes: Uint8Array }[] = [];

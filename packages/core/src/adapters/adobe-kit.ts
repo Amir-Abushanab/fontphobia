@@ -6,6 +6,9 @@
 //   Default set (EN/FR/DE/IT/PT/ES).
 // The previous families go in the manifest; revert puts them back. Fonts are never written to disk.
 import { matchWeight } from './google-url.ts';
+import { parseStylesheet } from '../css/stylesheet.ts';
+import { loadFont } from '../font/hb.ts';
+import { toSfnt } from '../font/io.ts';
 
 /**
  * Adobe's Default character set, read from the cmap of Default-set kit files (kits eny7olf and ezf4sbn,
@@ -90,9 +93,6 @@ export const kitIdOf = (sheet: string) => /use\.typekit\.net\/([a-z0-9]+)\.css/i
  * use, with every character they draw? The kit's CSS and fonts are fetched and read in memory only.
  */
 export async function checkLiveKit(kit: string, faces: KitUsageFace[], o: { fetch?: typeof fetch; cssBase?: string } = {}): Promise<string[]> {
-  const { parseStylesheet } = await import('../css/stylesheet.ts');
-  const { loadFont } = await import('../font/hb.ts');
-  const { toSfnt } = await import('../font/io.ts');
   const f = o.fetch ?? fetch;
   const css = await (await f(`${o.cssBase ?? 'https://use.typekit.net'}/${kit}.css`, { signal: AbortSignal.timeout(30_000) })).text();
   const rules = parseStylesheet(css).fontFaces;
