@@ -1,0 +1,10 @@
+---
+import Layout from '../../layouts/Layout.astro';
+export const prerender = true;
+export function getStaticPaths() {
+	return [{ params: { id: '1' } }, { params: { id: '2' } }];
+}
+const { id } = Astro.params;
+---
+
+<Layout title={`Post ${id}`}><h1>Post {id}</h1></Layout>

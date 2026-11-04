@@ -1,19 +1,66 @@
 {
   "name": "fontphobia",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Shrink a site's web fonts without changing how anything renders.",
-  "type": "module",
+  "keywords": [
+    "fonts",
+    "web fonts",
+    "subset",
+    "woff2",
+    "unicode-range",
+    "performance",
+    "harfbuzz",
+    "cli"
+  ],
+  "author": "Amir Abushanab",
   "license": "MIT",
-  "bin": { "fontphobia": "./dist/cli.mjs" },
-  "files": ["dist"],
-  "engines": { "node": ">=22" },
+  "homepage": "https://github.com/Amir-Abushanab/fontphobia#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Amir-Abushanab/fontphobia.git",
+    "directory": "packages/cli"
+  },
+  "bugs": "https://github.com/Amir-Abushanab/fontphobia/issues",
+  "type": "module",
+  "bin": {
+    "fontphobia": "./dist/cli.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "tsdown",
-    "dev": "node src/cli.ts"
+    "dev": "node src/cli.ts",
+    "prepack": "pnpm run build && node -e \"for (const f of ['README.md', 'LICENSE']) require('fs').copyFileSync('../../' + f, f)\""
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "devDependencies": {
     "@fontphobia/core": "workspace:*",
+    "@fontphobia/crawler": "workspace:*",
     "cac": "7.1.0",
     "tsdown": "0.23.4"
+  },
+  "dependencies": {
+    "playwright-core": "1.64.1"
+  },
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./vite": "./dist/vite.mjs",
+    "./astro": "./dist/astro.mjs",
+    "./nuxt": "./dist/nuxt.mjs",
+    "./react-router": "./dist/react-router.mjs",
+    "./vitepress": "./dist/vitepress.mjs",
+    "./docusaurus": "./dist/docusaurus.mjs",
+    "./eleventy": "./dist/eleventy.mjs",
+    "./next": "./dist/next.mjs",
+    "./rsbuild": "./dist/rsbuild.mjs",
+    "./rspack": "./dist/rspack.mjs",
+    "./webpack": "./dist/webpack.mjs"
   }
 }

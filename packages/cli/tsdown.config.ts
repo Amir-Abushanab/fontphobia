@@ -1,13 +1,18 @@
 import { defineConfig } from 'tsdown';
 
 export default defineConfig({
-  entry: { cli: 'src/cli.ts' },
+  entry: {
+    cli: 'src/cli.ts', index: 'src/index.ts', vite: 'src/vite.ts', astro: 'src/astro.ts', nuxt: 'src/nuxt.ts', 'react-router': 'src/react-router.ts',
+    vitepress: 'src/vitepress.ts', docusaurus: 'src/docusaurus.ts', eleventy: 'src/eleventy.ts', next: 'src/next.ts', rsbuild: 'src/rsbuild.ts', rspack: 'src/rspack.ts', webpack: 'src/webpack.ts', 'check-runtime': 'src/check-runtime.ts',
+  },
   format: 'esm',
   platform: 'node',
   target: 'node22',
   outExtensions: () => ({ js: '.mjs' }),
   // Bundle everything (PLAN §4): dlx has no lockfile, so nothing is resolved at install time.
-  noExternal: [/.*/],
+  // The one exception is playwright-core, pinned to an exact version in package.json.
+  noExternal: [/^(?!playwright-core(\/|$))/],
+  external: ['playwright-core'],
   dts: false,
   // wawoff2's Emscripten CJS glue reads __dirname; inject ESM shims for it.
   shims: true,

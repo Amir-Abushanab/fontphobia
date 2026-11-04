@@ -1,0 +1,4 @@
+# Standalone fixture: kept out of the fontphobia workspace (its own lockfile).
+allowBuilds:
+  esbuild: true
+  '@parcel/watcher': false

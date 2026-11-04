@@ -3,6 +3,7 @@
 import { getSubsetWasm, hbTag, loadFont } from '../font/hb.ts';
 import { toSfnt, woff2Compress, woff2Decompress } from '../font/io.ts';
 import { readSfnt, withTables } from '../font/sfnt.ts';
+import { renameTable, RENAMED_IDS } from '../font/rename.ts';
 import { parseFvar, parseHead, parseHhea, parseOs2, setHeadDates, setXAvgCharWidth, nameStrings } from '../font/tables.ts';
 
 export type AxisSetting = number | { min: number; max: number; default?: number };
@@ -23,13 +24,21 @@ export interface SubsetOptions {
   axes?: Record<string, AxisSetting>;
   /** Keep TrueType hinting (default true, §8.8). */
   hinting?: boolean;
+  /** Rewrite the family in the internal names (OFL Reserved Font Names, §11). */
+  rename?: { from: string; to: string };
+  /** Raw hb_subset flags OR'd in (diagnostics, e.g. 0x2 retain glyph ids). */
+  flags?: number;
+  /** Glyph ids to keep without cmap entries (macOS's reference glyphs, plan/hintrefs.ts). */
+  glyphs?: number[];
 }
 
 export const DEFAULT_NAME_IDS = [0, 1, 2, 3, 4, 5, 6, 13, 14, 16, 17, 25] as const;
 
-const SETS = { DROP_TABLE_TAG: 3, NAME_ID: 4, NAME_LANG_ID: 5, LAYOUT_FEATURE_TAG: 6 } as const;
+const SETS = { GLYPH_INDEX: 0, DROP_TABLE_TAG: 3, NAME_ID: 4, NAME_LANG_ID: 5, LAYOUT_FEATURE_TAG: 6 } as const;
 const FLAG_NO_HINTING = 0x1;
-/** Always dropped (§8.9): no effect on rendering. HarfBuzz already drops glyph names unless asked. */
+const FLAG_GLYPH_NAMES = 0x80;
+const FLAG_NOTDEF_OUTLINE = 0x40;
+/** Always dropped (§8.9): no effect on rendering. */
 const ALWAYS_DROP = ['DSIG'];
 
 const isTag = (t: string) => /^[\x20-\x7e]{4}$/.test(t);
@@ -67,8 +76,16 @@ export function hbSubset(sfnt: Uint8Array, opts: SubsetOptions): Uint8Array {
 
     let flags = w.hb_subset_input_get_flags(input);
     if (opts.hinting === false) flags |= FLAG_NO_HINTING;
+    // Keep glyph names (post format 2). Dropping them (HarfBuzz's default) changes how Chrome on macOS
+    // rasterizes the text: ~1,700 pixels differ on a short Inter paragraph (M5 notes).
+    flags |= FLAG_GLYPH_NAMES;
+    // Keep .notdef's outline: a character no installed font has is drawn as the primary font's
+    // .notdef box, so an empty one changes those boxes and the line height around them (M6 notes).
+    flags |= FLAG_NOTDEF_OUTLINE;
+    flags |= opts.flags ?? 0;
     w.hb_subset_input_set_flags(input, flags);
 
+    if (opts.glyphs?.length) { const gs = w.hb_subset_input_set(input, SETS.GLYPH_INDEX); for (const g of opts.glyphs) w.hb_set_add(gs, g); }
     const u = w.hb_subset_input_unicode_set(input);
     if (opts.unicodes === '*') all(u);
     else for (const c of opts.unicodes) w.hb_set_add(u, c);
@@ -105,9 +122,16 @@ export function postProcess(source: Uint8Array, subset: Uint8Array, opts: Subset
   patch.head = setHeadDates(out.get('head')!, h.created, h.modified);
   const srcOs2 = parseOs2(source);
   if (srcOs2 && out.get('OS/2')) patch['OS/2'] = setXAvgCharWidth(out.get('OS/2')!, srcOs2.xAvgCharWidth);
+  if (opts.rename) patch.name = renameTable(subset, opts.rename.from, opts.rename.to);
   const result = withTables(subset, patch);
 
-  const pinned = Object.values(opts.axes ?? {}).some((v) => typeof v === 'number');
+  checkMetrics(source, result, Object.values(opts.axes ?? {}).some((v) => typeof v === 'number'));
+  return result;
+}
+
+/** §9.3: an output keeps the source's vertical metrics (a pinned instance may move them via MVAR). */
+export function checkMetrics(source: Uint8Array, result: Uint8Array, pinned: boolean): void {
+  const srcOs2 = parseOs2(source);
   const a = { head: parseHead(source), hhea: parseHhea(source), os2: srcOs2 };
   const b = { head: parseHead(result), hhea: parseHhea(result), os2: parseOs2(result) };
   const checks: [string, unknown, unknown][] = [['unitsPerEm', a.head.unitsPerEm, b.head.unitsPerEm]];
@@ -121,7 +145,6 @@ export function postProcess(source: Uint8Array, subset: Uint8Array, opts: Subset
   if (a.os2 && b.os2) checks.push(['OS/2.fsSelection.USE_TYPO_METRICS', a.os2.useTypoMetrics, b.os2.useTypoMetrics]);
   const bad = checks.filter(([, x, y]) => x !== y);
   if (bad.length) throw new MetricsChangedError(`Subsetting changed font metrics: ${bad.map(([k, x, y]) => `${k} ${x} → ${y}`).join(', ')}`);
-  return result;
 }
 
 export interface SubsetResult {
@@ -146,7 +169,12 @@ export async function subsetFont(sourceBytes: Uint8Array, opts: SubsetOptions): 
   const woff2 = await woff2Compress(processed);
   const decoded = await woff2Decompress(woff2);
 
-  // Validate the decoded file.
+  const have = validateOutput(source, decoded, opts);
+  return { woff2, decoded, unicodes: have };
+}
+
+/** §9.5 on a decoded output: cmap exactly as planned, axes, and preserved (or renamed) names. Returns the cmap. */
+export function validateOutput(source: Uint8Array, decoded: Uint8Array, opts: SubsetOptions): number[] {
   const have = sortedUnicodes(decoded);
   const srcSet = new Set(sortedUnicodes(source));
   const want = opts.unicodes === '*' ? [...srcSet].sort((x, y) => x - y) : [...new Set(opts.unicodes)].filter((c) => srcSet.has(c)).sort((x, y) => x - y);
@@ -167,9 +195,13 @@ export async function subsetFont(sourceBytes: Uint8Array, opts: SubsetOptions): 
   const outNames = nameStrings(decoded);
   const keep = opts.nameIds === '*' ? [...srcNames.keys()] : (opts.nameIds ?? DEFAULT_NAME_IDS);
   for (const id of keep) {
+    if (opts.rename && RENAMED_IDS.has(id)) {
+      if (outNames.get(id)?.includes(opts.rename.from)) throw new ValidationError(`name ID ${id} still contains ${JSON.stringify(opts.rename.from)}`);
+      continue;
+    }
     if (srcNames.has(id) && outNames.get(id) !== srcNames.get(id)) throw new ValidationError(`name ID ${id} was not preserved`);
   }
-  return { woff2, decoded, unicodes: have };
+  return have;
 }
 
 const fmt = (cps: number[]) => (cps.length ? cps.map((c) => 'U+' + c.toString(16).toUpperCase().padStart(4, '0')).join(' ') : 'none');

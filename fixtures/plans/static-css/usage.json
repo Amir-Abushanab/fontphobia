@@ -1,0 +1,697 @@
+{
+  "declarations": [
+    {
+      "family": "Inter",
+      "file": "styles.css",
+      "files": [
+        "fonts/InterVariable.ttf"
+      ],
+      "line": 2,
+      "style": "normal",
+      "weight": "100 900"
+    },
+    {
+      "family": "Inter",
+      "file": "styles.css",
+      "files": [
+        "fonts/InterVariable.ttf"
+      ],
+      "line": 9,
+      "style": "italic",
+      "weight": "100 900"
+    },
+    {
+      "family": "Deja",
+      "file": "styles.css",
+      "files": [
+        "fonts/DejaVuSans.ttf"
+      ],
+      "line": 17
+    },
+    {
+      "family": "Unused",
+      "file": "styles.css",
+      "files": [
+        "fonts/Inter-Regular-hinted.woff2"
+      ],
+      "line": 22
+    }
+  ],
+  "faces": {
+    "deja-400-normal": {
+      "chars": "U+20-21, U+2D, U+3D-3E, U+41, U+43, U+46, U+4C-4D, U+50, U+53, U+61-63, U+65-66, U+68-69, U+6C-70, U+72-74",
+      "contexts": [
+        {
+          "axes": {},
+          "features": "",
+          "words": [
+            " != ",
+            " -> ",
+            " another ",
+            " b ",
+            " c",
+            " font",
+            " in ",
+            " line ",
+            "First ",
+            "a "
+          ]
+        },
+        {
+          "axes": {},
+          "features": "smcp=1",
+          "words": [
+            " caps",
+            "small "
+          ]
+        }
+      ],
+      "count": 27,
+      "declared": {},
+      "descriptors": {
+        "font-display": "swap",
+        "font-family": "'Deja'",
+        "src": "url('./fonts/DejaVuSans.ttf') format('truetype')"
+      },
+      "family": "Deja",
+      "features": [
+        "smcp"
+      ],
+      "files": [
+        {
+          "bytes": 757076,
+          "sha256": "7da195a74c55bef988d0d48f9508bd5d849425c1770dba5d7bfc6ce9ed848954",
+          "url": "/fonts/DejaVuSans.ttf"
+        }
+      ],
+      "inserted": {
+        "synthesized small caps": "U+41, U+43, U+4C-4D, U+50, U+53"
+      },
+      "locales": [
+        "en"
+      ],
+      "pages": [
+        "/edge.html"
+      ],
+      "rendered": {
+        "size": [
+          9,
+          12,
+          16,
+          20,
+          24,
+          72
+        ],
+        "style": [
+          "normal"
+        ],
+        "weight": [
+          400
+        ]
+      },
+      "sheet": "/styles.css",
+      "source": {
+        "adapter": "css",
+        "file": "styles.css",
+        "fontFile": "fonts/DejaVuSans.ttf",
+        "line": 17
+      }
+    },
+    "inter-100-900-italic": {
+      "chars": "U+20, U+61-64, U+69, U+6C, U+6F, U+74",
+      "contexts": [
+        {
+          "axes": {
+            "opsz": [
+              14,
+              32
+            ],
+            "wght": [
+              400,
+              700
+            ]
+          },
+          "features": "",
+          "words": [
+            "bold",
+            "italic "
+          ]
+        }
+      ],
+      "count": 9,
+      "declared": {},
+      "descriptors": {
+        "font-display": "swap",
+        "font-family": "'Inter'",
+        "font-style": "italic",
+        "font-weight": "100 900",
+        "src": "url('./fonts/InterVariable.ttf') format('truetype')"
+      },
+      "family": "Inter",
+      "features": [],
+      "files": [
+        {
+          "bytes": 879708,
+          "sha256": "4989b125924991b90d05b2d16e0e388c48f7d5bb8b30539bbf9c755278d0ccaf",
+          "url": "/fonts/InterVariable.ttf"
+        }
+      ],
+      "inserted": {},
+      "locales": [
+        "en"
+      ],
+      "pages": [
+        "/edge.html"
+      ],
+      "rendered": {
+        "axes": {
+          "opsz": [
+            14,
+            16,
+            20,
+            24,
+            32
+          ],
+          "wght": [
+            400,
+            700
+          ]
+        },
+        "size": [
+          9,
+          12,
+          16,
+          20,
+          24,
+          72
+        ],
+        "style": [
+          "italic"
+        ],
+        "weight": [
+          400,
+          700
+        ]
+      },
+      "sheet": "/styles.css",
+      "source": {
+        "adapter": "css",
+        "file": "styles.css",
+        "fontFile": "fonts/InterVariable.ttf",
+        "line": 9
+      }
+    },
+    "inter-100-900-normal": {
+      "chars": "U+20, U+25, U+2C-3A, U+40-46, U+48-49, U+4C-50, U+53-54, U+56-58, U+61-7A, U+B7, U+D8, U+E2, U+E4, U+E9, U+F1, U+FF, U+103, U+111, U+219-21A, U+301, U+308, U+3A9, U+1EBF, U+1EC7, U+1EDF, U+2010, U+201C-201E, U+2022, U+2026, U+25A0, U+25CF, U+2713",
+      "contexts": [
+        {
+          "axes": {
+            "opsz": [
+              14,
+              32
+            ],
+            "wght": [
+              300,
+              700
+            ]
+          },
+          "features": "",
+          "words": [
+            " 28",
+            " 42.",
+            " ASCII ",
+            " English ",
+            " Việt ",
+            " and ",
+            " another ",
+            " brown ",
+            " café",
+            " cases",
+            " dog.",
+            " font",
+            " fonts",
+            " fox ",
+            " heavy",
+            " here, ",
+            " in ",
+            " incomprehensibilities",
+            " jumps ",
+            " lazy ",
+            " line ",
+            " me",
+            " naïve",
+            " number: ",
+            " one",
+            " one ",
+            " only",
+            " over ",
+            " overflows",
+            " plus ",
+            " quick ",
+            " size ",
+            " text ",
+            " text: ",
+            " that ",
+            " the ",
+            " two",
+            " type",
+            " · ",
+            " ñ",
+            " ÿ",
+            " đây",
+            " școală, ",
+            " și ",
+            " ở ",
+            "2026-11-02",
+            "AB",
+            "About",
+            "Edge ",
+            "Editable ",
+            "Emphasis",
+            "First ",
+            "Fluid ",
+            "Hello, ",
+            "Home",
+            "Hover ",
+            "Missing",
+            "Only ",
+            "Plain ",
+            "Print ",
+            "Pulsing",
+            "Pässword",
+            "Snow ",
+            "Textarea ",
+            "Tiếng ",
+            "Wide ",
+            "café ",
+            "extraordinarily ",
+            "one",
+            "optical ",
+            "quoted",
+            "tick",
+            "truncated ",
+            "two",
+            "zitiert",
+            "Øption ",
+            "ä@example.com",
+            "Țară ",
+            "Ωption ",
+            "“",
+            "”",
+            "„",
+            "■■■■■■"
+          ]
+        },
+        {
+          "axes": {
+            "opsz": [
+              14,
+              32
+            ],
+            "wght": [
+              400,
+              400
+            ]
+          },
+          "features": "ss01=1",
+          "words": [
+            " 4 ",
+            " digits",
+            "open "
+          ]
+        },
+        {
+          "axes": {
+            "opsz": [
+              14,
+              32
+            ],
+            "wght": [
+              400,
+              400
+            ]
+          },
+          "features": "tnum=1",
+          "words": [
+            " tabular",
+            "0123 ",
+            "I. ",
+            "II. ",
+            "✓ "
+          ]
+        }
+      ],
+      "count": 88,
+      "declared": {
+        "axes": {
+          "opsz": [
+            14,
+            16,
+            20,
+            24,
+            32
+          ],
+          "wght": [
+            300,
+            400,
+            500,
+            600,
+            650,
+            800,
+            900
+          ]
+        },
+        "size": [
+          9,
+          12,
+          16,
+          20,
+          24,
+          72
+        ],
+        "style": [
+          "normal"
+        ],
+        "weight": [
+          300,
+          400,
+          500,
+          600,
+          650,
+          800,
+          900
+        ]
+      },
+      "descriptors": {
+        "font-display": "swap",
+        "font-family": "'Inter'",
+        "font-style": "normal",
+        "font-weight": "100 900",
+        "src": "url('./fonts/InterVariable.ttf') format('truetype')"
+      },
+      "editable": true,
+      "family": "Inter",
+      "features": [
+        "ss01",
+        "tnum"
+      ],
+      "files": [
+        {
+          "bytes": 879708,
+          "sha256": "4989b125924991b90d05b2d16e0e388c48f7d5bb8b30539bbf9c755278d0ccaf",
+          "url": "/fonts/InterVariable.ttf"
+        }
+      ],
+      "inserted": {
+        "declared :hover": "U+20, U+48, U+65, U+6D, U+6F, U+72, U+76",
+        "declared @keyframes pulse": "U+50, U+67, U+69, U+6C, U+6E, U+73, U+75",
+        "declared @media (min-width: 40em)": "U+20, U+57, U+64-65, U+69, U+6C, U+6E-6F, U+79",
+        "declared @media print": "U+20, U+50, U+61, U+65, U+68-69, U+6E, U+72, U+74, U+76, U+79",
+        "hyphens": "U+2D, U+2010",
+        "input type=date": "U+20, U+25, U+2C-3A, U+4D-4E, U+50, U+6F, U+76",
+        "list markers": "U+20, U+2D-2E, U+30-39, U+43-44, U+49, U+4C-4D, U+56, U+58, U+2713",
+        "password": "U+2022, U+25A0, U+25CF",
+        "text-overflow": "U+2E, U+2026"
+      },
+      "locales": [
+        "de",
+        "en",
+        "ro",
+        "vi"
+      ],
+      "pages": [
+        "/",
+        "/about/",
+        "/edge.html"
+      ],
+      "rendered": {
+        "axes": {
+          "opsz": [
+            14,
+            16,
+            16.2,
+            18,
+            19.2,
+            20,
+            23.2,
+            24,
+            27,
+            27.2,
+            28,
+            31.2,
+            31.36,
+            32
+          ],
+          "wght": [
+            300,
+            400,
+            500,
+            650,
+            700
+          ]
+        },
+        "size": [
+          9,
+          12,
+          16,
+          16.2,
+          18,
+          19.2,
+          20,
+          23.2,
+          24,
+          27,
+          27.2,
+          31.2,
+          31.36,
+          32,
+          36,
+          40,
+          41.6,
+          48,
+          60,
+          72,
+          79.2,
+          144,
+          148.8
+        ],
+        "style": [
+          "normal"
+        ],
+        "weight": [
+          300,
+          400,
+          500,
+          650,
+          700
+        ]
+      },
+      "sheet": "/styles.css",
+      "source": {
+        "adapter": "css",
+        "file": "styles.css",
+        "fontFile": "fonts/InterVariable.ttf",
+        "line": 2
+      }
+    }
+  },
+  "meta": {
+    "chrome": "golden",
+    "fontSizes": [
+      9,
+      12,
+      16,
+      20,
+      24,
+      72
+    ],
+    "fontphobia": "golden",
+    "framework": "static",
+    "harfbuzz": "15.0.0",
+    "mode": "static",
+    "viewports": [
+      360,
+      768,
+      1280,
+      1920
+    ]
+  },
+  "pages": {
+    "/": {
+      "bytes": 1020652,
+      "disagreements": [],
+      "faces": {
+        "inter-100-900-normal": "U+20, U+2C, U+2E, U+3A, U+41, U+45, U+48, U+4D, U+50, U+61-7A, U+B7"
+      },
+      "fallback": {},
+      "fonts": [
+        {
+          "bytes": 140944,
+          "faces": [
+            "unused-400-normal"
+          ],
+          "initiator": "/",
+          "sha256": "338239f6b590b8ced3bf857654d32da3fd3663294cd3003651ed57aa3abd7aa1",
+          "status": 200,
+          "transfer": 141189,
+          "url": "/fonts/Inter-Regular-hinted.woff2"
+        },
+        {
+          "bytes": 879708,
+          "faces": [
+            "inter-100-900-italic",
+            "inter-100-900-normal"
+          ],
+          "initiator": "/",
+          "sha256": "4989b125924991b90d05b2d16e0e388c48f7d5bb8b30539bbf9c755278d0ccaf",
+          "status": 200,
+          "transfer": 880050,
+          "url": "/fonts/InterVariable.ttf"
+        }
+      ],
+      "notes": [],
+      "preloads": [
+        {
+          "crossorigin": null,
+          "href": "/fonts/Inter-Regular-hinted.woff2",
+          "type": "font/woff2",
+          "used": false
+        },
+        {
+          "crossorigin": "",
+          "href": "/fonts/InterVariable.ttf",
+          "type": "font/ttf",
+          "used": true
+        }
+      ],
+      "visits": [
+        "360",
+        "360@fs12",
+        "360@fs20",
+        "360@fs24",
+        "360@fs72",
+        "360@fs9",
+        "768",
+        "1280",
+        "1920",
+        "3840",
+        "3840@fs12",
+        "3840@fs20",
+        "3840@fs24",
+        "3840@fs72",
+        "3840@fs9"
+      ]
+    },
+    "/about/": {
+      "bytes": 879708,
+      "disagreements": [],
+      "faces": {
+        "inter-100-900-normal": "U+20, U+2C, U+2E, U+32, U+34, U+3A, U+41, U+43, U+48-49, U+4F, U+53, U+62, U+65, U+68, U+6C-70, U+72-75, U+79"
+      },
+      "fallback": {},
+      "fonts": [
+        {
+          "bytes": 879708,
+          "faces": [
+            "inter-100-900-italic",
+            "inter-100-900-normal"
+          ],
+          "initiator": "/styles.css",
+          "sha256": "4989b125924991b90d05b2d16e0e388c48f7d5bb8b30539bbf9c755278d0ccaf",
+          "status": 200,
+          "transfer": 880050,
+          "url": "/fonts/InterVariable.ttf"
+        }
+      ],
+      "notes": [],
+      "preloads": [],
+      "visits": [
+        "360",
+        "360@fs12",
+        "360@fs20",
+        "360@fs24",
+        "360@fs72",
+        "360@fs9",
+        "768",
+        "1280",
+        "1920",
+        "3840",
+        "3840@fs12",
+        "3840@fs20",
+        "3840@fs24",
+        "3840@fs72",
+        "3840@fs9"
+      ]
+    },
+    "/edge.html": {
+      "bytes": 1636784,
+      "disagreements": [],
+      "faces": {
+        "deja-400-normal": "U+20-21, U+2D, U+3D-3E, U+41, U+43, U+46, U+4C-4D, U+50, U+53, U+61-63, U+65-66, U+68-69, U+6C-70, U+72-74",
+        "inter-100-900-italic": "U+20, U+61-64, U+69, U+6C, U+6F, U+74",
+        "inter-100-900-normal": "U+20, U+25, U+2C-3A, U+40-46, U+48-49, U+4C-4E, U+50, U+53-54, U+56-58, U+61-69, U+6B-7A, U+D8, U+E2, U+E4, U+E9, U+F1, U+FF, U+103, U+111, U+219-21A, U+301, U+308, U+3A9, U+1EBF, U+1EC7, U+1EDF, U+2010, U+201C-201E, U+2022, U+2026, U+25A0, U+25CF, U+2713"
+      },
+      "fallback": {
+        "sans-serif": "U+2603, U+306E, U+30AD, U+30B9, U+30C6, U+30C8, U+65E5, U+672C, U+8A9E, U+1F600"
+      },
+      "fonts": [
+        {
+          "bytes": 757076,
+          "faces": [
+            "deja-400-normal"
+          ],
+          "initiator": "/styles.css",
+          "sha256": "7da195a74c55bef988d0d48f9508bd5d849425c1770dba5d7bfc6ce9ed848954",
+          "status": 200,
+          "transfer": 757400,
+          "url": "/fonts/DejaVuSans.ttf"
+        },
+        {
+          "bytes": 879708,
+          "faces": [
+            "inter-100-900-italic",
+            "inter-100-900-normal"
+          ],
+          "initiator": "/styles.css",
+          "sha256": "4989b125924991b90d05b2d16e0e388c48f7d5bb8b30539bbf9c755278d0ccaf",
+          "status": 200,
+          "transfer": 880050,
+          "url": "/fonts/InterVariable.ttf"
+        }
+      ],
+      "notes": [],
+      "preloads": [],
+      "visits": [
+        "360",
+        "360@fs12",
+        "360@fs20",
+        "360@fs24",
+        "360@fs72",
+        "360@fs9",
+        "768",
+        "1280",
+        "1920",
+        "3840",
+        "3840@fs12",
+        "3840@fs20",
+        "3840@fs24",
+        "3840@fs72",
+        "3840@fs9"
+      ]
+    }
+  },
+  "unloaded": {
+    "unused-400-normal": {
+      "descriptors": {
+        "font-family": "'Unused'",
+        "src": "url('./fonts/Inter-Regular-hinted.woff2') format('woff2')"
+      },
+      "family": "Unused",
+      "sheet": "/styles.css",
+      "urls": [
+        "/fonts/Inter-Regular-hinted.woff2"
+      ]
+    }
+  },
+  "version": 1
+}

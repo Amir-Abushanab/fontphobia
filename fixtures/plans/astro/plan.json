@@ -1,0 +1,243 @@
+{
+  "faces": [
+    {
+      "adapter": "css",
+      "bytes": {
+        "core": 15440,
+        "ext": 20204,
+        "now": 26156,
+        "rest": 8216
+      },
+      "family": "Fixture Sans",
+      "features": [],
+      "files": [
+        {
+          "bytes": 15440,
+          "count": 104,
+          "name": "dejavu-sans-latin.core.fb9395fb.woff2",
+          "role": "core",
+          "sha256": "fb9395fbe939127675b7c74b24c6b57608f7520114cca38571483a795a152f25",
+          "unicodeRange": "U+20-7E, U+A0, U+2010, U+2013-2014, U+2018-2019, U+201C-201D, U+2026"
+        },
+        {
+          "bytes": 20204,
+          "count": 226,
+          "hintRefs": "U+30, U+43, U+45, U+48, U+4C, U+4F, U+51, U+53-55, U+5A, U+62-6B, U+6E-73, U+75-76, U+78-7A",
+          "name": "dejavu-sans-latin.ext.c2234913.woff2",
+          "role": "ext",
+          "sha256": "c223491364f95cc7f21225e62685be48f7aeb3cd51fa2a09bc94e86ff6b7b8d1",
+          "unicodeRange": "U+A1-17F, U+2011, U+2020-2021"
+        },
+        {
+          "bytes": 8216,
+          "count": 12,
+          "hintRefs": "U+30, U+43, U+45, U+48, U+4C, U+4F, U+51, U+53-55, U+5A, U+62-6B, U+6E-73, U+75-76, U+78-7A",
+          "name": "dejavu-sans-latin.rest.bc6565c8.woff2",
+          "role": "rest",
+          "sha256": "bc6565c8de09918e18bad6c6d3eccf39d1590e6a6eff26c64d7ad6c16017ea0c",
+          "unicodeRange": "U+2012, U+2015-2017, U+201A-201B, U+201E-201F, U+2022-2025"
+        }
+      ],
+      "hinting": true,
+      "id": "fixture-sans-400-normal",
+      "kept": {
+        "count": 330,
+        "locales": [
+          "en"
+        ],
+        "safety": 319,
+        "used": 11
+      },
+      "license": {
+        "from": "name table",
+        "id": "Bitstream-Vera",
+        "reserved": [
+          "Bitstream",
+          "Vera"
+        ]
+      },
+      "optIns": [
+        {
+          "applied": false,
+          "change": "characters from the extended file hint differently on Linux and ChromeOS (FreeType's auto-hinter)",
+          "id": "drop-hint-refs",
+          "saving": 1348
+        },
+        {
+          "applied": false,
+          "change": "changes text layout on Linux at 1× and rasterization on Windows",
+          "id": "drop-hinting",
+          "saving": 17588
+        }
+      ],
+      "source": {
+        "bytes": 26156,
+        "file": "public/fonts/dejavu-sans-latin.woff2",
+        "sha256": "47e81f54ee85ccf20b34c119b42d4979dc821a8375a6f5fa6768fad3c5510a83"
+      },
+      "status": "planned"
+    },
+    {
+      "adapter": "google-fonts",
+      "family": "Fraunces",
+      "id": "fraunces-400-700-normal-113e1c",
+      "reason": "Google serves this font; --allow self-host serves it from your site, split",
+      "status": "skipped"
+    },
+    {
+      "adapter": "fontsource",
+      "bytes": {
+        "core": 16944,
+        "ext": 0,
+        "now": 85068,
+        "rest": 74904
+      },
+      "family": "Inter Variable",
+      "features": [],
+      "files": [
+        {
+          "bytes": 16944,
+          "count": 128,
+          "name": "inter-latin-ext-wght-normal.core.9d7d2384.woff2",
+          "role": "core",
+          "sha256": "9d7d2384ddd2294ca2850ee072c4dee55cd003f9b05fc2b390b36dce393309ea",
+          "unicodeRange": "U+100-130, U+132-148, U+14A-151, U+154-17F, U+21A, U+304, U+308, U+2020"
+        },
+        {
+          "bytes": 74904,
+          "count": 594,
+          "name": "inter-latin-ext-wght-normal.rest.07e6f7b4.woff2",
+          "role": "rest",
+          "sha256": "07e6f7b4eae34ae2d479a9d91cd9ee61f91689da0882d06e7003866d786e4a87",
+          "unicodeRange": "U+180-1C3, U+1C5-219, U+21B-254, U+256-27B, U+27E-284, U+286-290, U+292-2A4, U+2A6-2BA, U+2BD-2C5, U+2C7-2CC, U+2CE-2D7, U+2DD-2FF, U+1D00, U+1D0D, U+1D1B, U+1D43, U+1D47-1D49, U+1D4D, U+1D4F-1D50, U+1D52, U+1D56-1D58, U+1D5B, U+1D62-1D65, U+1D9C, U+1DA0, U+1DBB, U+1DBF, U+1E00-1E9B, U+1E9D-1E9F, U+1EF2-1EFF, U+20A0-20AB, U+20AD-20AF, U+20B1-20B5, U+20B8-20BA, U+20BC-20BF, U+2113, U+2C7C, U+2C7F, U+A7FF"
+        }
+      ],
+      "hinting": true,
+      "id": "inter-variable-100-900-normal-e5dec1",
+      "kept": {
+        "count": 128,
+        "locales": [
+          "en"
+        ],
+        "safety": 126,
+        "used": 2
+      },
+      "license": {
+        "from": "name table",
+        "id": "OFL-1.1"
+      },
+      "notes": [
+        "fontsource: one file per slice, no core/extended split"
+      ],
+      "optIns": [
+        {
+          "applied": false,
+          "change": "changes text layout on Linux at 1× and rasterization on Windows",
+          "id": "drop-hinting",
+          "saving": 0
+        },
+        {
+          "applied": false,
+          "change": "wght 400–700; text widths shift up to ~0.02% (whole pixels on Linux at 1×)",
+          "id": "limit-axes",
+          "saving": 4488
+        }
+      ],
+      "source": {
+        "bytes": 85068,
+        "file": "node_modules/@fontsource-variable/inter/files/inter-latin-ext-wght-normal.woff2",
+        "sha256": "34b9c504cab7a73e37b746343a449132e56cf7b5481af2cb81dc74dcff25c956"
+      },
+      "status": "planned"
+    },
+    {
+      "adapter": "fontsource",
+      "bytes": {
+        "core": 40088,
+        "ext": 0,
+        "now": 48256,
+        "rest": 10816
+      },
+      "family": "Inter Variable",
+      "features": [],
+      "files": [
+        {
+          "bytes": 40088,
+          "count": 205,
+          "hintRefs": "U+2BC",
+          "name": "inter-latin-wght-normal.core.d5804d01.woff2",
+          "role": "core",
+          "sha256": "d5804d016eb40172cc1a148c47a6aa95e65e8465fd28b1fdd6e79b3134308156",
+          "unicodeRange": "U+20-7E, U+A0-AC, U+AE-FF, U+131, U+152-153, U+304, U+308, U+2013-2014, U+2018-2019, U+201C-201D, U+2026, U+2032-2033, U+2212"
+        },
+        {
+          "bytes": 10816,
+          "count": 19,
+          "hintRefs": "U+30, U+43, U+45, U+48, U+4C, U+4F, U+51, U+53-55, U+58, U+5A, U+62-6B, U+6E-73, U+75-76, U+78-7A, U+2019",
+          "name": "inter-latin-wght-normal.rest.bebbcc6c.woff2",
+          "role": "rest",
+          "sha256": "bebbcc6c7f4f6a10c6dd52bd07068f9cf0fa84606a72005e16d44b3ad9a17b4f",
+          "unicodeRange": "U+2BB-2BC, U+2C6, U+2DA, U+2DC, U+2002, U+2009, U+200B, U+201A, U+201E, U+2022, U+2039-203A, U+2044, U+20AC, U+2122, U+2191, U+2193, U+FEFF"
+        }
+      ],
+      "hinting": true,
+      "id": "inter-variable-100-900-normal-e8b219",
+      "kept": {
+        "count": 205,
+        "locales": [
+          "en"
+        ],
+        "safety": 170,
+        "used": 35
+      },
+      "license": {
+        "from": "name table",
+        "id": "OFL-1.1"
+      },
+      "notes": [
+        "fontsource: one file per slice, no core/extended split"
+      ],
+      "optIns": [
+        {
+          "applied": false,
+          "change": "changes text layout on Linux at 1× and rasterization on Windows",
+          "id": "drop-hinting",
+          "saving": -24
+        },
+        {
+          "applied": false,
+          "change": "wght 400–900; text widths shift up to ~0.02% (whole pixels on Linux at 1×)",
+          "id": "limit-axes",
+          "saving": 8828
+        }
+      ],
+      "source": {
+        "bytes": 48256,
+        "file": "node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
+        "sha256": "3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62"
+      },
+      "status": "planned"
+    }
+  ],
+  "optIns": [
+    {
+      "applied": false,
+      "faces": 2,
+      "id": "limit-axes",
+      "saving": 13316
+    },
+    {
+      "applied": false,
+      "faces": 3,
+      "id": "drop-hinting",
+      "saving": 17564
+    },
+    {
+      "applied": false,
+      "faces": 1,
+      "id": "drop-hint-refs",
+      "saving": 1348
+    }
+  ],
+  "version": 1
+}

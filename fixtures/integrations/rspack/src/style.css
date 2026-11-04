@@ -1,0 +1,3 @@
+@font-face { font-family: Small; src: url('./Small.woff2') format('woff2'); }
+@font-face { font-family: Ours; src: url('./Fixture.ext.0123abcd.woff2') format('woff2'); }
+h1 { font-family: Small, Ours, sans-serif; }

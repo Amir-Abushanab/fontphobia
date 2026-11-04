@@ -177,10 +177,17 @@ importers:
         version: 5.1.0(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6))
 
   packages/cli:
+    dependencies:
+      playwright-core:
+        specifier: 1.64.1
+        version: 1.64.1
     devDependencies:
       '@fontphobia/core':
         specifier: workspace:*
         version: link:../core
+      '@fontphobia/crawler':
+        specifier: workspace:*
+        version: link:../crawler
       cac:
         specifier: 7.1.0
         version: 7.1.0
@@ -193,9 +200,47 @@ importers:
       harfbuzzjs:
         specifier: 1.6.4
         version: 1.6.4
+      postcss:
+        specifier: 8.5.32
+        version: 8.5.32
+      postcss-less:
+        specifier: 7.0.1
+        version: 7.0.1(postcss@8.5.32)
+      postcss-scss:
+        specifier: 4.0.9
+        version: 4.0.9(postcss@8.5.32)
+      postcss-selector-parser:
+        specifier: 7.1.7
+        version: 7.1.7
       wawoff2:
         specifier: 2.0.1
         version: 2.0.1
+    devDependencies:
+      cldr-core:
+        specifier: 49.0.0
+        version: 49.0.0
+      cldr-misc-full:
+        specifier: 49.0.0
+        version: 49.0.0(cldr-core@49.0.0)
+
+  packages/crawler:
+    dependencies:
+      '@fontphobia/core':
+        specifier: workspace:*
+        version: link:../core
+      pixelmatch:
+        specifier: 8.0.0
+        version: 8.0.0
+      playwright-core:
+        specifier: 1.64.1
+        version: 1.64.1
+      pngjs:
+        specifier: 7.0.0
+        version: 7.0.0
+    devDependencies:
+      '@types/pngjs':
+        specifier: 6.0.5
+        version: 6.0.5
 
 packages:
 
@@ -326,6 +371,9 @@ packages:
   '@types/node@26.6.6':
     resolution: {integrity: sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog==}
 
+  '@types/pngjs@6.0.5':
+    resolution: {integrity: sha512-0k5eKfrA83JOZPppLtS2C7OUtyNAl2wKNxfyYl9Q5g9lPkgBl/9hNyAu6HuEH2J4XmIv2znEpkDd0SaZVxW6iQ==}
+
   '@vitest/mocker@5.1.0':
     resolution: {integrity: sha512-5umB9/jlWcqVS6fsrFmv5Gdnpu6wAUio/lEOwAmvB7v+lFo/IW2B9FhAD0p19GCULTgMzLCdUmuCDCnAzWgppQ==}
     peerDependencies:
@@ -423,6 +471,19 @@ packages:
   chai@6.3.0:
     resolution: {integrity: sha512-XWAtwJ6OHO+tj0EKCs0Y2UamnyOxseZWltU4x2U2wh8g4AigdjwvtUjvLP2tqkA/avxHEtzxNaqGq/YGNwckKg==}
     engines: {node: '>=18'}
+
+  cldr-core@49.0.0:
+    resolution: {integrity: sha512-2Z2dYeDO95AbKIG9dIUdZy6DD4f0hhHjTYnaHZj/9JTQ82pX5EsJlCs2BXPWi4vd1d98MwotOivh4Uthxwri4A==}
+
+  cldr-misc-full@49.0.0:
+    resolution: {integrity: sha512-1B1O3pe4v0pbNEZdWbkBLtM3Lue7G9KN9LwV+yoAsFttk81DyQ7nCL6knddyBaSgKpF4+f0C4NHcZPwA6uoEwA==}
+    peerDependencies:
+      cldr-core: 49.0.0
+
+  cssesc@3.0.0:
+    resolution: {integrity: sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg==}
+    engines: {node: '>=4'}
+    hasBin: true
 
   defu@6.1.7:
     resolution: {integrity: sha512-7z22QmUWiQ/2d0KkdYmANbRUVABpZ9SNYyH5vx6PZ+nE5bcC0l7uFvEfHlyld/HcGBFTL536ClDt3DEcSlEJAQ==}
@@ -575,6 +636,35 @@ packages:
     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
     engines: {node: '>=12'}
 
+  pixelmatch@8.0.0:
+    resolution: {integrity: sha512-cIqOLfh5k52us715qf3B3+kTOxZv+WDv77HN7xokLScYQGYQHi4m/ynoDIPpvF2LvCyUJGyvzY64i0QCXtzu1g==}
+    hasBin: true
+
+  playwright-core@1.64.1:
+    resolution: {integrity: sha512-BC4s8y6SEVA6Q1rSxZTto8hI1KUI3xXlHGZgvGqP4IqPdI/a6FX9H29IDNz7vKo9l21b6LfYosScPL6M3xxyDQ==}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  pngjs@7.0.0:
+    resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
+    engines: {node: '>=14.19.0'}
+
+  postcss-less@7.0.1:
+    resolution: {integrity: sha512-ZLZPw5JIJUDoY9IVp/rBb5daDI1wChnw5+G9RMyA3MVydkLwR+yfYJD3et1fbxPJMthZsBKA5qWKtwrGZuJVQQ==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      postcss: ^8.5.32
+
+  postcss-scss@4.0.9:
+    resolution: {integrity: sha512-AjKOeiwAitL/MXxQW2DliT28EKukvvbEWx3LBmJIRN8KfBGZbRTxNYW0kSqi1COiTZ57nZ9NW06S6ux//N1c9A==}
+    engines: {node: '>=12.0'}
+    peerDependencies:
+      postcss: ^8.4.29
+
+  postcss-selector-parser@7.1.7:
+    resolution: {integrity: sha512-wWBro/7hJ40ye6TPiXkUQoXKCw23xSsjriUvqd7Uls9Sso3oLiON1flc18cCdnjgCRXw4fBVqUJJeOdDTh3P3g==}
+    engines: {node: '>=4'}
+
   postcss@8.5.32:
     resolution: {integrity: sha512-LJlKCCAUFKOuZxipUdYw1NzIITEsPcgyOG9LkvRJvuKj/bRzbuRY0ARXvL0pWGpsZvn8jku+LMep2eU0seHp8g==}
     engines: {node: ^10 || ^12 || >=14}
@@ -678,6 +768,9 @@ packages:
 
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
+
+  util-deprecate@1.0.2:
+    resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
   verkit@0.5.0:
     resolution: {integrity: sha512-u4J1hr6Y+C/hit34GwL3eIcUf3wngT8TlYUjK7tk0jxydKLAq3sYvifjdTDA6U3KCKRcQCQDGf/srjxfZF3l7g==}
@@ -869,6 +962,10 @@ snapshots:
     dependencies:
       undici-types: 8.9.0
 
+  '@types/pngjs@6.0.5':
+    dependencies:
+      '@types/node': 26.6.6
+
   '@vitest/mocker@5.1.0(vite@8.3.5(@types/node@26.6.6))':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
@@ -925,6 +1022,14 @@ snapshots:
   cac@7.1.0: {}
 
   chai@6.3.0: {}
+
+  cldr-core@49.0.0: {}
+
+  cldr-misc-full@49.0.0(cldr-core@49.0.0):
+    dependencies:
+      cldr-core: 49.0.0
+
+  cssesc@3.0.0: {}
 
   defu@6.1.7: {}
 
@@ -1020,6 +1125,27 @@ snapshots:
 
   picomatch@4.0.7: {}
 
+  pixelmatch@8.0.0:
+    dependencies:
+      pngjs: 7.0.0
+
+  playwright-core@1.64.1: {}
+
+  pngjs@7.0.0: {}
+
+  postcss-less@7.0.1(postcss@8.5.32):
+    dependencies:
+      postcss: 8.5.32
+
+  postcss-scss@4.0.9(postcss@8.5.32):
+    dependencies:
+      postcss: 8.5.32
+
+  postcss-selector-parser@7.1.7:
+    dependencies:
+      cssesc: 3.0.0
+      util-deprecate: 1.0.2
+
   postcss@8.5.32:
     dependencies:
       nanoid: 3.3.20
@@ -1113,6 +1239,8 @@ snapshots:
       quansync: 1.0.0
 
   undici-types@8.9.0: {}
+
+  util-deprecate@1.0.2: {}
 
   verkit@0.5.0: {}
 

@@ -8,11 +8,16 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same branch or PR cancels the run still going.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
-    # M1 "done when": byte-identical output on macOS, Linux and Windows (PLAN §4, §16).
-    # The golden test (packages/core/test/golden.test.ts) compares every output's sha256 with
-    # the committed hashes, so any platform difference fails here.
+    # M1: byte-identical output on macOS, Linux and Windows (PLAN §4, §16). The golden test
+    # compares every output's sha256 with the committed hashes.
+    # M2: the crawler tests run against the runner's Google Chrome (every image ships one).
     strategy:
       fail-fast: false
       matrix:
@@ -29,12 +34,92 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
+        env:
+          VERIFY_ARTIFACTS: ${{ runner.temp }}/verify
+      - name: Upload verify diff images
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verify-diffs-${{ matrix.os }}-${{ matrix.node }}
+          path: ${{ runner.temp }}/verify
+          if-no-files-found: ignore
       - run: pnpm build
-      - name: Smoke-test the bundled CLI outside the workspace
+      - name: Install the packed CLI outside the workspace and run it
         shell: bash
         run: |
           out="$RUNNER_TEMP/cli"
-          mkdir -p "$out" && cp packages/cli/dist/* "$out/"
-          node "$out/cli.mjs" --version
-          node "$out/cli.mjs" subset fixtures/fonts/InterVariable.ttf --unicodes U+20-7E -o "$out/x.woff2"
-          node "$out/cli.mjs" inspect "$out/x.woff2" --json > /dev/null
+          mkdir -p "$out"
+          (cd packages/cli && pnpm pack --pack-destination "$out")
+          cd "$out"
+          # M8: a cold `pnpm dlx` of the real tarball (empty store and cache) within 15 s.
+          cold="$RUNNER_TEMP/cold"; mkdir -p "$cold/run"
+          start=$SECONDS
+          (cd "$cold/run" && HOME="$cold" XDG_DATA_HOME="$cold/data" XDG_CACHE_HOME="$cold/cache" XDG_CONFIG_HOME="$cold/config" XDG_STATE_HOME="$cold/state" LOCALAPPDATA="$cold/local" pnpm dlx "$(ls "$out"/fontphobia-*.tgz)" --version)
+          took=$((SECONDS - start)); echo "cold pnpm dlx: ${took}s"
+          if [ "$took" -gt 15 ]; then echo "::warning::cold pnpm dlx took ${took}s (budget 15 s)"; fi
+          if [ "$RUNNER_OS" = Linux ] && [ "$took" -gt 15 ]; then exit 1; fi
+          echo '{"name":"smoke","private":true}' > package.json
+          npm install --no-audit --no-fund ./fontphobia-*.tgz
+          npx fontphobia --version
+          npx fontphobia subset "$GITHUB_WORKSPACE/fixtures/fonts/InterVariable.ttf" --unicodes U+20-7E -o x.woff2
+          npx fontphobia inspect x.woff2 --json > /dev/null
+          cp -R "$GITHUB_WORKSPACE/fixtures/sites/static-css" site
+          mkdir site/fonts && cp "$GITHUB_WORKSPACE"/fixtures/fonts/{InterVariable.ttf,DejaVuSans.ttf,Inter-Regular-hinted.woff2} site/fonts/
+          npx fontphobia audit --cwd site --dist . --no-font-size-sweep
+          test -s site/.fontphobia/usage.json
+          npx fontphobia build --cwd site | tee plan.txt
+          grep -q 'Font bytes per page' plan.txt
+          npx fontphobia build --cwd site --write
+          test -s site/fontphobia.manifest.json
+          npx fontphobia build --cwd site | grep -q 'Nothing to change'
+          # M5: same pixels as the original fonts on this OS's Chrome; exits 1 on any difference.
+          npx fontphobia verify --cwd site --viewports 360,1280 | tee verify.txt
+          grep -q 'Verify passed' verify.txt
+          npx fontphobia check --cwd site | grep -q 'up to date'
+          npx fontphobia revert --cwd site
+          git diff --no-index --exit-code "$GITHUB_WORKSPACE/fixtures/sites/static-css/styles.css" site/styles.css
+
+  sites:
+    # M2–M5: the Astro and TanStack Start fixtures build, are crawled with no config, plan as committed, and render identically after build --write; verify in WebKit and the Linux image (PLAN §16).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            fixtures/sites/*/pnpm-lock.yaml
+            fixtures/integrations/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile
+        working-directory: fixtures/sites/astro
+      - run: pnpm install --frozen-lockfile
+        working-directory: fixtures/sites/tanstack-start
+      - run: pnpm install --frozen-lockfile
+        working-directory: fixtures/sites/next
+      - run: pnpm install --frozen-lockfile
+        working-directory: fixtures/sites/nuxt
+      - run: pnpm install --frozen-lockfile
+        working-directory: fixtures/integrations
+      # The crawl, then the golden plans whose fontsource sources live in the fixtures' node_modules.
+      - run: pnpm vitest run packages/crawler/test/sites.test.ts packages/core/test/plan.test.ts packages/cli/test/vite.test.ts packages/cli/test/integrations.test.ts
+        env:
+          FONTPHOBIA_SITES: '1'
+          VERIFY_ARTIFACTS: ${{ runner.temp }}/verify
+      # M5: WebKit (Playwright's build) on the host, and Chromium with hinting, Firefox and WebKit in the
+      # pinned Playwright image through Docker (verify --hinting / linux-*).
+      - run: pnpm --filter @fontphobia/crawler exec playwright-core install --with-deps webkit
+      - run: pnpm vitest run packages/crawler/test/verify.test.ts
+        env:
+          FONTPHOBIA_LINUX: '1'
+          VERIFY_ARTIFACTS: ${{ runner.temp }}/verify
+      - name: Upload verify diff images
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verify-diffs-sites
+          path: ${{ runner.temp }}/verify
+          if-no-files-found: ignore

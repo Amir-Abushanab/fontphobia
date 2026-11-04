@@ -3,9 +3,19 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "dependencies": {
     "harfbuzzjs": "1.6.4",
+    "postcss": "8.5.32",
+    "postcss-less": "7.0.1",
+    "postcss-scss": "4.0.9",
+    "postcss-selector-parser": "7.1.7",
     "wawoff2": "2.0.1"
+  },
+  "devDependencies": {
+    "cldr-core": "49.0.0",
+    "cldr-misc-full": "49.0.0"
   }
 }

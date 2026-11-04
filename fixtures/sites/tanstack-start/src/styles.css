@@ -1,0 +1,8 @@
+/* Self-hosted face for the `css` adapter. */
+@font-face {
+  font-family: 'Fixture Sans';
+  src: url('/fonts/dejavu-sans-latin.woff2') format('woff2');
+  font-display: swap;
+}
+code { font-family: 'Fixture Sans', monospace; }
+h1 { font-family: Fraunces, serif; }

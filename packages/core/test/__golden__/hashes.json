@@ -1,12 +1,12 @@
 {
-  "inter latin1": "31c3a0d2aaad82134d9f74986eb0a57f2fc71d81abbcd4cc3699b2bb1a791857 55232",
-  "inter ascii +tnum,ss01": "1e11d4c727060087719257e1ff376c686c29baaa746d90b44aa521614da74736 46088",
-  "inter all features": "e340e67335e2a3ddcffcde1582a399d807b7d3eb6aca19597bcb463dbec59f70 86044",
-  "inter wght 400..700 opsz 14..24": "eca7ddfb3aa88200e9cb22a0f5c5a70eff5ab072108665ef2ca66484fbfa5b03 37332",
-  "inter pinned 550/20": "284ec3873454eac3425c15f2ceb58a0d2f1c48333aae272125fc9098a3eb4de6 15600",
-  "inter everything": "d2c8e0a1568f8292818bbd7be956dcadcd8e1d9d3c17fe0e44384aff75064631 330440",
-  "dejavu latin1": "6fe96db0f409f596fbdb2c5d66f99b090ef86953151ac953609506553f0434a9 21816",
-  "dejavu latin1 no hinting": "52b978f817bdd4dc98e76e8c4f6bee9c3e74cc02cee98f67cadad6a893b7c92e 10804",
-  "inter hinted (woff2 source) ascii": "065e9fe757b2e2d2a6de4ddeb4dfc9890b479435a9f24f852080e90feb1ca9ba 15584",
+  "inter latin1": "1973d3a8e3c4eeefcfe2449ab2a5e48230e4376c9b078ba6881d92c9fb5ffabe 55928",
+  "inter ascii +tnum,ss01": "ab3e51c40a2e7f9e673bc2a779df5c547e4329ab296ef8d2bf484e7690457df4 46960",
+  "inter all features": "a40c13b4ba83af6488efb5839eb972ef40422e21454fb43b10457956da6fdb8e 87956",
+  "inter wght 400..700 opsz 14..24": "1e86494c90a5cc03be775012d57cd4663b520647c09cc9ec1b6262449210dfe2 38268",
+  "inter pinned 550/20": "b5b3c17271275e4b188a318bdeb1f1fcd62b6f29569c0d15dc0c1f00779fd817 16540",
+  "inter everything": "83706fe254449d546bf9072ce3d982275b7acafc2722234ee22e7732668828da 340264",
+  "dejavu latin1": "7d262b94ef5eb2dcb5744bbbf8e1ec5a624c32fa0cdcf73247a51ff42d625b96 22180",
+  "dejavu latin1 no hinting": "0544f931200ba2ef76497dd5292ad0801ae43739d66ed4198ccf23ac84ad236c 11220",
+  "inter hinted (woff2 source) ascii": "ffae2b13f18a7b33b26d611a5007b149212d3d73dfb1a1f64c1cefd0fbcaba12 16480",
   "decoded hinted fixture": "23b033ee82ed5a69a647baabbe1dc653b5530ec4462964a7cf68015dc51a3251"
 }
