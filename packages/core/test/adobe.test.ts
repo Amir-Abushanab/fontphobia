@@ -32,7 +32,7 @@ describe('adobe-fonts report', () => {
     };
     const f = adobeFindings(u, facts).map((x) => x.text);
     expect(f[0]).toMatch(/^kit abc1234: 1 face\(s\) used, up to 40\.0 KB of kit fonts per page/);
-    expect(f[1]).toBe('kit abc1234: no page uses inter i7; remove this style from the project (unused styles never download, so this mainly shrinks the kit CSS)');
+    expect(f[1]).toBe('kit abc1234: no page uses inter i7; remove this style from the project (unused styles never download, so this mainly shrinks the kit CSS; `fontphobia apply-kit` does it through Adobe\'s API)');
     expect(f[2]).toMatch(/^kit abc1234: none of the 1 crawled words shape differently with only kerning, so "Include OpenType features" can be turned off/);
     expect(f[3]).toMatch(/^kit abc1234: the pages use only Basic Latin and Latin-1 characters, but inter n4 maps \d+ characters/);
     expect(f[4]).toBe('kit abc1234: font-display is auto (kit setting; fontphobia never changes it)');

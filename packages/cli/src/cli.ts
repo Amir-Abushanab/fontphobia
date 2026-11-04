@@ -10,6 +10,7 @@ import {
   rangesFromCodePoints, subsetFont, codePointsOf, type AxisSetting, type SubsetOptions,
 } from '@fontphobia/core';
 import { loadConfig } from './config.ts';
+import { applyKit, readUsage, revertKits } from './apply-kit.ts';
 import pkg from '../package.json' with { type: 'json' };
 
 const cli = cac('fontphobia');
@@ -323,8 +324,13 @@ cli
   .command('revert', 'Put the original @font-face declarations and preloads back from fontphobia.manifest.json')
   .option('--cwd <dir>', 'Project root (default: current directory)')
   .option('--dry-run', 'Only show what would change')
-  .action((o: { cwd?: string; dryRun?: boolean }) => {
+  .action(async (o: { cwd?: string; dryRun?: boolean }) => {
     const root = resolve(o.cwd ?? '.');
+    // Adobe kits first (the API, with TYPEKIT_TOKEN); the files only once they're back.
+    if (!o.dryRun) {
+      const kp = await revertKits(root, (m) => process.stdout.write(m + '\n'));
+      if (kp.length) { process.stdout.write(`Problems (nothing else reverted):\n${kp.map((p) => `  ${p}`).join('\n')}\n`); process.exitCode = 1; return; }
+    }
     const r = revertProject(root, { write: !o.dryRun });
     const L = [`${o.dryRun ? 'Would restore' : 'Restored'} ${r.files.length} file(s): ${r.files.join(', ') || 'none'}`];
     if (r.problems.length) { L.push('Problems (manifest kept):'); for (const p of r.problems) L.push(`  ${p}`); }
@@ -332,6 +338,20 @@ cli
     if (r.fonts.length) L.push(`Generated fonts left for you to delete:`, ...r.fonts.map((f) => `  ${f}`));
     process.stdout.write(L.join('\n') + '\n');
     if (r.problems.length) process.exitCode = 1;
+  });
+
+cli
+  .command('apply-kit', 'Adobe Fonts: remove kit styles nothing uses and switch to the Default character set when it covers the pages (Typekit API; TYPEKIT_TOKEN)')
+  .option('--cwd <dir>', 'Project root (default: current directory)')
+  .option('--usage <file>', 'usage.json (default: .fontphobia/usage.json)')
+  .option('--yes', 'Apply and publish without asking')
+  .option('--check', 'Only check that the live kit serves every face and character the pages use')
+  .action(async (o: { cwd?: string; usage?: string; yes?: boolean; check?: boolean }) => {
+    const root = resolve(o.cwd ?? '.');
+    const usage = readUsage(root, o.usage);
+    if (!usage) throw new Error('No usage.json: run `fontphobia audit` first');
+    const interactive = !process.env.CI && process.stdin.isTTY && process.stderr.isTTY;
+    process.exitCode = await applyKit(root, usage, { yes: o.yes, check: o.check, ask, interactive: !!interactive, version: pkg.version, log: (m) => process.stdout.write(m + '\n') });
   });
 
 // The default (§3): audit, plan, then ask before writing (like ncu). --write/-u skips the question.

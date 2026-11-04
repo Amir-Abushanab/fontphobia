@@ -14,6 +14,7 @@ import { join, relative, sep } from 'node:path';
 import { detectCss } from '../adapters/css.ts';
 import { desiredWeights, matchWeight, namesFamily, neededWeights, repoText } from '../adapters/google-url.ts';
 import { literalProp } from '../adapters/next-font.ts';
+import { inAdobeDefault } from '../adapters/adobe-kit.ts';
 import { optionsLabel, weightKeyOf } from '../build/narrow-options.ts';
 import { resolveFontsource } from '../adapters/fontsource.ts';
 import { cssDemands, newDemands, otherFaces } from '../build/fingerprint.ts';
@@ -110,7 +111,7 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
   const root = o.root;
   const manifest: Manifest | undefined = readManifest(root);
   const notes: string[] = [];
-  if (!manifest || (!Object.keys(manifest.entries).length && !manifest.google?.length && !manifest.options?.length)) {
+  if (!manifest || (!Object.keys(manifest.entries).length && !manifest.google?.length && !manifest.options?.length && !manifest.kits?.length)) {
     return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: ['no fontphobia.manifest.json: nothing has been built to check'] };
   }
   const issues: CheckIssue[] = [];
@@ -246,6 +247,9 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
   else {
     // Not fontphobia's own files when the site is served from the project root (usage.json, the manifest).
     const files = listFiles(outDir, (r) => /\.(html?|m?js|json)$/i.test(r) && !r.endsWith('fontphobia.manifest.json'), { skip: (_rel, n) => n === 'node_modules' || n.startsWith('.'), max: 20_000 });
+    // adobe-fonts --apply-kit switched a kit to the Default set: characters outside it, if a kit font draws them, fall back.
+    const kitDefault = manifest.kits?.filter((k) => k.applied.some((f) => f.subset === 'default' && k.previous.find((p) => p.id === f.id)?.subset === 'all')).map((k) => k.kit) ?? [];
+    const outsideDefault = new Map<string, Set<number>>();
     const missing = new Map<string, { cps: Set<number>; files: Set<string> }>();
     // From JS/JSON only: bundles escape non-ASCII, so UI text and Unicode tables (React's, regexes)
     // look the same. Reported as a note; prerendered HTML is what fails the check.
@@ -260,6 +264,7 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
       const isHtml = /\.html?$/i.test(rel);
       // Space separators and invisible format characters never decide a subset.
       const chars = new Set([...(isHtml ? htmlText(text) : scriptStrings(text))].filter((ch) => !/[\p{Z}\p{Cf}\p{Cc}]/u.test(ch)).map((c) => c.codePointAt(0)!).filter((c) => !allow.has(c)));
+      if (kitDefault && isHtml) for (const c of chars) if (!inAdobeDefault(c)) (outsideDefault.get(rel) ?? outsideDefault.set(rel, new Set()).get(rel)!).add(c);
       // Faces drawn on this page (from the audit); unknown pages and scripts: every face.
       const pg = isHtml ? o.usage?.pages[pageOf(rel)] : undefined;
       const drawn = pg ? facts.filter((f) => pg.faces[f.e.id]) : facts;
@@ -276,6 +281,10 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
           m.files.add(relative(root, join(outDir, rel)).split(sep).join('/'));
         }
       }
+    }
+    if (kitDefault.length && outsideDefault.size) {
+      const all = new Set([...outsideDefault.values()].flatMap((x) => [...x]));
+      issues.push({ kind: 'chars', severity: 'warning', file: [...outsideDefault.keys()][0], message: `kit ${kitDefault.join(', ')} now serves Adobe's Default character set; ${[...all].slice(0, 12).map((c) => String.fromCodePoint(c)).join(' ')}${all.size > 12 ? ' …' : ''} in the built pages ${all.size > 1 ? "aren't" : "isn't"} in it: if a kit font draws ${all.size > 1 ? 'them' : 'it'}, ${all.size > 1 ? 'they render' : 'it renders'} in a fallback font (\`fontphobia revert\` restores the kit)` });
     }
     for (const [id, m] of scripted) {
       const f = facts.find((x) => x.e.id === id)!;

@@ -88,6 +88,8 @@ export interface Manifest {
   }>;
   google?: GoogleUrlRecord[];
   options?: OptionsRecord[];
+  /** adobe-fonts --apply-kit (§6.6): each kit's families before the first change (revert sends them back) and as applied. */
+  kits?: { kit: string; previous: { id: string; variations: string[]; subset: string }[]; applied: { id: string; variations: string[]; subset: string }[] }[];
   /** Features and axis values the CSS asked for when this was built ("family|feature|tag", "family|axis|wght=700"; family * = any). */
   demands?: string[];
 }
