@@ -367,7 +367,7 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
   const site = await openSite({ ...o, onStale: o.onStale ?? (() => true) }, project, log);
   let baseline: Baseline | undefined;
   // next/font/google and Astro narrowing and ejects change what the framework builds: only a second build can show "before".
-  const baselineMode = o.baseline ?? (o.manifest.options?.length || Object.values(o.manifest.ejects ?? {}).some((e) => e.kind === 'next-font-google' || e.kind === 'astro-fonts') ? 'worktree' : 'overlay');
+  const baselineMode = o.baseline ?? (o.manifest.options?.length || Object.values(o.manifest.ejects ?? {}).some((e) => e.kind === 'next-font-google' || e.kind === 'astro-fonts' || e.kind === 'nuxt-fonts') ? 'worktree' : 'overlay');
   if (baselineMode === 'worktree') {
     try { baseline = await worktreeBaseline(root, o.manifest, o, log); } catch (e) { await site.stop(); throw e; }
   }

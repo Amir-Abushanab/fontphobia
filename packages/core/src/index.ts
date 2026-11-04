@@ -42,3 +42,4 @@ export * from './adapters/google-url.ts';
 export * from './adapters/adobe.ts';
 export * from './adapters/next-font.ts';
 export * from './adapters/astro-fonts.ts';
+export * from './adapters/nuxt-fonts.ts';

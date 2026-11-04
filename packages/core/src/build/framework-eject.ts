@@ -14,6 +14,7 @@ import { join, posix } from 'node:path';
 import postcss, { type AtRule, type Rule } from 'postcss';
 import { astroFamily, findAstroFontsEntries, findAstroFontTags } from '../adapters/astro-fonts.ts';
 import { closing, findGoogleFontCalls, literalProp } from '../adapters/next-font.ts';
+import { arrayObjects, familyDecls, findNuxtFontsEntries, nuxtConfig } from '../adapters/nuxt-fonts.ts';
 import { familyKey, parseFamilyList, unquote } from '../css/values.ts';
 import { listFiles } from '../project/detect.ts';
 import type { FacePlan, UsageFileJson } from '../plan/planner.ts';
@@ -21,8 +22,8 @@ import { cssBlock } from './css.ts';
 import type { Edit } from './edits.ts';
 import type { Manifest, ManifestEntry } from './manifest.ts';
 
-export type EjectKind = 'next-font-google' | 'astro-fonts';
-export const EJECT_KINDS: readonly EjectKind[] = ['next-font-google', 'astro-fonts'];
+export type EjectKind = 'next-font-google' | 'astro-fonts' | 'nuxt-fonts';
+export const EJECT_KINDS: readonly EjectKind[] = ['next-font-google', 'astro-fonts', 'nuxt-fonts'];
 export const isEjectKind = (k: string | undefined): k is EjectKind => !!k && (EJECT_KINDS as readonly string[]).includes(k);
 
 const sha = (b: Uint8Array | string) => createHash('sha256').update(b).digest('hex');
@@ -92,6 +93,8 @@ interface Harvest {
   css: string;
   /** Base names of the font files it preloaded. */
   preloads: string[];
+  /** @nuxt/fonts: the fallback families it adds after the family in every stack. */
+  fallbacks?: string[];
 }
 
 const fmtRule = (selector: string, decls: [string, string][]) => `${selector} {\n${decls.map(([p, v]) => `  ${p}: ${v};`).join('\n')}\n}`;
@@ -155,6 +158,37 @@ function harvestAstro(root: string, hashed: string): Harvest | undefined {
   return undefined;
 }
 
+/** @nuxt/fonts: the family's rules (faces, fallback faces) from the built HTML or CSS, and the fallback names it adds to stacks. */
+function harvestNuxt(root: string, family: string): Harvest | undefined {
+  const files = builtFiles(root, (r) => r.endsWith('.html') || (r.endsWith('.css') && r.includes('_nuxt/')));
+  const unescape = (v: string) => v.replace(/\\(.)/g, '$1');
+  const fallbackOf = (fam: string) => fam.startsWith(`${family} Fallback`);
+  for (const p of [...files.values()].sort((a, b) => Number(b.endsWith('.html')) - Number(a.endsWith('.html')) || (a < b ? -1 : 1))) {
+    const text = readFileSync(join(root, p), 'utf8');
+    if (!text.includes('/_nuxt/fonts/')) continue;
+    const chunks = p.endsWith('.html') ? [...text.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]!) : [text];
+    for (const css of chunks) {
+      const out: string[] = [];
+      let fallbacks: string[] | undefined;
+      postcss.parse(css).walk((n) => {
+        if (n.type === 'atrule' && n.name.toLowerCase() === 'font-face') {
+          const d = declsOf(n).map(([k, v]) => [k, k === 'font-family' ? unescape(unquote(v)) : v] as [string, string]);
+          const fam = d.find(([k]) => k === 'font-family')?.[1] ?? '';
+          if (fam !== family && !fallbackOf(fam)) return;
+          out.push(fmtRule('@font-face', d.map(([k, v]) => [k, k === 'font-family' ? JSON.stringify(v) : v])));
+        } else if (n.type === 'decl' && (n.prop === 'font-family' || n.prop.startsWith('--font-')) && !fallbacks) {
+          const list = n.value.split(',').map((x) => unescape(unquote(x.trim())));
+          const i = list.indexOf(family);
+          if (i >= 0 && list[i + 1] && fallbackOf(list[i + 1]!)) { fallbacks = []; for (let j = i + 1; j < list.length && fallbackOf(list[j]!); j++) fallbacks.push(list[j]!); }
+        }
+      });
+      if (!out.some((f) => f.includes('/_nuxt/fonts/'))) continue; // an ejected build: ours, not @nuxt/fonts'
+      return { css: out.join('\n') + '\n', preloads: [], fallbacks: fallbacks ?? [] };
+    }
+  }
+  return undefined;
+}
+
 export interface EjectResult {
   entries: Record<string, ManifestEntry>;
   fonts: Map<string, Uint8Array>;
@@ -168,22 +202,24 @@ export function ejectFramework(root: string, kind: EjectKind, faces: FacePlan[],
   const r: EjectResult = { entries: {}, fonts: new Map(), edits: [], generated: new Map(), ejects: {}, notWritten: [] };
   // Next and Astro serve public/ at the site root, whether or not the project has one yet.
   const host = { dir: 'public/fonts/fontphobia', url: '/fonts/fontphobia' };
-  const genDir = existsSync(join(root, 'src')) ? 'src/styles/fontphobia' : 'fontphobia';
+  // Nuxt: under srcDir (app/ in Nuxt 4), reached from nuxt.config's `css` through `~`.
+  const genDir = kind === 'nuxt-fonts' ? (existsSync(join(root, 'app')) ? 'app/assets/fontphobia' : 'assets/fontphobia') : existsSync(join(root, 'src')) ? 'src/styles/fontphobia' : 'fontphobia';
   const byFamily = new Map<string, FacePlan[]>();
   for (const f of faces) { const fam = parseFamilyList(usage.faces[f.id]!.family)[0] ?? usage.faces[f.id]!.family; (byFamily.get(fam) ?? byFamily.set(fam, []).get(fam)!).push(f); }
   let built: Map<string, string> | undefined;
   for (const [family, planned] of byFamily) {
     const name = kind === 'astro-fonts' ? astroFamily(family) : family;
+    if (kind === 'nuxt-fonts' && familyKey(name).includes(' fallback')) continue;
     const genFile = `${genDir}/${kind}-${slug(name)}.css`;
     const prevEject = prev?.ejects?.[genFile];
-    const h: Harvest | undefined = prevEject?.text ? { css: prevEject.text, preloads: prevEject.preloads ?? [] } : kind === 'next-font-google' ? harvestNext(root, family) : harvestAstro(root, family);
-    if (!h) { for (const f of planned) r.notWritten.push({ id: f.id, reason: `couldn't find the CSS ${kind === 'next-font-google' ? 'Next' : 'Astro'} emitted for ${name} in the build output; rebuild the site and rerun` }); continue; }
+    const h: Harvest | undefined = prevEject?.text ? { css: prevEject.text, preloads: prevEject.preloads ?? [], fallbacks: prevEject.fallbacks } : kind === 'next-font-google' ? harvestNext(root, family) : kind === 'astro-fonts' ? harvestAstro(root, family) : harvestNuxt(root, family);
+    if (!h) { for (const f of planned) r.notWritten.push({ id: f.id, reason: `couldn't find the CSS ${{ 'next-font-google': 'Next', 'astro-fonts': 'Astro', 'nuxt-fonts': '@nuxt/fonts' }[kind]} emitted for ${name} in the build output; rebuild the site and rerun` }); continue; }
 
     // The stylesheet: used faces as marked blocks, other slices from copies, fallbacks and classes as emitted.
     const rules = postcss.parse(h.css);
     const urlOf = new Map<string, string>(); // emitted file base name → URL in the ejected CSS
     const copies: string[] = [];
-    let out = `/* fontphobia: ejected from ${kind === 'next-font-google' ? `next/font/google (${name})` : `the Astro Fonts API (${name})`} (generated; rerun \`fontphobia build\`; \`fontphobia revert\` restores the ${kind === 'next-font-google' ? 'call' : 'config'}) */\n`;
+    let out = `/* fontphobia: ejected from ${{ 'next-font-google': `next/font/google (${name})`, 'astro-fonts': `the Astro Fonts API (${name})`, 'nuxt-fonts': `@nuxt/fonts (${name})` }[kind]} (generated; rerun \`fontphobia build\`; \`fontphobia revert\` restores the ${kind === 'next-font-google' ? 'call' : 'config'}) */\n`;
     const done = new Set<string>();
     const nodes = rules.nodes ?? [];
     const className = `fontphobia-${slug(name)}`;
@@ -237,13 +273,13 @@ export function ejectFramework(root: string, kind: EjectKind, faces: FacePlan[],
     // The code: earlier snippets stay as written; a first eject edits the call or the config and tags.
     let snippets = prevEject?.snippets;
     if (!snippets) {
-      const s = kind === 'next-font-google' ? nextSnippets(root, name, genFile, className, classDecls, preloads) : astroSnippets(root, name, genFile, preloads);
+      const s = kind === 'next-font-google' ? nextSnippets(root, name, genFile, className, classDecls, preloads) : kind === 'astro-fonts' ? astroSnippets(root, name, genFile, preloads) : nuxtSnippets(root, name, genFile, h.fallbacks ?? []);
       if (typeof s === 'string') { for (const f of planned) r.notWritten.push({ id: f.id, reason: s }); for (const id of done) delete r.entries[id]; continue; }
       snippets = s.snippets;
       r.edits.push(...s.edits);
     }
     r.generated.set(genFile, out);
-    r.ejects[genFile] = { kind, package: name, version: '', specifier: name, css: '', sha256: sha(out), imports: [], snippets, text: h.css, preloads: h.preloads, files: copies.sort() };
+    r.ejects[genFile] = { kind, package: name, version: '', specifier: name, css: '', sha256: sha(out), imports: [], snippets, text: h.css, preloads: h.preloads, fallbacks: h.fallbacks?.length ? h.fallbacks : undefined, files: copies.sort() };
   }
   return r;
 }
@@ -312,6 +348,71 @@ function astroSnippets(root: string, family: string, genFile: string, preloads: 
       const to = `{/* fontphobia: ejected ${t.text} */}` + (t.preload ? preloads.map((u) => `<link rel="preload" href="${u}" as="font" type="font/woff2" crossorigin />`).join('') : '');
       snippets.push({ file, from: t.text, to });
       edits.push({ file, start: t.start, end: t.end, text: to, why: `eject ${family}: <Font> → preloads` });
+    }
+  }
+  return { snippets, edits };
+}
+
+/**
+ * @nuxt/fonts: the family set to `provider: 'none'` (so the module leaves it alone), the stylesheet
+ * added to `css`, and every stack that names the family given the fallback names the module added.
+ */
+function nuxtSnippets(root: string, family: string, genFile: string, fallbacks: string[]): Snippets {
+  const file = nuxtConfig(root);
+  if (!file) return 'no nuxt.config';
+  const text = readFileSync(join(root, file), 'utf8');
+  const snippets: { file: string; from: string; to: string }[] = [];
+  const edits: Edit[] = [];
+  const cssPath = `~/${genFile.replace(/^app\//, '')}`;
+  const top = /defineNuxtConfig\s*\(\s*\{/.exec(text);
+  if (!top) return `${file} has no defineNuxtConfig({ … }) to edit`;
+  const topAt = top.index + top[0].length;
+  const inserts: string[] = [];
+  // The family: provider 'none'.
+  const entry = findNuxtFontsEntries(root).find((e) => familyKey(e.family) === familyKey(family));
+  if (entry) {
+    const p = literalProp(entry.arg, 'provider');
+    if (p && !p.array) {
+      const to = `${p.quote}none${p.quote}`;
+      snippets.push({ file, from: entry.arg, to: entry.arg.slice(0, p.start) + to + entry.arg.slice(p.end) });
+      edits.push({ file, start: entry.start, end: entry.end, text: snippets[snippets.length - 1]!.to, why: `eject ${family}: provider 'none'` });
+    } else {
+      const to = `{ provider: 'none', ${entry.arg.slice(1).trimStart()}`;
+      snippets.push({ file, from: entry.arg, to });
+      edits.push({ file, start: entry.start, end: entry.end, text: to, why: `eject ${family}: provider 'none'` });
+    }
+  } else {
+    const fam = arrayObjects(text, 'families')[0];
+    const item = `{ name: '${family}', provider: 'none' }`;
+    if (fam) {
+      const ins = `${item}, `;
+      snippets.push({ file, from: '', to: ins });
+      edits.push({ file, start: fam.open + 1, end: fam.open + 1, text: ins, why: `eject ${family}: provider 'none'` });
+    } else inserts.push(`fonts: { families: [${item}] }, // fontphobia: ${family} is served from the site (eject)`);
+  }
+  // The stylesheet.
+  const cssArr = /(?:^|[{,\s])css\s*:\s*\[/.exec(text);
+  if (cssArr) {
+    const at = cssArr.index + cssArr[0].length;
+    const ins = `'${cssPath}', `;
+    snippets.push({ file, from: '', to: ins });
+    edits.push({ file, start: at, end: at, text: ins, why: `eject ${family}: add the stylesheet` });
+  } else inserts.push(`css: ['${cssPath}'], // fontphobia: ${family} is served from the site (eject)`);
+  if (inserts.length) {
+    const ins = `\n  ${inserts.join('\n  ')}`;
+    snippets.push({ file, from: '', to: ins });
+    edits.push({ file, start: topAt, end: topAt, text: ins, why: `eject ${family}: config` });
+  }
+  // Stacks: the fallback names after the family, as @nuxt/fonts added them.
+  if (fallbacks.length) {
+    const names = fallbacks.map((f) => JSON.stringify(f)).join(', ');
+    const fam = family.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    for (const d of familyDecls(root, family)) {
+      if (fallbacks.some((f) => d.value.includes(f))) continue;
+      const to = d.value.replace(new RegExp(`((?:^|,)\\s*(["']?)${fam}\\2)(?=\\s*(,|$))`, 'i'), `$1, ${names}`);
+      if (to === d.value) continue;
+      snippets.push({ file: d.file, from: d.value, to });
+      edits.push({ file: d.file, start: d.start, end: d.end, text: to, why: `eject ${family}: keep @nuxt/fonts' fallbacks in the stack` });
     }
   }
   return { snippets, edits };

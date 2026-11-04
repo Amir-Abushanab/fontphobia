@@ -12,3 +12,5 @@ fixtures/sites/*/.fontphobia/
 .tanstack/
 .nitro/
 .output/
+.nuxt/
+fixtures/sites/nuxt/dist

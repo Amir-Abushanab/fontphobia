@@ -24,7 +24,7 @@ export interface ManifestOutput {
 
 export interface ManifestEntry {
   id: string;
-  adapter: 'css' | 'fontsource' | 'google-fonts' | 'next-font-local' | 'next-font-google' | 'astro-fonts';
+  adapter: 'css' | 'fontsource' | 'google-fonts' | 'next-font-local' | 'next-font-google' | 'astro-fonts' | 'nuxt-fonts';
   family: string;
   /** Stylesheet (or component) holding the marked block. */
   stylesheet: string;
@@ -51,7 +51,7 @@ export interface GoogleUrlRecord {
 
 /** next-font-google (§6.4) and astro-fonts (§6.8): a font call's or config entry's options narrowed in place. */
 export interface OptionsRecord {
-  adapter: 'next-font-google' | 'astro-fonts';
+  adapter: 'next-font-google' | 'astro-fonts' | 'nuxt-fonts';
   /** `preload`: an Astro `<Font>` tag's preload filter (the tag text is `from`/`to`). */
   kind?: 'preload';
   file: string;
@@ -79,11 +79,12 @@ export interface Manifest {
    * at it (`from` is the original specifier), and its sha256 (revert deletes it only if unchanged).
    */
   ejects?: Record<string, {
-    kind?: 'fontsource' | 'google' | 'next-font-google' | 'astro-fonts'; package: string; version: string; specifier: string; css: string; sha256: string; imports: { file: string; from: string; to: string }[];
+    kind?: 'fontsource' | 'google' | 'next-font-google' | 'astro-fonts' | 'nuxt-fonts'; package: string; version: string; specifier: string; css: string; sha256: string; imports: { file: string; from: string; to: string }[];
     /** google: Google's stylesheet as audited; next/astro: the CSS the framework emitted (later audits no longer see it). */ text?: string;
     /** next/astro eject: code snippets rewritten (`from` is the original; revert swaps it back). */ snippets?: { file: string; from: string; to: string }[];
     /** next/astro eject: base names of the files the framework preloaded. */ preloads?: string[];
     /** next/astro eject: slices no page uses, copied as they are. */ files?: string[];
+    /** nuxt eject: the fallback families @nuxt/fonts added to stacks. */ fallbacks?: string[];
   }>;
   google?: GoogleUrlRecord[];
   options?: OptionsRecord[];

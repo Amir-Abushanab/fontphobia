@@ -182,7 +182,7 @@ async function runBuild(o: BuildFlags & { prompt?: boolean }) {
       if (!r.edits.some((e) => e.file === g.file && e.text === g.to)) continue;
       if (g.kind === 'preload') { out.push('', `${g.family} (<Font> in ${g.file}): preloads only the weights and styles pages load; the others stay declared and download when a page needs them. \`fontphobia verify\` compares against HEAD built in a git worktree.`); continue; }
       const d = [...(g.dropped.weights.length ? [`weight ${g.dropped.weights.join(', ')} (nothing asks for ${g.dropped.weights.length > 1 ? 'them' : 'it'}; tighten)`] : []), ...(g.dropped.axes.length ? [`axes ${g.dropped.axes.join(', ')} (every use is at the default; limit-axes)`] : [])];
-      out.push('', `${g.family} (${g.adapter === 'astro-fonts' ? 'Astro fonts[]' : 'next/font/google'}, ${g.file}): drops ${d.join('; ')}. \`fontphobia verify\` compares against HEAD built in a git worktree.`);
+      out.push('', `${g.family} (${g.adapter === 'astro-fonts' ? 'Astro fonts[]' : g.adapter === 'nuxt-fonts' ? 'nuxt.config fonts.families' : 'next/font/google'}, ${g.file}): drops ${d.join('; ')}. \`fontphobia verify\` compares against HEAD built in a git worktree.`);
     }
   }
   if (r.suggestions.length) {
@@ -191,7 +191,7 @@ async function runBuild(o: BuildFlags & { prompt?: boolean }) {
       if (x.kind === 'google') {
         const what = [...x.families, ...Object.entries(x.weights).map(([f, w]) => `${f} ${w.join(', ')}`)].join('; ');
         out.push(`  Google Fonts ${x.sheet}: ${what}. Saves about ${kb(x.cssBytes)} of Google's CSS; fonts nothing uses never download, so font bytes don't change.`);
-      } else out.push(`  ${x.family} (${x.adapter === 'astro-fonts' ? 'Astro fonts[]' : 'next/font/google'}, ${x.file}): weight ${x.weights.join(', ')}. ${x.adapter === 'astro-fonts' ? 'Astro declares each listed weight' : 'Next downloads and preloads each listed weight of a static family'}.`);
+      } else out.push(`  ${x.family} (${x.adapter === 'astro-fonts' ? 'Astro fonts[]' : x.adapter === 'nuxt-fonts' ? 'nuxt.config fonts.families' : 'next/font/google'}, ${x.file}): weight ${x.weights.join(', ')}. ${x.adapter === 'next-font-google' ? 'Next downloads and preloads each listed weight of a static family' : 'Each listed weight is declared (and preloaded, if preloading is on)'}.`);
     }
   }
   if (r.snippets.length) {

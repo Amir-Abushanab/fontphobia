@@ -11,6 +11,7 @@
 // Styles and subsets stay. verify uses the worktree baseline, since "before" is another build.
 import { desiredWeights, matchWeight, repoText } from '../adapters/google-url.ts';
 import { astroFamily, findAstroFontsEntries, findAstroFontTags } from '../adapters/astro-fonts.ts';
+import { findNuxtFontsEntries } from '../adapters/nuxt-fonts.ts';
 import { findGoogleFontCalls, formatLiteralArray, literalProp, nextGoogleFontData } from '../adapters/next-font.ts';
 import { familyKey, parseFamilyList } from '../css/values.ts';
 import type { UsageFileJson } from '../plan/planner.ts';
@@ -30,11 +31,12 @@ export function optionTargets(root: string): Target[] {
   return [
     ...findGoogleFontCalls(root).map((c) => ({ adapter: 'next-font-google' as const, file: c.file, family: c.family, start: c.start, end: c.end, arg: c.arg, weightKey: 'weight', axesKey: 'axes' })),
     ...findAstroFontsEntries(root).map((e) => ({ adapter: 'astro-fonts' as const, file: e.file, family: e.family, start: e.start, end: e.end, arg: e.arg, weightKey: 'weights' })),
+    ...findNuxtFontsEntries(root).map((e) => ({ adapter: 'nuxt-fonts' as const, file: e.file, family: e.family, start: e.start, end: e.end, arg: e.arg, weightKey: 'weights' })),
   ];
 }
 
-export const weightKeyOf = (adapter: OptionsRecord['adapter']) => (adapter === 'astro-fonts' ? 'weights' : 'weight');
-export const optionsLabel = (r: Pick<OptionsRecord, 'adapter' | 'family' | 'file' | 'kind'>) => (r.kind === 'preload' ? `the ${r.family} <Font> tag in ${r.file}` : r.adapter === 'astro-fonts' ? `the ${r.family} fonts[] entry in ${r.file}` : `the ${r.family} next/font/google call in ${r.file}`);
+export const weightKeyOf = (adapter: OptionsRecord['adapter']) => (adapter === 'next-font-google' ? 'weight' : 'weights');
+export const optionsLabel = (r: Pick<OptionsRecord, 'adapter' | 'family' | 'file' | 'kind'>) => (r.kind === 'preload' ? `the ${r.family} <Font> tag in ${r.file}` : r.adapter === 'astro-fonts' ? `the ${r.family} fonts[] entry in ${r.file}` : r.adapter === 'nuxt-fonts' ? `the ${r.family} fonts.families entry in ${r.file}` : `the ${r.family} next/font/google call in ${r.file}`);
 
 export interface OptionsSuggestion { adapter: OptionsRecord['adapter']; file: string; family: string; weights: number[] }
 

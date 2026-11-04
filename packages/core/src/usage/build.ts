@@ -151,8 +151,10 @@ export function buildUsage(visits: Visit[], facts: Map<string, FontFacts>, opts:
       }
       const url = f.urls.find((x) => { const r = byUrl.get(x); return r && r.status >= 200 && r.status < 400 && r.sha256; });
       const fact = url ? facts.get(byUrl.get(url)!.sha256!) : undefined;
-      if (!url && f.src.some((s) => s.local !== undefined) && !f.urls.some((x) => byUrl.has(x))) u.local = true;
-      if (url) u.files.set(pathOf(url), { sha256: byUrl.get(url)!.sha256, bytes: byUrl.get(url)!.bytes });
+      // local() only when no visit downloaded its file: a page that doesn't use a face (a 404 page)
+      // fetches nothing for it, and that isn't evidence of an installed font (@nuxt/fonts lists local() first).
+      if (!url && !u.files.size && f.src.some((s) => s.local !== undefined) && !f.urls.some((x) => byUrl.has(x))) u.local = true;
+      if (url) { u.files.set(pathOf(url), { sha256: byUrl.get(url)!.sha256, bytes: byUrl.get(url)!.bytes }); u.local = false; }
       if (!u.local) declaredEver.set(key, f);
       const l: Live = { ...f, usage: u, fact, url };
       live.push(l);

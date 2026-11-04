@@ -249,7 +249,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
   // repo; verify compares against HEAD built in a worktree. Needs the network (Google).
   async function tempRepo(fixture: string, ignore: string[], edit: (root: string) => void): Promise<string> {
     const root = mkdtempSync(join(tmpdir(), 'fontphobia-eject-'));
-    cpSync(join(sites, fixture), root, { recursive: true, filter: (p) => !/[\\/](node_modules|dist|out|\.next|\.astro|\.fontphobia)$/.test(p) });
+    cpSync(join(sites, fixture), root, { recursive: true, filter: (p) => !/[\\/](node_modules|dist|out|\.next|\.astro|\.nuxt|\.output|\.fontphobia)$/.test(p) });
     cpSync(join(sites, fixture, 'node_modules'), join(root, 'node_modules'), { recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE });
     edit(root);
     writeFileSync(join(root, '.gitignore'), ignore.map((x) => `${x}\n`).join(''));
@@ -296,6 +296,17 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       writeFileSync(layout, readFileSync(layout, 'utf8').replace("import '@fontsource-variable/inter';", "import { Font } from 'astro:assets';\nimport '@fontsource-variable/inter';").replace('<title>', '<Font cssVariable="--font-lato" preload />\n\t\t<title>').replace('<nav>', '<nav style="font-family: var(--font-lato)">'));
     });
     try { await ejectRoundTrip(root, 'astro-fonts', ['astro.config.mjs', 'src/layouts/Layout.astro', 'src/styles/fonts.css']); } finally { rmSync(root, { recursive: true, force: true }); }
+  }, 900_000);
+
+  it('nuxt: --allow eject serves a @nuxt/fonts family from the site with its fallback stack, renders identically against HEAD, revert restores config and styles', async () => {
+    if (!existsSync(join(sites, 'nuxt', 'node_modules'))) throw new Error('run pnpm install in fixtures/sites/nuxt first');
+    const root = await tempRepo('nuxt', ['node_modules/', '.nuxt/', '.output/', 'dist', '.fontphobia/cache/'], () => {});
+    try {
+      // tighten is reported, not applied: Lato 300 is listed but nothing asks for it.
+      const u = (await audit({ root, fontphobiaVersion: 'test', fontSizeSweep: false, viewports: [1280], rebuild: true, cache: false })).usage as unknown as UsageFileJson;
+      expect((await buildProject(root, u, {}, { version: 'test' })).suggestions.map((x) => x.kind === 'options' && [x.adapter, x.weights])).toEqual([['nuxt-fonts', [300]]]);
+      await ejectRoundTrip(root, 'nuxt-fonts', ['nuxt.config.ts', 'app/app.vue']);
+    } finally { rmSync(root, { recursive: true, force: true }); }
   }, 900_000);
 
   // M7, google-fonts self-host (§6.5): needs the network (Google's CSS and files).
