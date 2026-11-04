@@ -133,7 +133,7 @@ Every command takes `--cwd <dir>`, and most take `--json`.
 | `build` | Plan from `usage.json` (no browser). Shows the plan and diff; `--write` applies | `--write`, `--allow`, `--no-remainder` |
 | `verify` | Check the files and shaping, then compare every page before and after | `--browsers`, `--dpr`, `--viewports`, `--baseline overlay\|worktree`, `--hinting`, `--no-browser` |
 | `check` | Are the subsets still up to date? Exits 1 when the site would render differently | `--url` (crawl production), `--mode warn`, `--strict`, `--allow-chars` |
-| `revert` | Put everything back from the manifest | `--dry-run` |
+| `revert` | Put everything back from the manifest | `--dry-run`, `--keep-kits` |
 | `apply-kit` | Adobe Fonts: remove kit styles nothing uses, through the Typekit API (`TYPEKIT_TOKEN` from fonts.adobe.com/account/tokens) | `--yes`, `--check` |
 | `inspect <font>` | A font's tables, axes, features, hinting and sizes | |
 | `subset <font>` | Low level: subset one font to WOFF2 | `--unicodes`, `--text`, `--features`, `--axis`, `-o` |
@@ -236,7 +236,7 @@ It reads the license from the font's name table, or from a license file or `pack
 
 - **Text the crawl can't see** isn't in core or extended: pages behind a login (use `auth`), text added by scripts after load, and content added later. It renders from the rest file. With `remainder: false`, it renders in the next font in the stack.
 - **CFF fonts** that need a rename because of an OFL Reserved Font Name aren't supported yet.
-- **`apply-kit` publishes your Adobe kit**, which changes every site that uses it. It refuses a kit whose draft has unpublished changes, reads each change back from Adobe and publishes only if it matches, and `revert` restores the previous styles only if nobody edited the kit since. It doesn't change the character set: Adobe's API doesn't reflect the web UI's setting, so the audit report says which one to pick and you change it on fonts.adobe.com.
+- **`apply-kit` publishes your Adobe kit**, which changes every site that uses it. It refuses a kit whose draft has unpublished changes, reads each change back from Adobe and publishes only if it matches, and `revert` restores the previous styles only if nobody edited the kit since (otherwise it says which styles to add back, or `revert --keep-kits` leaves the kit as it is). Another site sharing the kit can run `fontphobia apply-kit --check` to see whether it lost a style it uses. It doesn't change the character set: Adobe's API doesn't reflect the web UI's setting, so the audit report says which one to pick and you change it on fonts.adobe.com.
 
 ## Development
 

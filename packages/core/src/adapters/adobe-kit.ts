@@ -10,17 +10,10 @@ import { parseStylesheet } from '../css/stylesheet.ts';
 import { loadFont } from '../font/hb.ts';
 import { toSfnt } from '../font/io.ts';
 
-/**
- * Adobe's Default character set, read from the cmap of Default-set kit files (kits eny7olf and ezf4sbn,
- * 2026-11-03; the code points both have, private use aside). Note what's missing: ‚ † ‡ ‰ ˆ ƒ.
- */
-const DEFAULT_EXTRA = new Set([0x152, 0x153, 0x178, 0x2dc, 0x2013, 0x2014, 0x2018, 0x2019, 0x201c, 0x201d, 0x201e, 0x2022, 0x2026, 0x2039, 0x203a, 0x20ac, 0x2122]);
-export const inAdobeDefault = (cp: number) => (cp >= 0x20 && cp <= 0x7e) || (cp >= 0xa0 && cp <= 0xff) || DEFAULT_EXTRA.has(cp);
-
 export const TYPEKIT_API = 'https://typekit.com/api/v1/json';
 
 export interface KitFamily { id: string; name?: string; slug?: string; css_names?: string[]; subset: string; variations: string[] }
-export interface KitChange { id: string; name: string; variations: [string[], string[]]; subset: [string, string]; why: string[] }
+export interface KitChange { id: string; name: string; variations: [string[], string[]]; why: string[] }
 export interface KitPlan { kit: string; families: KitFamily[]; changes: KitChange[] }
 
 export interface KitUsageFace { family: string; descriptors: Record<string, string>; chars: string; rendered: { weight?: number[] }; declared: { weight?: number[] } }
@@ -48,16 +41,15 @@ export function planKit(kit: string, families: KitFamily[], faces: KitUsageFace[
     }
     // The character set isn't changed: the API's `subset` doesn't follow the web UI's "Character set"
     // (a kit set to All Characters in the UI still reads "default", 2026-11-04), so the report says
-    // which setting to pick and you change it on fonts.adobe.com.
-    const subset = f.subset;
-    if (why.length) changes.push({ id: f.id, name: f.name ?? f.slug ?? f.id, variations: [f.variations, variations], subset: [f.subset, subset], why });
+    // which setting to pick and you change it on fonts.adobe.com. Each family's subset is sent back as read.
+    if (why.length) changes.push({ id: f.id, name: f.name ?? f.slug ?? f.id, variations: [f.variations, variations], why });
   }
   return { kit, families, changes };
 }
 
 /** The kit's families as they'd be sent after the plan: the API replaces `families` whole. */
 export function plannedFamilies(p: KitPlan): { id: string; variations: string[]; subset: string }[] {
-  return p.families.map((f) => { const c = p.changes.find((x) => x.id === f.id); return { id: f.id, variations: c ? c.variations[1] : f.variations, subset: c ? c.subset[1] : f.subset }; });
+  return p.families.map((f) => { const c = p.changes.find((x) => x.id === f.id); return { id: f.id, variations: c ? c.variations[1] : f.variations, subset: f.subset }; });
 }
 
 export interface KitApi { token: string; base?: string; fetch?: typeof fetch }

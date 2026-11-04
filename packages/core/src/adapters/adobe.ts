@@ -29,6 +29,9 @@ export interface AdobeFaceFacts {
 }
 
 export const fvdOf = (descriptors: Record<string, string>): string => {
+  // Adobe's own, from the kit file URL: a variable face (font-weight: 200 900) is n4/i4 there.
+  const own = /[?&]fvd=([ni][1-9])\b/.exec(descriptors.src ?? '')?.[1];
+  if (own) return own;
   const style = (descriptors['font-style'] ?? 'normal').trim().toLowerCase();
   const [w] = parseWeightDescriptor(descriptors['font-weight']);
   return `${style.startsWith('italic') || style.startsWith('oblique') ? 'i' : 'n'}${Math.round(w / 100)}`;
@@ -74,8 +77,13 @@ export async function adobeFaceFacts(face: { family: string; descriptors: Record
   };
 }
 
-/** Basic Latin and Latin-1 Supplement: Adobe's Default set covers EN/FR/DE/IT/PT/ES within these and a few more. */
-const latin1 = (cp: number) => cp <= 0xff;
+/**
+ * Adobe's Default character set (EN, FR, DE, IT, PT, ES), read from the cmap of Default-set kit files
+ * (kits eny7olf and ezf4sbn, 2026-11-03; the code points both have, private use aside): Basic Latin,
+ * Latin-1 and these. Note what's missing: ‚ † ‡ ‰ ˆ ƒ.
+ */
+const DEFAULT_EXTRA = new Set([0x152, 0x153, 0x178, 0x2dc, 0x2013, 0x2014, 0x2018, 0x2019, 0x201c, 0x201d, 0x201e, 0x2022, 0x2026, 0x2039, 0x203a, 0x20ac, 0x2122]);
+export const inAdobeDefault = (cp: number) => (cp >= 0x20 && cp <= 0x7e) || (cp >= 0xa0 && cp <= 0xff) || DEFAULT_EXTRA.has(cp);
 
 export interface AdobeUsage {
   faces: Record<string, { family: string; descriptors: Record<string, string>; sheet?: string; chars: string; pages: string[]; source: { adapter: string } }>;
@@ -94,7 +102,7 @@ export function adobeFindings(u: AdobeUsage, facts: AdobeFaceFacts[]): { kind: s
     const max = Math.max(0, ...perPage);
     out.push({ kind: 'adobe-fonts', text: `kit ${name}: ${faces.length} face(s) used, up to ${(max / 1024).toFixed(1)} KB of kit fonts per page. Adobe's license doesn't allow subsetting or self-hosting, so fontphobia changes nothing here; these are settings to change on fonts.adobe.com (Web Projects → ${name})` });
     const unused = Object.values(u.unloaded).filter((f) => f.sheet === kit).map((f) => `${f.family.replace(/^["']|["']$/g, '')} ${fvdOf(f.descriptors)}`).sort();
-    if (unused.length) out.push({ kind: 'adobe-fonts', text: `kit ${name}: no page uses ${unused.join(', ')}; remove ${unused.length > 1 ? 'these styles' : 'this style'} from the project (unused styles never download, so this mainly shrinks the kit CSS; \`fontphobia apply-kit\` does it through Adobe's API)` });
+    if (unused.length) out.push({ kind: 'adobe-fonts', text: `kit ${name}: no page uses ${unused.join(', ')}; \`fontphobia apply-kit\` removes those no weight in the code would match, through Adobe's API (keeping, say, a bold style that <strong> would use). Unused styles never download, so this mainly shrinks the kit CSS` });
     const kf = facts.filter((f) => f.kit === kit);
     const needing = kf.filter((f) => f.needsFeatures.length);
     const withExtra = kf.filter((f) => f.extraFeatures.length);
@@ -104,10 +112,10 @@ export function adobeFindings(u: AdobeUsage, facts: AdobeFaceFacts[]): { kind: s
       out.push({ kind: 'adobe-fonts', text: `kit ${name}: keep "Include OpenType features" on: ${needing.map((f) => `${f.family} ${f.fvd} shapes ${f.needsFeatures.slice(0, 3).map((w) => `"${w.trim()}"`).join(', ')}${f.needsFeatures.length > 3 ? ' …' : ''} with ${f.usedFeatures.join(', ') || 'them'}`).join('; ')}` });
     }
     const outside = new Set<string>();
-    for (const [, f] of faces) for (const ch of f.chars) if (!latin1(ch.codePointAt(0)!)) outside.add(ch);
+    for (const [, f] of faces) for (const ch of f.chars) if (!inAdobeDefault(ch.codePointAt(0)!)) outside.add(ch);
     const big = kf.filter((f) => f.cmap > 260);
-    if (big.length && outside.size === 0) out.push({ kind: 'adobe-fonts', text: `kit ${name}: the pages use only Basic Latin and Latin-1 characters, but ${big.map((f) => `${f.family} ${f.fvd}`).join(', ')} map${big.length === 1 ? 's' : ''} ${Math.max(...big.map((f) => f.cmap))} characters: if the character set is "All Characters", "Default" (EN, FR, DE, IT, PT, ES) is smaller; check that the site's languages are in it` });
-    else if (outside.size) out.push({ kind: 'adobe-fonts', text: `kit ${name}: the pages use characters beyond Latin-1 (${[...outside].slice(0, 12).join(' ')}${outside.size > 12 ? ' …' : ''}); keep a character set that includes them` });
+    if (big.length && outside.size === 0) out.push({ kind: 'adobe-fonts', text: `kit ${name}: every character the pages use is in Adobe's Default set (EN, FR, DE, IT, PT, ES), but ${big.map((f) => `${f.family} ${f.fvd}`).join(', ')} map${big.length === 1 ? 's' : ''} ${Math.max(...big.map((f) => f.cmap))} characters: if the character set is "All Characters", "Default" is smaller; check that every language the site will publish in is in it` });
+    else if (outside.size) out.push({ kind: 'adobe-fonts', text: `kit ${name}: the pages use characters outside Adobe's Default set (${[...outside].slice(0, 12).join(' ')}${outside.size > 12 ? ' …' : ''}); keep a character set that includes them` });
     const displays = [...new Set(faces.map(([, f]) => f.descriptors['font-display'] ?? 'auto'))];
     out.push({ kind: 'adobe-fonts', text: `kit ${name}: font-display is ${displays.join(', ')} (kit setting; fontphobia never changes it)` });
   }

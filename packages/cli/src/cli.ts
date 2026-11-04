@@ -324,11 +324,12 @@ cli
   .command('revert', 'Put the original @font-face declarations and preloads back from fontphobia.manifest.json')
   .option('--cwd <dir>', 'Project root (default: current directory)')
   .option('--dry-run', 'Only show what would change')
-  .action(async (o: { cwd?: string; dryRun?: boolean }) => {
+  .option('--keep-kits', 'Leave Adobe kits changed by apply-kit as they are')
+  .action(async (o: { cwd?: string; dryRun?: boolean; keepKits?: boolean }) => {
     const root = resolve(o.cwd ?? '.');
     // Adobe kits first (the API, with TYPEKIT_TOKEN); the files only once they're back.
     if (!o.dryRun) {
-      const kp = await revertKits(root, (m) => process.stdout.write(m + '\n'));
+      const kp = await revertKits(root, (m) => process.stdout.write(m + '\n'), { keep: o.keepKits });
       if (kp.length) { process.stdout.write(`Problems (nothing else reverted):\n${kp.map((p) => `  ${p}`).join('\n')}\n`); process.exitCode = 1; return; }
     }
     const r = revertProject(root, { write: !o.dryRun });

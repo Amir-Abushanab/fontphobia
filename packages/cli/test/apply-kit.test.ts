@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { checkProject, readManifest, type UsageFileJson } from '@fontphobia/core';
+import { readManifest, type UsageFileJson } from '@fontphobia/core';
 import { applyKit, revertKits } from '../src/apply-kit.ts';
 
 const inter = readFileSync(fileURLToPath(new URL('../../../fixtures/fonts/InterVariable.ttf', import.meta.url)));
@@ -113,12 +113,36 @@ describe('apply-kit', () => {
     expect(log).toEqual(['kit abc1234: nothing to change']);
   });
 
-  it('check warns about characters outside the Default set once a kit was switched', async () => {
-    const root = mkdtempSync(join(tmp, 'site3-'));
-    writeFileSync(join(root, 'fontphobia.manifest.json'), JSON.stringify({ version: 1, fontphobia: '1', harfbuzz: '1', chrome: '1', entries: {}, kits: [{ kit: 'abc1234', previous: [{ id: 'gkmg', variations: ['n4'], subset: 'all' }], applied: [{ id: 'gkmg', variations: ['n4'], subset: 'default' }] }] }));
-    writeFileSync(join(root, 'index.html'), '<!doctype html><p>Hello ‚quoted‘ and Ünïcödé</p>');
-    const r = await checkProject({ root, outputDir: root });
-    expect(r.ok).toBe(true);
-    expect(r.issues.map((i) => [i.severity, i.message])).toEqual([['warning', "kit abc1234 now serves Adobe's Default character set; ‚ in the built pages isn't in it: if a kit font draws it, it renders in a fallback font (`fontphobia revert` restores the kit)"]]);
+  it('revert leaves a kit edited after apply-kit alone, says what to add back, and accepts a kit restored by hand', async () => {
+    reset(start);
+    const root = mkdtempSync(join(tmp, 'site6-'));
+    const o = { yes: true, ask: async () => false, interactive: false, version: '1', log: () => {} };
+    expect(await applyKit(root, usage, o)).toBe(0);
+    // Someone removes Italic on fonts.adobe.com and publishes.
+    state.draft = [{ ...start[0]!, variations: ['n4', 'n7'] }]; state.published = structuredClone(state.draft);
+    posts.length = 0;
+    expect(await revertKits(root, () => {})).toEqual(['kit abc1234 was edited on fonts.adobe.com after fontphobia published it, so revert leaves it alone. To restore it, add back Inter n3, i4 there and publish, then run revert again; or `fontphobia revert --keep-kits` keeps the kit as it is']);
+    expect(posts).toEqual([]);
+    expect(readManifest(root)!.kits).toHaveLength(1);
+    // They put the previous styles back themselves: nothing to do, the record goes.
+    reset(start);
+    const log: string[] = [];
+    expect(await revertKits(root, (m) => log.push(m))).toEqual([]);
+    expect(log).toEqual(['kit abc1234: already has its previous settings']);
+    expect(posts).toEqual([]);
+    expect(readManifest(root)?.kits).toBeUndefined();
+  });
+
+  it('revert --keep-kits drops the kit record without calling the API', async () => {
+    reset(start);
+    const root = mkdtempSync(join(tmp, 'site7-'));
+    expect(await applyKit(root, usage, { yes: true, ask: async () => false, interactive: false, version: '1', log: () => {} })).toBe(0);
+    posts.length = 0;
+    const log: string[] = [];
+    expect(await revertKits(root, (m) => log.push(m), { keep: true })).toEqual([]);
+    expect(log).toEqual(['kit abc1234: left as it is (--keep-kits)']);
+    expect(posts).toEqual([]);
+    expect(readManifest(root)?.kits).toBeUndefined();
+    expect(state.published[0]!.variations).toEqual(['n4', 'n7', 'i4']);
   });
 });

@@ -48,9 +48,7 @@ export async function applyKit(root: string, usage: UsageFileJson, o: { yes?: bo
     if (!p.changes.length) { o.log(`kit ${kit}: nothing to change`); continue; }
     o.log(`kit ${kit}:`);
     for (const c of p.changes) {
-      const v = c.variations[0].join(',') === c.variations[1].join(',') ? '' : ` variations ${c.variations[0].join(',')} → ${c.variations[1].join(',')}`;
-      const s = c.subset[0] === c.subset[1] ? '' : ` character set ${c.subset[0]} → ${c.subset[1]}`;
-      o.log(`  ${c.name}:${v}${s} (${c.why.join('; ')})`);
+      o.log(`  ${c.name}: variations ${c.variations[0].join(',')} → ${c.variations[1].join(',')} (${c.why.join('; ')})`);
     }
   }
   const todo = plans.filter((p) => p.changes.length);
@@ -76,18 +74,46 @@ export async function applyKit(root: string, usage: UsageFileJson, o: { yes?: bo
   return 0;
 }
 
-/** Restore each kit's previous families (revert). Returns problems. */
-export async function revertKits(root: string, log: (s: string) => void): Promise<string[]> {
+/**
+ * Restore each kit's previous families (revert). Returns problems. Only over what fontphobia
+ * published: later edits on fonts.adobe.com aren't undone silently. A kit already back to its
+ * previous settings (restored by hand) counts as restored. `keep`: leave every kit as it is.
+ */
+export async function revertKits(root: string, log: (s: string) => void, o: { keep?: boolean } = {}): Promise<string[]> {
   const m = readManifest(root);
   if (!m?.kits?.length) return [];
+  if (o.keep) {
+    for (const k of m.kits) log(`kit ${k.kit}: left as it is (--keep-kits)`);
+    delete m.kits; writeFileSync(join(root, MANIFEST_FILE), manifestJson(m));
+    return [];
+  }
   const a = api();
   if (typeof a === 'string') return [`kit ${m.kits.map((k) => k.kit).join(', ')}: ${a} to restore ${m.kits.length > 1 ? 'them' : 'it'}`];
   const problems: string[] = [];
+  const done = new Set<string>();
   for (const k of m.kits) {
-    // Only over what fontphobia published: later edits on fonts.adobe.com aren't undone silently.
-    try { await setKitFamilies(a, k.kit, k.previous, { expectDraft: k.applied }); log(`kit ${k.kit}: previous settings restored and published`); } catch (e) { problems.push(`kit ${k.kit}: ${(e as Error).message.replace('Run apply-kit again', 'restore it on fonts.adobe.com yourself')}`); }
+    try {
+      const [draft, live] = [await getKit(a, k.kit), await getPublishedKit(a, k.kit)];
+      if (sameFamilies(draft, k.previous) && sameFamilies(live, k.previous)) { log(`kit ${k.kit}: already has its previous settings`); done.add(k.kit); continue; }
+      if (!sameFamilies(draft, k.applied) || !sameFamilies(live, k.applied)) {
+        const add = k.previous.flatMap((p) => {
+          const now = draft.find((f) => f.id === p.id);
+          const gone = p.variations.filter((v) => !now?.variations.includes(v));
+          return gone.length ? [`${now?.name ?? p.id} ${gone.join(', ')}`] : [];
+        });
+        const keep = '`fontphobia revert --keep-kits` keeps the kit as it is';
+        problems.push(`kit ${k.kit} was edited on fonts.adobe.com after fontphobia published it, so revert leaves it alone. ${add.length ? `To restore it, add back ${add.join('; ')} there and publish, then run revert again; or ${keep}` : `Every style fontphobia removed is back, alongside other edits: ${keep}`}`);
+        continue;
+      }
+      await setKitFamilies(a, k.kit, k.previous, { expectDraft: k.applied });
+      log(`kit ${k.kit}: previous settings restored and published`);
+      done.add(k.kit);
+    } catch (e) { problems.push(`kit ${k.kit}: ${(e as Error).message}`); }
   }
-  if (!problems.length) { delete m.kits; writeFileSync(join(root, MANIFEST_FILE), manifestJson(m)); }
+  // Kits restored so far aren't restored again on the next run.
+  m.kits = m.kits.filter((k) => !done.has(k.kit));
+  if (!m.kits.length) delete m.kits;
+  writeFileSync(join(root, MANIFEST_FILE), manifestJson(m));
   return problems;
 }
 
