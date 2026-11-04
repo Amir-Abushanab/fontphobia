@@ -10,7 +10,11 @@ import { applyKit, revertKits } from '../src/apply-kit.ts';
 
 const inter = readFileSync(fileURLToPath(new URL('../../../fixtures/fonts/InterVariable.ttf', import.meta.url)));
 const posts: Record<string, string>[] = [];
-let kit = { id: 'abc1234', families: [{ id: 'gkmg', name: 'Inter', slug: 'inter', css_names: ['inter'], subset: 'all', variations: ['n3', 'n4', 'n7', 'i4'] }] };
+type Fam = { id: string; name: string; slug: string; css_names: string[]; subset: string; variations: string[] };
+const start: Fam[] = [{ id: 'gkmg', name: 'Inter', slug: 'inter', css_names: ['inter'], subset: 'all', variations: ['n3', 'n4', 'n7', 'i4'] }];
+// The stand-in keeps a draft and a published kit, as the Typekit API documents (POST edits the draft and replaces `families` whole).
+const state = { draft: structuredClone(start), published: structuredClone(start), ignoreVariations: false };
+const reset = (fams: Fam[]) => { state.draft = structuredClone(fams); state.published = structuredClone(fams); state.ignoreVariations = false; };
 let server: Server;
 let base = '';
 beforeAll(async () => {
@@ -18,10 +22,22 @@ beforeAll(async () => {
     let body = '';
     req.on('data', (d) => { body += d; });
     req.on('end', () => {
+      const json = (o: unknown) => res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(o));
       if (req.headers['x-typekit-token'] !== 'tok' && req.url!.startsWith('/api')) { res.writeHead(401).end('{}'); return; }
-      if (req.method === 'GET' && req.url === '/api/kits/abc1234') { res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ kit })); return; }
-      if (req.method === 'POST' && req.url === '/api/kits/abc1234') { posts.push(Object.fromEntries(new URLSearchParams(body))); res.writeHead(200).end('{}'); return; }
-      if (req.method === 'POST' && req.url === '/api/kits/abc1234/publish') { posts.push({ publish: '1' }); res.writeHead(200).end('{}'); return; }
+      if (req.method === 'GET' && req.url === '/api/kits/abc1234') return json({ kit: { id: 'abc1234', families: state.draft } });
+      if (req.method === 'GET' && req.url === '/api/kits/abc1234/published') return json({ kit: { id: 'abc1234', families: state.published } });
+      if (req.method === 'POST' && req.url === '/api/kits/abc1234') {
+        const f = Object.fromEntries(new URLSearchParams(body));
+        posts.push(f);
+        const out: Fam[] = [];
+        for (let i = 0; f[`families[${i}][id]`]; i++) {
+          const old = start.find((x) => x.id === f[`families[${i}][id]`])!;
+          out.push({ ...old, subset: f[`families[${i}][subset]`] ?? 'default', variations: state.ignoreVariations ? old.variations : (f[`families[${i}][variations]`] ?? '').split(',').filter(Boolean) });
+        }
+        state.draft = out;
+        return json({ kit: { id: 'abc1234', families: state.draft } });
+      }
+      if (req.method === 'POST' && req.url === '/api/kits/abc1234/publish') { posts.push({ publish: '1' }); state.published = structuredClone(state.draft); return json({ published: '2026-11-04T00:00:00Z' }); }
       if (req.url === '/css/abc1234.css') { res.writeHead(200, { 'content-type': 'text/css' }).end(`@font-face{font-family:"inter";src:url("${base}/af/1/l?fvd=n4") format("woff2");font-weight:400;font-style:normal}`); return; }
       if (req.url!.startsWith('/af/')) { res.writeHead(200).end(inter); return; }
       res.writeHead(404).end();
@@ -63,12 +79,35 @@ describe('apply-kit', () => {
     expect(await revertKits(root, () => {})).toEqual([]);
     expect(posts).toEqual([{ 'families[0][id]': 'gkmg', 'families[0][variations]': 'n3,n4,n7,i4', 'families[0][subset]': 'all' }, { publish: '1' }]);
     expect(readManifest(root)?.kits).toBeUndefined();
+    expect(state.published[0]!.variations).toEqual(['n3', 'n4', 'n7', 'i4']);
+  });
+
+  it('refuses a kit whose draft has unpublished changes', async () => {
+    reset(start);
+    state.draft = [{ ...start[0]!, variations: ['n4'] }];
+    posts.length = 0;
+    const log: string[] = [];
+    expect(await applyKit(mkdtempSync(join(tmp, 'site4-')), usage, { yes: true, ask: async () => false, interactive: false, version: '1', log: (m) => log.push(m) })).toBe(1);
+    expect(log[0]).toMatch(/draft has unpublished changes/);
+    expect(posts).toEqual([]);
+  });
+
+  it("puts the draft back and publishes nothing when Adobe doesn't store what was sent", async () => {
+    reset(start);
+    state.ignoreVariations = true; // e.g. if the API wanted another list format
+    posts.length = 0;
+    const root = mkdtempSync(join(tmp, 'site5-'));
+    await expect(applyKit(root, usage, { yes: true, ask: async () => false, interactive: false, version: '1', log: () => {} })).rejects.toThrow(/isn't what fontphobia sent.*nothing was published/);
+    expect(posts.some((p) => p.publish)).toBe(false);
+    expect(state.draft).toEqual(start);
+    expect(state.published).toEqual(start);
+    expect(readManifest(root)).toBeUndefined();
   });
 
   it('keeps the character set when the pages draw characters outside Default', async () => {
     const root = mkdtempSync(join(tmp, 'site2-'));
     const log: string[] = [];
-    kit = { ...kit, families: [{ ...kit.families[0]!, variations: ['n4'] }] };
+    reset([{ ...start[0]!, variations: ['n4'] }]);
     const u = { ...usage, faces: { x: { ...usage.faces['inter-400-normal']!, chars: 'Hello ‚quoted‘' } } } as UsageFileJson;
     expect(await applyKit(root, u, { ask: async () => false, interactive: false, version: '1', log: (m) => log.push(m) })).toBe(0);
     expect(log).toEqual(['kit abc1234: nothing to change']);

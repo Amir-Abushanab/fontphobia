@@ -5,6 +5,8 @@
 // - `subset: "all"` becomes `"default"` when every character the kit's faces draw is in Adobe's
 //   Default set (EN/FR/DE/IT/PT/ES).
 // The previous families go in the manifest; revert puts them back. Fonts are never written to disk.
+// Experimental: tested against a stand-in for the API (written from Adobe's documentation), not a
+// real kit. Every write is read back before anything is published.
 import { matchWeight } from './google-url.ts';
 import { parseStylesheet } from '../css/stylesheet.ts';
 import { loadFont } from '../font/hb.ts';
@@ -71,18 +73,45 @@ async function call(api: KitApi, method: 'GET' | 'POST', path: string, body?: UR
   return text ? JSON.parse(text) : {};
 }
 
-/** The kit's draft families. */
-export async function getKit(api: KitApi, kit: string): Promise<KitFamily[]> {
-  const r = (await call(api, 'GET', `/kits/${encodeURIComponent(kit)}`)) as { kit?: { families?: KitFamily[] } };
+const normFamilies = (r: { kit?: { families?: KitFamily[] } }, kit: string): KitFamily[] => {
   if (!r.kit?.families) throw new Error(`Typekit API: kit ${kit} has no families`);
   return r.kit.families.map((f) => ({ ...f, variations: Array.isArray(f.variations) ? f.variations : String(f.variations).split(',').filter(Boolean) }));
+};
+
+/** The kit's draft families (`GET /kits/:kit`). */
+export async function getKit(api: KitApi, kit: string): Promise<KitFamily[]> {
+  return normFamilies((await call(api, 'GET', `/kits/${encodeURIComponent(kit)}`)) as { kit?: { families?: KitFamily[] } }, kit);
 }
 
-/** Replace the draft's families (all of them: the API replaces the list) and publish. */
-export async function setKitFamilies(api: KitApi, kit: string, families: { id: string; variations: string[]; subset: string }[]): Promise<void> {
+/** The kit's published families (`GET /kits/:kit/published`). */
+export async function getPublishedKit(api: KitApi, kit: string): Promise<KitFamily[]> {
+  return normFamilies((await call(api, 'GET', `/kits/${encodeURIComponent(kit)}/published`)) as { kit?: { families?: KitFamily[] } }, kit);
+}
+
+type FamilySetting = { id: string; variations: string[]; subset: string };
+const key = (fs: FamilySetting[]) => JSON.stringify([...fs].map((f) => [f.id, [...f.variations].sort(), f.subset]).sort());
+export const sameFamilies = (a: FamilySetting[], b: FamilySetting[]) => key(a) === key(b);
+
+async function postFamilies(api: KitApi, kit: string, families: FamilySetting[]): Promise<void> {
   const body = new URLSearchParams();
   families.forEach((f, i) => { body.set(`families[${i}][id]`, f.id); body.set(`families[${i}][variations]`, f.variations.join(',')); body.set(`families[${i}][subset]`, f.subset); });
   await call(api, 'POST', `/kits/${encodeURIComponent(kit)}`, body);
+}
+
+/**
+ * Replace the draft's families (all of them: the API replaces the list), read the draft back, and
+ * publish only if it's exactly what was sent. Otherwise the previous draft is restored and nothing
+ * is published. `expectDraft`: the draft must still be this (no edits made in the meantime).
+ */
+export async function setKitFamilies(api: KitApi, kit: string, families: FamilySetting[], o: { expectDraft?: FamilySetting[] } = {}): Promise<void> {
+  const before = await getKit(api, kit);
+  if (o.expectDraft && !sameFamilies(before, o.expectDraft)) throw new Error(`kit ${kit} changed since it was read; nothing was changed. Run apply-kit again`);
+  await postFamilies(api, kit, families);
+  const after = await getKit(api, kit);
+  if (!sameFamilies(after, families)) {
+    await postFamilies(api, kit, before.map((f) => ({ id: f.id, variations: f.variations, subset: f.subset }))).catch(() => {});
+    throw new Error(`kit ${kit}: the draft Adobe stored isn't what fontphobia sent (sent ${key(families)}, stored ${key(after)}); the previous draft was put back and nothing was published`);
+  }
   await call(api, 'POST', `/kits/${encodeURIComponent(kit)}/publish`);
 }
 

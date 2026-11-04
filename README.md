@@ -101,7 +101,7 @@ fontphobia finds where each face comes from and edits it there.
 | `next/font/google` | Reports unused weights | `eject`: served from your site, split. `tighten`, `limit-axes` |
 | Astro Fonts API | `<Font preload>` preloads only the faces pages use | `eject`, `tighten` |
 | `@nuxt/fonts` | Reports unused weights, and families it loads a second time (with the `provider: 'none'` fix) | `eject`, `tighten` |
-| Adobe Fonts | Report only: kit settings to change, measured (Adobe's license forbids modifying its files) | `fontphobia apply-kit` |
+| Adobe Fonts | Report only: kit settings to change, measured (Adobe's license forbids modifying its files) | `fontphobia apply-kit` (experimental) |
 | Anything else (CSS-in-JS, `new FontFace()`, CMS CSS, computed URLs) | Subsets, plus the block to paste and where | |
 
 `eject` copies what the framework emits: its `@font-face` rules, its fallback faces with their exact metrics, and its class or custom-property rules. The page doesn't change, even while fonts load.
@@ -134,7 +134,7 @@ Every command takes `--cwd <dir>`, and most take `--json`.
 | `verify` | Check the files and shaping, then compare every page before and after | `--browsers`, `--dpr`, `--viewports`, `--baseline overlay\|worktree`, `--hinting`, `--no-browser` |
 | `check` | Are the subsets still up to date? Exits 1 when the site would render differently | `--url` (crawl production), `--mode warn`, `--strict`, `--allow-chars` |
 | `revert` | Put everything back from the manifest | `--dry-run` |
-| `apply-kit` | Adobe Fonts: remove kit styles nothing uses, switch to the Default character set when it covers the pages (Typekit API, `TYPEKIT_TOKEN`) | `--yes`, `--check` |
+| `apply-kit` | **Experimental.** Adobe Fonts: remove kit styles nothing uses, switch to the Default character set when it covers the pages (Typekit API, `TYPEKIT_TOKEN`) | `--yes`, `--check` |
 | `inspect <font>` | A font's tables, axes, features, hinting and sizes | |
 | `subset <font>` | Low level: subset one font to WOFF2 | `--unicodes`, `--text`, `--features`, `--axis`, `-o` |
 
@@ -236,7 +236,10 @@ It reads the license from the font's name table, or from a license file or `pack
 
 - **Text the crawl can't see** isn't in core or extended: pages behind a login (use `auth`), text added by scripts after load, and content added later. It renders from the rest file. With `remainder: false`, it renders in the next font in the stack.
 - **CFF fonts** that need a rename because of an OFL Reserved Font Name aren't supported yet.
-- **`apply-kit`** has been tested against a stand-in for Adobe's API, not a real kit.
+- **`apply-kit` is experimental.** It has been tested against a stand-in for Adobe's API, written from Adobe's documentation, but not against a real kit. Publishing changes the kit for every site that uses it, so try it first on a kit no other site uses. It guards against the worst cases:
+  - it refuses a kit whose draft has unpublished changes;
+  - it reads each change back from Adobe and publishes only if the draft is exactly what it sent (otherwise it restores the previous draft and stops);
+  - `revert` restores the previous settings only if nobody edited the kit since.
 
 ## Development
 

@@ -3,7 +3,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  checkLiveKit, desiredWeights, getKit, isTypekitSheet, kitIdOf, manifestJson, MANIFEST_FILE, MANIFEST_VERSION, plannedFamilies, planKit, readManifest, repoText, setKitFamilies,
+  checkLiveKit, desiredWeights, getKit, getPublishedKit, sameFamilies, isTypekitSheet, kitIdOf, manifestJson, MANIFEST_FILE, MANIFEST_VERSION, plannedFamilies, planKit, readManifest, repoText, setKitFamilies,
   harfbuzzVersion, type KitApi, type KitUsageFace, type Manifest, type UsageFileJson,
 } from '@fontphobia/core';
 
@@ -39,7 +39,11 @@ export async function applyKit(root: string, usage: UsageFileJson, o: { yes?: bo
   const desired = desiredWeights(repoText(root));
   const plans = [];
   for (const [kit, faces] of kits) {
-    const p = planKit(kit, await getKit(a, kit), faces, desired);
+    const draft = await getKit(a, kit);
+    // Unpublished edits in the draft would go live with ours: refuse instead.
+    const live = await getPublishedKit(a, kit);
+    if (!sameFamilies(draft, live)) { o.log(`kit ${kit}: its draft has unpublished changes on fonts.adobe.com; publish or discard them first (fontphobia publishes the whole draft)`); return 1; }
+    const p = planKit(kit, draft, faces, desired);
     plans.push(p);
     if (!p.changes.length) { o.log(`kit ${kit}: nothing to change`); continue; }
     o.log(`kit ${kit}:`);
@@ -52,6 +56,7 @@ export async function applyKit(root: string, usage: UsageFileJson, o: { yes?: bo
   const todo = plans.filter((p) => p.changes.length);
   if (!todo.length) return 0;
   o.log('\nThis publishes the kit: every site that uses it changes, including pages the audit didn\'t see.');
+  o.log('apply-kit is experimental: it has been tested against a stand-in for Adobe\'s API, not a real kit. Try it on a kit no other site uses first. Each change is read back from Adobe before it is published.');
   if (!o.yes) {
     if (!o.interactive) { o.log('Not applied: rerun with --yes to apply without asking.'); return 1; }
     if (!(await o.ask('Apply and publish? (y/N) '))) { o.log('Not applied.'); return 1; }
@@ -60,7 +65,7 @@ export async function applyKit(root: string, usage: UsageFileJson, o: { yes?: bo
   const m: Manifest = prev ?? { version: MANIFEST_VERSION, fontphobia: o.version, harfbuzz: harfbuzzVersion(), chrome: usage.meta.chrome, entries: {} };
   for (const p of todo) {
     const applied = plannedFamilies(p);
-    await setKitFamilies(a, p.kit, applied);
+    await setKitFamilies(a, p.kit, applied, { expectDraft: p.families });
     const earlier = m.kits?.find((k) => k.kit === p.kit);
     const previous = earlier?.previous ?? p.families.map((f) => ({ id: f.id, variations: f.variations, subset: f.subset }));
     m.kits = [...(m.kits ?? []).filter((k) => k.kit !== p.kit), { kit: p.kit, previous, applied }].sort((x, y) => (x.kit < y.kit ? -1 : 1));
@@ -79,7 +84,8 @@ export async function revertKits(root: string, log: (s: string) => void): Promis
   if (typeof a === 'string') return [`kit ${m.kits.map((k) => k.kit).join(', ')}: ${a} to restore ${m.kits.length > 1 ? 'them' : 'it'}`];
   const problems: string[] = [];
   for (const k of m.kits) {
-    try { await setKitFamilies(a, k.kit, k.previous); log(`kit ${k.kit}: previous settings restored and published`); } catch (e) { problems.push(`kit ${k.kit}: ${(e as Error).message}`); }
+    // Only over what fontphobia published: later edits on fonts.adobe.com aren't undone silently.
+    try { await setKitFamilies(a, k.kit, k.previous, { expectDraft: k.applied }); log(`kit ${k.kit}: previous settings restored and published`); } catch (e) { problems.push(`kit ${k.kit}: ${(e as Error).message.replace('Run apply-kit again', 'restore it on fonts.adobe.com yourself')}`); }
   }
   if (!problems.length) { delete m.kits; writeFileSync(join(root, MANIFEST_FILE), manifestJson(m)); }
   return problems;
