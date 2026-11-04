@@ -320,7 +320,7 @@ interface Built { files: PlannedFile[]; bytes: Record<Role, number> }
 export async function planFace(id: string, face: UsageFaceJson, usage: UsageFileJson, src: SourceFont | undefined, cfg: PlanConfig = {}, outputs?: Map<string, Uint8Array>): Promise<FacePlan> {
   const adapter = face.source.adapter;
   // self-host (§6.5): Google's served file becomes the source, with the full split.
-  const caps = adapter === 'google-fonts' && cfg.allow?.includes('self-host') ? { subset: true, split: 'full' as const } : CAPS[adapter] ?? CAPS.unknown!;
+  const caps = (adapter === 'google-fonts' && cfg.allow?.includes('self-host')) || ((adapter === 'next-font-google' || adapter === 'astro-fonts') && cfg.allow?.includes('eject')) ? { subset: true, split: 'full' as const } : CAPS[adapter] ?? CAPS.unknown!;
   const base: FacePlan = { id, family: face.family, adapter, status: 'skipped' };
   const now = face.files.reduce((n, f) => Math.max(n, f.bytes ?? 0), 0);
   if (face.local) return { ...base, reason: 'drawn from an installed font (local())' };

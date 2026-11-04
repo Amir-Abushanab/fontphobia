@@ -24,7 +24,7 @@ function ownPaths(m: Manifest): (p: string) => boolean {
     for (const p of e.preloads ?? []) exact.add(p.file);
     if (e.next) exact.add(e.next.file);
   }
-  for (const [file, ej] of Object.entries(m.ejects ?? {})) { exact.add(file); for (const i of ej.imports) exact.add(i.file); }
+  for (const [file, ej] of Object.entries(m.ejects ?? {})) { exact.add(file); for (const i of ej.imports) exact.add(i.file); for (const x of ej.snippets ?? []) exact.add(x.file); for (const x of ej.files ?? []) exact.add(x); }
   for (const r of m.google ?? []) for (const f of r.files) exact.add(f);
   for (const r of m.options ?? []) exact.add(r.file);
   return (p) => exact.has(p) || p.startsWith('.fontphobia/');

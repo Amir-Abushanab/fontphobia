@@ -89,10 +89,18 @@ export interface GoogleFontCall {
   line: number;
   /** The Google family (`Roboto_Mono` → `Roboto Mono`). */
   family: string;
+  /** The imported name (`Roboto_Mono`) and the local binding (`Mono` for `Roboto_Mono as Mono`). */
+  name: string;
+  local: string;
   /** Byte range of the call's argument, `{ … }` included. */
   start: number;
   end: number;
   arg: string;
+  /** Byte range of the whole call, `Lato({ … })`, and of the import statement. */
+  callStart: number;
+  callEnd: number;
+  importStart: number;
+  importEnd: number;
 }
 
 export function findGoogleFontCalls(root: string): GoogleFontCall[] {
@@ -101,13 +109,14 @@ export function findGoogleFontCalls(root: string): GoogleFontCall[] {
     let text: string;
     try { if (statSync(join(root, file)).size > 1_000_000) continue; text = readFileSync(join(root, file), 'utf8'); } catch { continue; }
     if (!text.includes('next/font/google')) continue;
-    for (const imp of text.matchAll(/import\s*\{([^}]*)\}\s*from\s*["']next\/font\/google["']/g)) {
+    for (const imp of text.matchAll(/import\s*\{([^}]*)\}\s*from\s*["']next\/font\/google["']\s*;?/g)) {
       for (const spec of imp[1]!.split(',').map((s) => s.trim()).filter(Boolean)) {
         const [name, local = name] = spec.split(/\s+as\s+/).map((s) => s.trim()) as [string, string?];
         for (const m of text.matchAll(new RegExp(`\\b${local}\\s*\\(\\s*\\{`, 'g'))) {
           const start = m.index + m[0].length - 1;
           const end = closing(text, start);
-          out.push({ file, line: text.slice(0, m.index).split('\n').length, family: name.replace(/_/g, ' '), start, end, arg: text.slice(start, end) });
+          const callEnd = closing(text, text.indexOf('(', m.index));
+          out.push({ file, line: text.slice(0, m.index).split('\n').length, family: name.replace(/_/g, ' '), name, local, start, end, arg: text.slice(start, end), callStart: m.index, callEnd, importStart: imp.index, importEnd: imp.index + imp[0].length });
         }
       }
     }

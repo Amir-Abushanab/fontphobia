@@ -147,7 +147,11 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
 
   // fontsource ejects (§6.2): the installed package must be the version the copy was made from.
   for (const [file, ej] of Object.entries(manifest.ejects ?? {})) {
-    if (ej.kind === 'google') continue; // the sources are the committed copies of Google's files
+    for (const sn of ej.snippets ?? []) {
+      const t = existsSync(join(root, sn.file)) ? readFileSync(join(root, sn.file), 'utf8') : '';
+      if (!t.includes(sn.to)) add({ kind: 'block', file: sn.file, message: `${sn.file} changed where fontphobia ejected ${ej.package}; rerun build` });
+    }
+    if (ej.kind && ej.kind !== 'fontsource') continue; // the sources are committed copies of the provider's files
     const pkg = resolveFontsource(root, ej.imports[0]?.file ?? file, ej.specifier);
     if (!pkg) add({ kind: 'source', file, message: `${ej.package} isn't installed any more (${file} was ejected from it)` });
     else if (pkg.version !== ej.version) add({ kind: 'source', file, message: `${ej.package} is ${pkg.version} now; ${file} was ejected from ${ej.version}` });

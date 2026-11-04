@@ -244,6 +244,60 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
     }
   }, 900_000);
 
+  // M7, eject (§6.4, §6.8): the family moves from the framework to the site, split, with the
+  // framework's fallback faces and classes copied as emitted. A copy of the fixture in its own git
+  // repo; verify compares against HEAD built in a worktree. Needs the network (Google).
+  async function tempRepo(fixture: string, ignore: string[], edit: (root: string) => void): Promise<string> {
+    const root = mkdtempSync(join(tmpdir(), 'fontphobia-eject-'));
+    cpSync(join(sites, fixture), root, { recursive: true, filter: (p) => !/[\\/](node_modules|dist|out|\.next|\.astro|\.fontphobia)$/.test(p) });
+    cpSync(join(sites, fixture, 'node_modules'), join(root, 'node_modules'), { recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE });
+    edit(root);
+    writeFileSync(join(root, '.gitignore'), ignore.map((x) => `${x}\n`).join(''));
+    for (const args of [['init', '-q'], ['add', '-A'], ['commit', '-qm', 'fixture']]) {
+      const r = await runCommand(`git -c user.email=t@example.com -c user.name=t ${args.join(' ')}`, root);
+      if (r.code) throw new Error(r.output);
+    }
+    return root;
+  }
+  const ejectRoundTrip = async (root: string, kind: string, files: string[]) => {
+    const original = Object.fromEntries(files.map((f) => [f, readFileSync(join(root, f), 'utf8')]));
+    const opts = { root, fontphobiaVersion: 'test', fontSizeSweep: false, viewports: [1280], rebuild: true, cache: false };
+    const u1 = (await audit(opts)).usage as unknown as UsageFileJson;
+    const b = await buildProject(root, u1, { allow: ['eject'] }, { version: 'test', write: true });
+    expect(b.notWritten).toEqual([]);
+    expect(Object.values(b.manifest.ejects ?? {}).filter((e) => e.kind === kind).map((e) => e.package)).toEqual(['Lato']);
+    expect(Object.values(b.manifest.entries).filter((e) => e.adapter === kind).length).toBeGreaterThan(0);
+    const v = await verify({ root, usage: u1, viewports: [1280], dprs: [1], outDir: outDir(`${kind}-eject-${Date.now()}`) });
+    expect(v.browser!.baseline).toBe('worktree');
+    expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated' && c.class !== 'flaky').map((c) => `${c.page} DPR ${c.dpr}: ${c.causes.join('; ')}`)).toEqual([]);
+    expect(v.ok).toBe(true);
+    const u2 = (await audit(opts)).usage as unknown as UsageFileJson;
+    const again = await buildProject(root, u2, {}, { version: 'test' });
+    expect(again.notWritten).toEqual([]);
+    expect(again.unchanged).toBe(true);
+    expect((await checkProject({ root, usage: u2 })).issues.filter((i) => i.severity === 'error')).toEqual([]);
+    expect(revertProject(root, { write: true }).problems).toEqual([]);
+    for (const f of files) expect(readFileSync(join(root, f), 'utf8')).toBe(original[f]);
+  };
+
+  it('next: --allow eject serves a next/font/google family from the site, renders identically against HEAD, revert restores the call', async () => {
+    if (!existsSync(join(sites, 'next', 'node_modules'))) throw new Error('run pnpm install in fixtures/sites/next first');
+    const root = await tempRepo('next', ['node_modules/', '.next/', 'out/', '.fontphobia/cache/'], (r) => {
+      writeFileSync(join(r, 'app/fonts.js'), readFileSync(join(r, 'app/fonts.js'), 'utf8').replace("import localFont from 'next/font/local';", "import localFont from 'next/font/local';\nimport { Lato } from 'next/font/google';\n\nexport const lato = Lato({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-lato' });"));
+      writeFileSync(join(r, 'app/page.jsx'), readFileSync(join(r, 'app/page.jsx'), 'utf8').replace('export default', "import { lato } from './fonts';\n\nexport default").replace('<h1>', '<h1 className={lato.className}>').replace('<main>', '<main className={lato.variable}>'));
+    });
+    try { await ejectRoundTrip(root, 'next-font-google', ['app/fonts.js', 'app/page.jsx']); } finally { rmSync(root, { recursive: true, force: true }); }
+  }, 900_000);
+
+  it('astro: --allow eject serves a Fonts API family from the site, renders identically against HEAD, revert restores config and layout', async () => {
+    const root = await tempRepo('astro', ['node_modules/', 'dist/', '.astro/', '.fontphobia/cache/'], (r) => {
+      writeFileSync(join(r, 'astro.config.mjs'), `import { defineConfig, fontProviders } from 'astro/config';\n\nexport default defineConfig({\n  fonts: [{ provider: fontProviders.google(), name: 'Lato', cssVariable: '--font-lato', weights: [400, 700], styles: ['normal'] }],\n});\n`);
+      const layout = join(r, 'src/layouts/Layout.astro');
+      writeFileSync(layout, readFileSync(layout, 'utf8').replace("import '@fontsource-variable/inter';", "import { Font } from 'astro:assets';\nimport '@fontsource-variable/inter';").replace('<title>', '<Font cssVariable="--font-lato" preload />\n\t\t<title>').replace('<nav>', '<nav style="font-family: var(--font-lato)">'));
+    });
+    try { await ejectRoundTrip(root, 'astro-fonts', ['astro.config.mjs', 'src/layouts/Layout.astro', 'src/styles/fonts.css']); } finally { rmSync(root, { recursive: true, force: true }); }
+  }, 900_000);
+
   // M7, google-fonts self-host (§6.5): needs the network (Google's CSS and files).
   it('astro: --allow self-host serves Fraunces from the site, renders identically, and revert restores the Google link', async () => {
     const root = join(sites, 'astro');
@@ -283,6 +337,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
     const layoutText = readFileSync(layout);
     const tight = 'https://fonts.googleapis.com/css2?family=Fraunces:wght@400..700&display=swap';
     const loose = tight.replace('&display', '&family=Lora:wght@400;700&display');
+    let reverted = '';
     writeFileSync(layout, layoutText.toString('utf8').replace(tight, loose));
     const opts = { root, fontphobiaVersion: 'test', fontSizeSweep: false, viewports: [1280], rebuild: true, cache: false };
     let fonts: string[] = [];
@@ -302,9 +357,10 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       if (existsSync(join(root, 'fontphobia.manifest.json'))) fonts = revertProject(root, { write: true }).fonts;
       for (const f of fonts) rmSync(join(root, f), { force: true });
       rmSync(join(root, 'src/styles/fontphobia'), { recursive: true, force: true });
+      reverted = readFileSync(layout, 'utf8');
+      writeFileSync(layout, layoutText); // the fixture is shared: always put it back
     }
-    expect(readFileSync(layout, 'utf8')).toContain(`href="${loose}"`);
-    writeFileSync(layout, layoutText);
+    expect(reverted).toContain(`href="${loose}"`);
   }, 900_000);
 
   it('tanstack-start: crawls an SSR-only route in server mode', async () => {

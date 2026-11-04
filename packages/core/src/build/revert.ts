@@ -18,6 +18,15 @@ export function revertProject(root: string, o: { write?: boolean } = {}): Revert
   const deleted: string[] = [];
   // fontsource ejects (§6.2): imports back to the package; the generated copy goes if unchanged.
   for (const [file, ej] of Object.entries(m.ejects ?? {}).sort(([a], [b]) => (a < b ? -1 : 1))) {
+    // next/font/google and Astro ejects: each rewritten snippet back.
+    for (const sn of ej.snippets ?? []) {
+      if (!existsSync(join(root, sn.file))) { problems.push(`${sn.file} is gone (eject of ${ej.package})`); continue; }
+      const t = read(sn.file);
+      const at = t.indexOf(sn.to);
+      if (at < 0) { problems.push(`what fontphobia wrote in ${sn.file} for ${ej.package} changed since; put the original back yourself:\n${sn.from}`); continue; }
+      texts.set(sn.file, t.slice(0, at) + sn.from + t.slice(at + sn.to.length));
+      touched.add(sn.file);
+    }
     for (const i of ej.imports) {
       if (!existsSync(join(root, i.file))) { problems.push(`${i.file} is gone (import of ${ej.specifier})`); continue; }
       const t = read(i.file);
@@ -89,6 +98,6 @@ export function revertProject(root: string, o: { write?: boolean } = {}): Revert
     for (const f of deleted) unlinkSync(join(root, f));
     if (!problems.length) unlinkSync(join(root, MANIFEST_FILE));
   }
-  const fonts = [...new Set(Object.values(m.entries).flatMap((e) => e.outputs.map((x) => x.file)))].filter((f) => existsSync(join(root, f))).sort();
+  const fonts = [...new Set([...Object.values(m.entries).flatMap((e) => e.outputs.map((x) => x.file)), ...Object.values(m.ejects ?? {}).flatMap((e) => e.files ?? [])])].filter((f) => existsSync(join(root, f))).sort();
   return { files: [...touched].sort(), fonts, problems, removed: deleted.sort() };
 }

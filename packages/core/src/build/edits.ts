@@ -5,7 +5,18 @@ import { join } from 'node:path';
 
 export interface Edit { file: string; start: number; end: number; text: string; why: string }
 
+/** Throws when two edits touch the same bytes (checked before anything is written). */
+export function checkEdits(edits: Edit[]): void {
+  const byFile = new Map<string, Edit[]>();
+  for (const e of edits) byFile.set(e.file, [...(byFile.get(e.file) ?? []), e]);
+  for (const [file, es] of byFile) {
+    const sorted = [...es].sort((a, b) => a.start - b.start || a.end - b.end);
+    for (let i = 1; i < sorted.length; i++) if (sorted[i]!.start < sorted[i - 1]!.end || (sorted[i]!.start === sorted[i - 1]!.start && sorted[i]!.start === sorted[i]!.end && sorted[i - 1]!.start === sorted[i - 1]!.end)) throw new Error(`Overlapping edits in ${file}: ${sorted[i - 1]!.why} and ${sorted[i]!.why}`);
+  }
+}
+
 export function applyEdits(root: string, edits: Edit[]): string[] {
+  checkEdits(edits);
   const byFile = new Map<string, Edit[]>();
   for (const e of edits) byFile.set(e.file, [...(byFile.get(e.file) ?? []), e]);
   const changed: string[] = [];
@@ -22,10 +33,11 @@ export function applyEdits(root: string, edits: Edit[]): string[] {
 }
 
 /** A small unified-style diff of each edit, for the preview. */
-export function formatEdits(root: string, edits: Edit[], maxLines = 12): string {
+/** The edits as a diff. `before`: the files' text before the edits (when they're already written). */
+export function formatEdits(root: string, edits: Edit[], maxLines = 12, before?: Map<string, string>): string {
   const L: string[] = [];
   for (const e of [...edits].sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : a.start - b.start))) {
-    const text = readFileSync(join(root, e.file), 'utf8');
+    const text = before?.get(e.file) ?? readFileSync(join(root, e.file), 'utf8');
     const line = text.slice(0, e.start).split('\n').length;
     L.push(`--- ${e.file}:${line}  (${e.why})`);
     const cut = (s: string, sign: string) => { const ls = s.split(/\r?\n/); return [...ls.slice(0, maxLines).map((l) => `${sign} ${l}`), ...(ls.length > maxLines ? [`${sign} … ${ls.length - maxLines} more lines`] : [])]; };

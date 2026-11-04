@@ -11,12 +11,14 @@ import { resolveSources } from '../plan/sources.ts';
 import { cssBlock, findBlock } from './css.ts';
 import { findSheetRefs, googleCssFromAudit, googleFileUrl, googleSources, hostedDir, isGoogleSheet, sheetSlug } from '../adapters/google.ts';
 import { parseStylesheet } from '../css/stylesheet.ts';
+import { familyKey } from '../css/values.ts';
 import { findLocalFontCalls, localFontPath, nextFallbackMetrics } from '../adapters/next-font.ts';
 import { ejectName, findFontsourceImports, fontsourceRules, resolveFontsource, sameFile, type FontsourcePackage } from '../adapters/fontsource.ts';
 import { cssDemands, demandKeys, otherFaces } from './fingerprint.ts';
 import { tightenGoogle, type TightenSuggestion } from './google-tighten.ts';
 import { narrowOptions, type OptionsSuggestion } from './narrow-options.ts';
-import { applyEdits, type Edit } from './edits.ts';
+import { EJECT_KINDS, ejectFramework, ejectSources, hasFrameworkEject, isEjectKind } from './framework-eject.ts';
+import { applyEdits, checkEdits, type Edit } from './edits.ts';
 import { MANIFEST_FILE, MANIFEST_VERSION, manifestJson, readManifest, type Manifest, type ManifestEntry } from './manifest.ts';
 
 export interface ProjectBuildOptions {
@@ -47,6 +49,8 @@ export interface BuildResult {
   notWritten: { id: string; reason: string }[];
   /** Nothing would change. */
   unchanged: boolean;
+  /** The edited files' text before this build's edits (for showing the diff after writing). */
+  before: Map<string, string>;
 }
 
 const sha = (b: Uint8Array | string) => createHash('sha256').update(b).digest('hex');
@@ -122,7 +126,9 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
   const prev = readManifest(root);
   // Once self-hosted, Google faces stay self-hosted on later builds (until `revert`).
   const selfHosted = Object.values(prev?.entries ?? {}).some((e) => e.adapter === 'google-fonts');
-  const cfg: PlanConfig = selfHosted && !cfgIn.allow?.includes('self-host') ? { ...cfgIn, allow: [...(cfgIn.allow ?? []), 'self-host'] } : cfgIn;
+  let cfg: PlanConfig = selfHosted && !cfgIn.allow?.includes('self-host') ? { ...cfgIn, allow: [...(cfgIn.allow ?? []), 'self-host'] } : cfgIn;
+  // Likewise once next/font/google or Astro fonts were ejected (§6.4, §6.8).
+  if (hasFrameworkEject(prev) && !cfg.allow?.includes('eject')) cfg = { ...cfg, allow: [...(cfg.allow ?? []), 'eject'] };
   const sources = await resolveSources(root, usage, { searchDirs: o.searchDirs });
   // self-host (§6.5): the sources are the exact files Google served during the audit.
   const googleProblems = new Map<string, string>();
@@ -137,6 +143,13 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
       const bytes = new Uint8Array(readFileSync(join(root, e.source.file)));
       if (sha(bytes) === e.source.sha256) sources.set(e.id, { bytes, file: e.source.file });
     }
+  }
+  // eject (§6.4, §6.8): the sources are the files the framework downloaded, from the build output.
+  const ejectWrite = new Map<string, Uint8Array>();
+  if (cfg.allow?.includes('eject')) {
+    const e = ejectSources(root, usage, prev);
+    for (const [id, src] of e.sources) sources.set(id, src);
+    for (const [k, v] of e.write) ejectWrite.set(k, v);
   }
   const outputs = new Map<string, Uint8Array>();
   const plan = await planAll(usage, sources, cfg, outputs);
@@ -172,6 +185,25 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
     Object.assign(ejects, r.ejects);
     notWritten.push(...r.notWritten);
   }
+  // next/font/google and Astro fonts ejected to the site (§6.4, §6.8). A slice the eject copied and a
+  // page now uses is declared by the generated stylesheet: it's that eject's face, not a css one.
+  const ejectSheets = new Map(Object.entries(prev?.ejects ?? {}).filter(([, e]) => isEjectKind(e.kind)).map(([f, e]) => [f, e.kind!]));
+  const ejectKindOf = (f: FacePlan) => (isEjectKind(f.adapter) ? f.adapter : f.adapter === 'css' ? ejectSheets.get(usage.faces[f.id]?.source.file ?? '') : undefined);
+  const ejectedFamilies = new Set<string>();
+  for (const kind of EJECT_KINDS) {
+    const fs = plan.faces.filter((f) => f.status === 'planned' && ejectKindOf(f) === kind);
+    if (!fs.length) continue;
+    const r = ejectFramework(root, kind, fs, usage, prev, outputs, sources, o.version);
+    Object.assign(entries, r.entries);
+    for (const [k, v] of r.fonts) fonts.set(k, v);
+    edits.push(...r.edits);
+    for (const [k, v] of r.generated) generated.set(k, v);
+    Object.assign(ejects, r.ejects);
+    notWritten.push(...r.notWritten);
+    for (const e of Object.values(r.entries)) { ejectedFamilies.add(familyKey(e.family)); const src = ejectWrite.get(e.source.file); if (src) fonts.set(e.source.file, src); }
+    for (const ej of Object.values(r.ejects)) ejectedFamilies.add(familyKey(ej.package));
+  }
+
   // Google faces staying on Google: tighten the stylesheet URLs (§6.5).
   let google = prev?.google;
   if (!cfg.allow?.includes('self-host')) {
@@ -181,7 +213,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
     google = t.records.length ? t.records : undefined;
   }
   // next/font/google calls (§6.4) and Astro fonts[] entries (§6.8): narrow their options.
-  const ng = narrowOptions(root, usage, prev, { limitAxes: !!cfg.allow?.includes('limit-axes'), tighten: !!cfg.allow?.includes('tighten') });
+  const ng = narrowOptions(root, usage, prev, { limitAxes: !!cfg.allow?.includes('limit-axes'), tighten: !!cfg.allow?.includes('tighten'), skip: ejectedFamilies });
   suggestions.push(...ng.suggestions.map((x) => ({ kind: 'options' as const, ...x })));
   edits.push(...ng.edits);
   const options = ng.records.length ? ng.records : undefined;
@@ -197,7 +229,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
   }
 
   for (const face of plan.faces) {
-    if (face.status !== 'planned' || face.adapter === 'fontsource' || face.adapter === 'google-fonts') continue;
+    if (face.status !== 'planned' || face.adapter === 'fontsource' || face.adapter === 'google-fonts' || ejectKindOf(face)) continue;
     if (face.adapter === 'manual') {
       // §6.7: measured, planned and subset like any face, but the edit is printed, never guessed.
       const u = usage.faces[face.id]!;
@@ -300,6 +332,8 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
   const manifestSame = existsSync(join(root, MANIFEST_FILE)) && readFileSync(join(root, MANIFEST_FILE), 'utf8') === json;
   const unchanged = !edits.length && fontList.every((f) => f.exists) && generatedList.every((g) => g.exists) && !stale.length && (manifestSame || (!Object.keys(entries).length && !google && !options));
 
+  const before = new Map([...new Set(edits.map((e) => e.file))].map((f) => [f, readFileSync(join(root, f), 'utf8')]));
+  checkEdits(edits); // before anything is written, so a conflict leaves the project as it was
   if (o.write && !unchanged) {
     for (const [file, bytes] of fonts) {
       const abs = join(root, file);
@@ -312,7 +346,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
     for (const f of stale) unlinkSync(join(root, f));
     if (Object.keys(entries).length || google || options) writeFileSync(join(root, MANIFEST_FILE), json);
   }
-  return { plan, manifest, fonts: fontList, generated: generatedList, snippets, edits, stale, notWritten, unchanged, suggestions };
+  return { plan, manifest, fonts: fontList, generated: generatedList, snippets, edits, stale, notWritten, unchanged, suggestions, before };
 }
 
 /**

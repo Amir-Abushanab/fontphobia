@@ -24,7 +24,7 @@ export interface ManifestOutput {
 
 export interface ManifestEntry {
   id: string;
-  adapter: 'css' | 'fontsource' | 'google-fonts' | 'next-font-local';
+  adapter: 'css' | 'fontsource' | 'google-fonts' | 'next-font-local' | 'next-font-google' | 'astro-fonts';
   family: string;
   /** Stylesheet (or component) holding the marked block. */
   stylesheet: string;
@@ -78,7 +78,13 @@ export interface Manifest {
    * fontsource ejects (§6.2), by generated stylesheet: the package CSS it copies, the imports pointed
    * at it (`from` is the original specifier), and its sha256 (revert deletes it only if unchanged).
    */
-  ejects?: Record<string, { kind?: 'fontsource' | 'google'; package: string; version: string; specifier: string; css: string; sha256: string; imports: { file: string; from: string; to: string }[]; /** google: Google's stylesheet as audited (rebuilt from usage.json; later audits no longer see it). */ text?: string }>;
+  ejects?: Record<string, {
+    kind?: 'fontsource' | 'google' | 'next-font-google' | 'astro-fonts'; package: string; version: string; specifier: string; css: string; sha256: string; imports: { file: string; from: string; to: string }[];
+    /** google: Google's stylesheet as audited; next/astro: the CSS the framework emitted (later audits no longer see it). */ text?: string;
+    /** next/astro eject: code snippets rewritten (`from` is the original; revert swaps it back). */ snippets?: { file: string; from: string; to: string }[];
+    /** next/astro eject: base names of the files the framework preloaded. */ preloads?: string[];
+    /** next/astro eject: slices no page uses, copied as they are. */ files?: string[];
+  }>;
   google?: GoogleUrlRecord[];
   options?: OptionsRecord[];
   /** Features and axis values the CSS asked for when this was built ("family|feature|tag", "family|axis|wght=700"; family * = any). */

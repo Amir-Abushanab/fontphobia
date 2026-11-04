@@ -38,7 +38,7 @@ export const optionsLabel = (r: Pick<OptionsRecord, 'adapter' | 'family' | 'file
 
 export interface OptionsSuggestion { adapter: OptionsRecord['adapter']; file: string; family: string; weights: number[] }
 
-export function narrowOptions(root: string, usage: UsageFileJson, prev: Manifest | undefined, o: { limitAxes: boolean; tighten: boolean }): { edits: Edit[]; records: OptionsRecord[]; suggestions: OptionsSuggestion[] } {
+export function narrowOptions(root: string, usage: UsageFileJson, prev: Manifest | undefined, o: { limitAxes: boolean; tighten: boolean; /** Families being ejected (familyKey). */ skip?: Set<string> }): { edits: Edit[]; records: OptionsRecord[]; suggestions: OptionsSuggestion[] } {
   const edits: Edit[] = [];
   const records: OptionsRecord[] = [];
   const suggestions: OptionsSuggestion[] = [];
@@ -48,6 +48,7 @@ export function narrowOptions(root: string, usage: UsageFileJson, prev: Manifest
   const tags = variationTags(texts);
   for (const t of targets) {
     const key = familyKey(t.family);
+    if (o.skip?.has(key)) continue;
     const faces = Object.values(usage.faces).filter((f) => f.source.adapter === t.adapter && familyKey(astroFamily(parseFamilyList(f.family)[0] ?? f.family)) === key);
     if (!faces.length) continue;
     const reps: { start: number; end: number; text: string }[] = [];
@@ -102,7 +103,7 @@ export function narrowOptions(root: string, usage: UsageFileJson, prev: Manifest
   for (const tag of entries.length ? findAstroFontTags(root) : []) {
     if (!tag.preload) continue;
     const entry = entries.find((e) => literalProp(e.arg, 'cssVariable')?.values[0] === tag.cssVariable);
-    if (!entry) continue;
+    if (!entry || o.skip?.has(familyKey(entry.family))) continue;
     const faces = Object.values(usage.faces).filter((f) => f.source.adapter === 'astro-fonts' && familyKey(astroFamily(parseFamilyList(f.family)[0] ?? f.family)) === familyKey(entry.family));
     if (!faces.length) continue;
     const pairs = [...new Set(faces.map((f) => `${(f.descriptors['font-weight'] ?? '400').trim()}|${(f.descriptors['font-style'] ?? 'normal').trim()}`))].sort();

@@ -172,7 +172,7 @@ async function runBuild(o: BuildFlags & { prompt?: boolean }) {
     for (const f of newFonts) out.push(`  ${f.file}  ${kb(f.bytes)}`);
     for (const g of r.generated.filter((x) => !x.exists)) out.push(`  ${g.file}  (generated stylesheet)`);
     for (const f of r.stale) out.push(`  - ${f}`);
-    if (r.edits.length) out.push('', formatEdits(root, r.edits));
+    if (r.edits.length) out.push('', formatEdits(root, r.edits, 12, r.before));
     for (const g of r.manifest.google ?? []) {
       if (!r.edits.some((e) => e.why === `tighten ${g.to}` || e.text.replace(/&amp;/g, '&') === g.to)) continue;
       const d = [...g.dropped.families.map((f) => `${f} (no page uses it)`), ...Object.entries(g.dropped.weights).map(([f, w]) => `${f} ${w.join(', ')} (nothing asks for ${w.length > 1 ? 'these weights' : 'this weight'})`), ...Object.entries(g.dropped.axes).map(([f, a]) => `${f} ${a.join(', ')} axis (every use is at the default; limit-axes)`)];
@@ -271,7 +271,7 @@ verifyOptions(cli
 
 const buildOptions = (c: ReturnType<typeof cli.command>) => c
   .option('--usage <file>', 'usage.json to plan from (default .fontphobia/usage.json)')
-  .option('--allow <opt-in>', 'Enable an opt-in (limit-axes, drop-hinting, split-shaping, drop-hint-refs, self-host, tighten); repeatable')
+  .option('--allow <opt-in>', 'Enable an opt-in (limit-axes, drop-hinting, split-shaping, drop-hint-refs, self-host, tighten, eject); repeatable')
   .option('--no-remainder', 'No lazy "rest" file: unseen characters fall back to the system font')
   .option('--write, -u', 'Write the fonts, the CSS edits and fontphobia.manifest.json without asking');
 
