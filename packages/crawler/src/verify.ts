@@ -151,7 +151,11 @@ async function launch(engine: Engine, linux: () => Promise<LinuxBrowsers>): Prom
   if (engine.startsWith('linux-')) return (await linux()).launch(engine.slice(6) as 'chromium' | 'firefox' | 'webkit');
   if (engine === 'chromium') {
     // Linux hints and snaps text positions to whole pixels by default; the exact configuration turns that off (§10.3, spike 9).
-    return launchChrome(process.platform === 'linux' ? ['--font-render-hinting=none'] : []);
+    // Grayscale antialiasing: Chrome turns LCD (subpixel RGB) text on or off per layer by compositing
+    // decisions that depend on timing, so the same page drew a glyph's edge pixels two ways at random
+    // (measured on Linux CI: about one load in eight, sticky for a run; none in 20 runs with this flag).
+    // Glyph positions stay exact; only the antialiasing changes, the same for both sides.
+    return launchChrome([...(process.platform === 'linux' ? ['--font-render-hinting=none'] : []), '--disable-lcd-text']);
   }
   const type = engine === 'firefox' ? firefox : webkit;
   try { return await type.launch({ headless: true }); } catch (e) {
@@ -418,29 +422,34 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
         for (const id of hitsA) usedInAfter.add(id);
         const drawn = Object.keys(o.usage.pages[t.page]?.faces ?? {}).filter((id) => entryIds.has(id));
         let c = await compare(t, base, b, a, drawn.some(roundingOk), o.manifest, outDir, ours);
-        // Pixels only, at identical layout: load both again. Browsers occasionally rasterize a glyph a
-        // pixel differently between loads; a difference that doesn't come back is noise.
-        // Measured: the original Fraunces against itself differs by a pixel on about one load in four
-        // in Linux Chromium, sometimes twice running. Up to three more loads; any identical one wins,
-        // and so does any earlier load of one side whose pixels match a load of the other (a pixel that
-        // toggles at random makes every same-attempt pair differ about one time in fifty; a real
-        // change never matches at all).
+        // Pixels only, at identical layout: load both again, each time in a new browser. Browsers
+        // occasionally rasterize a glyph a pixel differently, and a version can stick for a session, so
+        // a retry in the same browser may repeat the same pair. Up to three more loads; any identical one wins, and so
+        // does any load of one side whose pixels match a load of the other, or a side that differs from
+        // itself between sessions by at least as much (a real change never matches and never moves).
         const loadsB = [b.snap.png], loadsA = [a.snap.png];
         const same = (x: PNG, y: PNG) => x.width === y.width && x.height === y.height && x.data.equals(y.data);
         for (let attempt = 0; attempt < 3 && c.class === 'regression' && !c.moved && c.causes.every((x) => /^pixels differ/.test(x)); attempt++) {
-          const [cb2, ca2] = await Promise.all([context(t.browser, t, overlay, baseline ? 'plain' : 'before', root, new Set(), local, snapshots), context(t.browser, t, overlay, 'plain', root, new Set(), local, snapshots)]);
+          const fresh = t.engine.startsWith('linux-') ? undefined : await launch(t.engine, getLinux).catch(() => undefined);
+          const br = fresh ?? t.browser;
           try {
-            const [b2, a2] = await Promise.all([capture(cb2, beforeUrl, t.engine), capture(ca2, url, t.engine)]);
-            const again = await compare(t, base, b2, a2, drawn.some(roundingOk), o.manifest, outDir, ours);
-            loadsB.push(b2.snap.png); loadsA.push(a2.snap.png);
-            if (again.class === 'identical') c = { ...c, class: 'flaky', causes: [`${c.causes.join('; ')}; identical on load ${attempt + 2}`] };
-            else if (loadsB.some((x) => loadsA.some((y) => same(x, y)))) c = { ...c, class: 'flaky', causes: [`${c.causes.join('; ')}; a load of the original and a load of the new files are pixel-identical (${loadsB.length} loads each)`] };
-            else {
-              // The noise floor: does the original differ from itself between two loads?
-              const self = await compare(t, base, b, b2, false, o.manifest, join(outDir, 'noise'), ours);
-              if (self.class !== 'identical' && self.pixels >= again.pixels) c = { ...c, class: 'flaky', causes: [`${c.causes.join('; ')}; the original fonts differ from themselves between loads by ${self.pixels} px`] };
-            }
-          } finally { await Promise.all([cb2.close().catch(() => {}), ca2.close().catch(() => {})]); }
+            const [cb2, ca2] = await Promise.all([context(br, t, overlay, baseline ? 'plain' : 'before', root, new Set(), local, snapshots), context(br, t, overlay, 'plain', root, new Set(), local, snapshots)]);
+            try {
+              const [b2, a2] = await Promise.all([capture(cb2, beforeUrl, t.engine), capture(ca2, url, t.engine)]);
+              const again = await compare(t, base, b2, a2, drawn.some(roundingOk), o.manifest, outDir, ours);
+              loadsB.push(b2.snap.png); loadsA.push(a2.snap.png);
+              if (again.class === 'identical') c = { ...c, class: 'flaky', causes: [`${c.causes.join('; ')}; identical on load ${attempt + 2}`] };
+              else if (loadsB.some((x) => loadsA.some((y) => same(x, y)))) c = { ...c, class: 'flaky', causes: [`${c.causes.join('; ')}; a load of the original and a load of the new files are pixel-identical (${loadsB.length} loads each)`] };
+              else {
+                // The noise floor: does either side differ from itself between sessions?
+                for (const [side, x, y] of [['original', b, b2], ['new', a, a2]] as const) {
+                  if (c.class !== 'regression' || same(x.snap.png, y.snap.png)) continue;
+                  const self = await compare(t, base, x, y, false, o.manifest, join(outDir, 'noise'), ours);
+                  if (self.class !== 'identical' && self.pixels >= again.pixels) c = { ...c, class: 'flaky', causes: [`${c.causes.join('; ')}; the ${side} fonts differ from themselves between loads by ${self.pixels} px`] };
+                }
+              }
+            } finally { await Promise.all([cb2.close().catch(() => {}), ca2.close().catch(() => {})]); }
+          } finally { await fresh?.close().catch(() => {}); }
         }
         comparisons.push(c);
         if (t.dpr === dprsFor(t.engine)[0] && t.engine === engines[0]) record(t.page, b.snap.fonts, a.snap.fonts, hitsA);
