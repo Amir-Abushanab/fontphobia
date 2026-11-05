@@ -245,7 +245,7 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
   if (!outDir) notes.push('no built static output found: the character check needs prerendered HTML (pass --dist)');
   else {
     // Not fontphobia's own files when the site is served from the project root (usage.json, the manifest).
-    const files = listFiles(outDir, (r) => /\.(html?|m?js|json)$/i.test(r) && !r.endsWith('fontphobia.manifest.json'), { skip: (_rel, n) => n === 'node_modules' || n.startsWith('.'), max: 20_000 });
+    const files = listFiles(outDir, (r) => /\.(html?|m?js|json)$/i.test(r) && !r.endsWith('fontphobia.manifest.json') && !r.endsWith('.fontphobia/manifest.json'), { skip: (_rel, n) => n === 'node_modules' || n.startsWith('.'), max: 20_000 });
     const missing = new Map<string, { cps: Set<number>; files: Set<string> }>();
     // From JS/JSON only: bundles escape non-ASCII, so UI text and Unicode tables (React's, regexes)
     // look the same. Reported as a note; prerendered HTML is what fails the check.

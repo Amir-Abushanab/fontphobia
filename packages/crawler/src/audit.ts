@@ -2,7 +2,7 @@
 // and turn the visits into usage.json. The only environment-dependent step in the pipeline (§4).
 import { readFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
-import { resolve } from 'node:path';
+import { relative, resolve, sep } from 'node:path';
 import { chromium, type Browser } from 'playwright-core';
 import {
   adobeFaceFacts, findBlock, findLocalFontCalls, isTypekitSheet, type AdobeFaceFacts, generatedFaces, readManifest, buildUsage, classifyFace, detectCss, detectProject, fontFacts, globToRegExp, harfbuzzVersion,
@@ -236,7 +236,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     // Faces fontphobia generated fold back into the original face (§M4 notes).
     const manifest = readManifest(root);
     const usage = buildUsage(visitsOut, facts, { locales: o.locales, maxWords: o.maxWords ?? 10_000, generated: generatedFaces(manifest) });
-    const outputDirs = site?.dir ? [site.dir.slice(root.length + 1).split('\\').join('/')] : [];
+    const outputDirs = site?.dir ? [relative(opened.root, site.dir).split(sep).join('/')] : [];
     const css = detectCss(root, { outputDirs });
     const fontIndex = indexFontFiles(root, { outputDirs });
     const sources = new Map<string, FaceSource>();
@@ -265,7 +265,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     });
     const crawl: CrawlInfo = {
       framework: { id: project.profile.id, name: project.profile.name, tier: project.profile.tier },
-      mode, source: o.url ?? (site?.dir !== undefined ? site.dir.slice(root.length + 1).split('\\').join('/') || '.' : site?.server?.cmd ?? ''), built,
+      mode, source: o.url ?? (site?.dir !== undefined ? relative(opened.root, site.dir).split(sep).join('/') || '.' : site?.server?.cmd ?? ''), built,
       build: age ? { at: new Date(age.builtAt).toISOString(), output: age.output, newer: age.newer && { file: age.newer.file, at: new Date(age.newer.mtime).toISOString(), count: age.newer.count } } : undefined,
       pages: [...pages].sort(), failed: Object.fromEntries(Object.entries(failed).sort()), dynamicRoutes, routeSources: fileRoutes.sources,
       visits: visitsOut.length, cache: cache ? { reused: cache.stats.hits, visited: visitsOut.length - cache.stats.hits } : undefined, viewports, fontSizes: [...fontSizes].sort((a, b) => a - b), durationMs: Date.now() - t0,

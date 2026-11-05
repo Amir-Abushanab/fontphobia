@@ -2,7 +2,8 @@
 // the framework profile finds, building first when there is no output or it is stale and the caller agrees.
 import { existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { buildAge, buildCommand, findSite, type BuildAge, type Project, type SiteSource } from '@fontphobia/core';
+import { buildAge, buildCommand, detectProject, findSite, type BuildAge, type Project, type SiteSource } from '@fontphobia/core';
+import { isolatedCopy, type Copy } from './isolate.ts';
 import { serveStatic } from './serve.ts';
 import { runCommand, startServer } from './server.ts';
 
@@ -13,6 +14,8 @@ export interface SiteOptions {
   startCmd?: string;
   /** Rebuild even when output exists. */
   rebuild?: boolean;
+  /** Build in the project itself: it already is a throwaway copy (the worktree baseline). */
+  inPlace?: boolean;
   /** Called when source files changed after the existing build. Resolve true to rebuild first. */
   onStale?: (age: BuildAge) => boolean | Promise<boolean>;
 }
@@ -26,6 +29,8 @@ export interface OpenSite {
   built?: string;
   /** Age of the existing build that is served. */
   age?: BuildAge;
+  /** The project root the served output belongs to: the project, or the copy it was built in. */
+  root: string;
   stop(): Promise<void>;
 }
 
@@ -43,7 +48,8 @@ export async function openSite(o: SiteOptions, project: Project, log: (m: string
   let site: SiteSource | undefined;
   let built: string | undefined;
   let age: BuildAge | undefined;
-  if (o.url) return { mode: 'url', base: o.url.replace(/\/?$/, '/'), stop: async () => {} };
+  let copy: Copy | undefined;
+  if (o.url) return { mode: 'url', base: o.url.replace(/\/?$/, '/'), root, stop: async () => {} };
   if (o.dist) site = { mode: 'static', dir: resolve(root, o.dist), spaFallback: project.profile.spaFallback, reason: '--dist' };
   else if (o.startCmd) site = { mode: 'server', server: { cmd: o.startCmd, when: '', cwd: root }, reason: '--start-cmd' };
   else {
@@ -60,12 +66,15 @@ export async function openSite(o: SiteOptions, project: Project, log: (m: string
     if (!site) {
       const cmd = o.buildCmd ?? buildCommand(project);
       if (!cmd) throw new Error(`No build output found for ${project.profile.name} (looked in ${project.profile.output.join(', ') || 'nothing'}) and no build script. Pass --dist, --build-cmd, --start-cmd or --url.`);
+      // In a throwaway copy: a build may write more than its output (data fetched into tracked files).
+      copy = o.inPlace ? undefined : await isolatedCopy(root, detectProject, log);
+      const where = copy ? detectProject(copy.root) : project;
       log(`building: ${cmd}`);
-      const r = await runCommand(cmd, root);
-      if (r.code !== 0) throw new Error(`\`${cmd}\` failed (exit ${r.code}):\n${r.output.trim().slice(-3000)}`);
+      const r = await runCommand(cmd, where.root);
+      if (r.code !== 0) { await copy?.remove(); throw new Error(`\`${cmd}\` failed (exit ${r.code}):\n${r.output.trim().slice(-3000)}`); }
       built = cmd;
-      site = findSite(project);
-      if (!site) throw new Error(`\`${cmd}\` finished, but no output was found for ${project.profile.name} (looked in ${project.profile.output.join(', ')}). Pass --dist or --start-cmd.`);
+      site = findSite(where);
+      if (!site) { await copy?.remove(); throw new Error(`\`${cmd}\` finished, but no output was found for ${project.profile.name} (looked in ${project.profile.output.join(', ')}). Pass --dist or --start-cmd.`); }
     }
   }
   if (o.dist) {
@@ -73,13 +82,13 @@ export async function openSite(o: SiteOptions, project: Project, log: (m: string
     if (age?.newer) log(`warning: ${age.newer.file}${age.newer.count > 1 ? ` and ${age.newer.count - 1} other file(s)` : ''} changed after ${age.output} was built (${since(age.builtAt)})`);
   }
   if (site.mode === 'static') {
-    if (!existsSync(site.dir!) || !statSync(site.dir!).isDirectory()) throw new Error(`${site.dir} is not a directory`);
+    if (!existsSync(site.dir!) || !statSync(site.dir!).isDirectory()) { await copy?.remove(); throw new Error(`${site.dir} is not a directory`); }
     const s = await serveStatic(site.dir!, { spaFallback: site.spaFallback });
     log(`serving ${site.dir} (${site.reason})`);
-    return { mode: 'static', base: s.url, site, built, age, stop: s.close };
+    return { mode: 'static', base: s.url, site, built, age, root: copy?.root ?? root, stop: async () => { await s.close(); await copy?.remove(); } };
   }
   log(`starting: ${site.server!.cmd}`);
-  const s = await startServer(site.server!.cmd, { cwd: site.server!.cwd, env: site.server!.env });
+  const s = await startServer(site.server!.cmd, { cwd: site.server!.cwd, env: site.server!.env }).catch(async (e) => { await copy?.remove(); throw e; });
   log(`server at ${s.url}`);
-  return { mode: 'server', base: s.url.replace(/\/?$/, '/'), site, built, age, stop: s.stop };
+  return { mode: 'server', base: s.url.replace(/\/?$/, '/'), site, built, age, root: copy?.root ?? root, stop: async () => { await s.stop(); await copy?.remove(); } };
 }

@@ -5,7 +5,7 @@ import { extname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { cac } from 'cac';
 import {
-  checkProject, checkUsage, formatCheck,
+  checkProject, checkUsage, formatCheck, ensureFontphobiaDir, FONTPHOBIA_DIR,
   auditMarkdown, buildProject, canonicalJson, formatAudit, formatEdits, formatPlan, kb, MANIFEST_FILE, revertProject, type UsageFileJson, formatInspection, formatUnicodeRange, harfbuzzVersion, inspectFont, parseUnicodeRange,
   rangesFromCodePoints, subsetFont, codePointsOf, type AxisSetting, type SubsetOptions,
 } from '@fontphobia/core';
@@ -61,11 +61,10 @@ cli
     process.stdout.write(`${o.output}: ${r.woff2.byteLength} bytes (${pct}% smaller than the source), ${r.unicodes.length} characters\nunicode-range: ${formatUnicodeRange(rangesFromCodePoints(r.unicodes))}\n`);
   });
 
-/** .fontphobia/ is committed (usage.json, report.md); its cache and diff images aren't (§9.9). */
-function ensureOutDir(out: string) {
-  mkdirSync(out, { recursive: true });
-  const gi = join(out, '.gitignore');
-  if (!existsSync(gi)) writeFileSync(gi, '# fontphobia: visit cache and verify diff images\ncache/\nverify/\n');
+/** Everything fontphobia writes goes in .fontphobia/, ignored except the manifest and sources/ (§9.9). */
+function ensureOutDir(out: string, root: string) {
+  if (resolve(out) === resolve(root, FONTPHOBIA_DIR)) ensureFontphobiaDir(root);
+  else mkdirSync(out, { recursive: true });
 }
 
 const list = (v: unknown): string[] | undefined => {
@@ -107,7 +106,7 @@ async function runAudit(o: AuditFlags, how: { summary: boolean } = { summary: tr
     } : undefined,
   });
   const out = resolve(root, o.outDir ?? '.fontphobia');
-  ensureOutDir(out);
+  ensureOutDir(out, root);
   writeFileSync(join(out, 'usage.json'), canonicalJson(result.usage));
   writeFileSync(join(out, 'report.md'), auditMarkdown(result.usage as never, result.crawl));
   if (o.json) process.stdout.write(JSON.stringify({ crawl: result.crawl, usage: result.usage }, null, 2) + '\n');
@@ -237,7 +236,7 @@ async function runVerify(o: VerifyFlags) {
     viewports: list(o.viewports)?.map(Number) ?? config.verify?.viewports ?? config.viewports, dprs: list(o.dpr)?.map(Number) ?? config.verify?.dprs,
     browsers, hinting: o.hinting ?? config.verify?.hinting, runtime: o.runtime as 'container' | undefined, baseline: o.baseline as 'overlay' | undefined, concurrency: o.concurrency, outDir: join(out, 'verify'),
   });
-  ensureOutDir(out);
+  ensureOutDir(out, root);
   const reportFile = join(out, 'report.md');
   writeFileSync(reportFile, verifyMarkdown(existsSync(reportFile) ? readFileSync(reportFile, 'utf8') : '# fontphobia report\n', r, root));
   if (o.json) process.stdout.write(JSON.stringify(r, null, 2) + '\n');
@@ -274,7 +273,7 @@ const buildOptions = (c: ReturnType<typeof cli.command>) => c
   .option('--usage <file>', 'usage.json to plan from (default .fontphobia/usage.json)')
   .option('--allow <opt-in>', 'Enable an opt-in (limit-axes, drop-hinting, split-shaping, drop-hint-refs, self-host, tighten, eject); repeatable')
   .option('--no-remainder', 'No lazy "rest" file: unseen characters fall back to the system font')
-  .option('--write, -u', 'Write the fonts, the CSS edits and fontphobia.manifest.json without asking');
+  .option('--write, -u', 'Write the fonts, the CSS edits and .fontphobia/manifest.json without asking');
 
 buildOptions(cli
   .command('build', 'Plan from .fontphobia/usage.json and write the subsets (no browser). Without --write it shows the plan and the diff')
@@ -321,7 +320,7 @@ cli
   .action((o: CheckFlags) => runCheck(o));
 
 cli
-  .command('revert', 'Put the original @font-face declarations and preloads back from fontphobia.manifest.json')
+  .command('revert', 'Put the original @font-face declarations and preloads back from .fontphobia/manifest.json')
   .option('--cwd <dir>', 'Project root (default: current directory)')
   .option('--dry-run', 'Only show what would change')
   .option('--keep-kits', 'Leave Adobe kits changed by apply-kit as they are')

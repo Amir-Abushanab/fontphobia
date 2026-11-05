@@ -11,7 +11,7 @@ export interface VerifyResult {
 
 export async function verify(o: Omit<VerifyOptions, 'manifest' | 'staticResult'> & { browser?: boolean }): Promise<VerifyResult> {
   const manifest = readManifest(o.root);
-  if (!manifest || !Object.keys(manifest.entries).length) throw new Error('fontphobia.manifest.json has no entries: nothing to verify. Run `fontphobia build --write` first.');
+  if (!manifest || !Object.keys(manifest.entries).length) throw new Error('.fontphobia/manifest.json has no entries: nothing to verify. Run `fontphobia build --write` first.');
   const log = o.log ?? (() => {});
   log(`checking ${Object.values(manifest.entries).reduce((n, e) => n + e.outputs.length, 0)} output(s) and shaping…`);
   const st = await verifyStatic(o.root, o.usage, manifest);

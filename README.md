@@ -36,28 +36,27 @@ pnpm dlx fontphobia@0.1.1
 
 ## Quick start
 
-Run everything from the project root (or pass `--cwd`).
+Run everything from the project root (or pass `--cwd`). (If pnpm refuses a release younger than your `minimumReleaseAge`, run it from outside the project with `--cwd`.)
 
 1. **Audit and plan.**
    ```sh
    pnpm dlx fontphobia@0.1.1
    ```
-   fontphobia detects the framework, builds the site if there's no build (or asks if it's stale), and crawls every page it can find at 4 viewport widths, plus a browser font-size sweep. It then prints each face's size now and after, the saving per page, the opt-ins with their savings, and the exact edits.
+   fontphobia detects the framework, builds the site if there's no build (or asks if it's stale) in a throwaway copy of the project, so the build can't touch your files, and crawls every page it can find at 4 viewport widths, plus a browser font-size sweep. It then prints each face's size now and after, the saving per page, the opt-ins with their savings, and the exact edits.
 
 2. **Confirm.** fontphobia then does three things:
    - it writes the subset files next to the original fonts;
    - it replaces each `@font-face` with a marked block of three rules;
-   - it writes `fontphobia.manifest.json`.
+   - it records what it changed in `.fontphobia/manifest.json`.
 
    Then it runs `verify`, which rebuilds the site and compares every page before and after. Use `--write` (or `-u`) to skip the question.
 
 3. **Review and commit:**
    - the subset files;
    - the edited CSS;
-   - `fontphobia.manifest.json`;
-   - `.fontphobia/usage.json` and `.fontphobia/report.md`.
+   - `.fontphobia/manifest.json` (and `.fontphobia/sources/`, if fontphobia copied fonts from Google or a framework).
 
-   `.fontphobia/.gitignore` keeps the cache and the diff images out of git.
+   Everything else fontphobia writes (the usage data, the report, the cache, the diff images) stays in `.fontphobia/`, which ignores it for you.
 
 4. **Keep it current.** Add `fontphobia check` after your build: as one of the [framework integrations](#keeping-the-subsets-up-to-date), a `postbuild` script, or [in CI](#ci). When content needs a character or weight the subsets don't have, the check fails and prints the command to rerun.
 

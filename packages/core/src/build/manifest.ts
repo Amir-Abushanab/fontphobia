@@ -1,12 +1,40 @@
-// fontphobia.manifest.json (§9.9): what `build --write` changed, so it can rerun, `revert` and
+// .fontphobia/manifest.json (§9.9): what `build --write` changed, so it can rerun, `revert` and
 // `check` (M6). Canonical JSON, committed. No timestamps.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { canonicalJson } from '../usage/json.ts';
 import { parseStylesheet } from '../css/stylesheet.ts';
 import type { FacePlan, Role } from '../plan/planner.ts';
 
-export const MANIFEST_FILE = 'fontphobia.manifest.json';
+/** Everything fontphobia writes for itself lives in this folder; only the manifest and sources/ are committed. */
+export const FONTPHOBIA_DIR = '.fontphobia';
+export const MANIFEST_FILE = '.fontphobia/manifest.json';
+/** Where 0.1.x kept the manifest: still read, and moved on the next write. */
+export const LEGACY_MANIFEST_FILE = 'fontphobia.manifest.json';
+const GITIGNORE = `# fontphobia: everything here is ignored except what revert, check and rebuilds need:
+# the manifest (what was changed) and sources/ (the exact source fonts, e.g. as Google served them).
+*
+!manifest.json
+!sources/
+!sources/**
+`;
+const OLD_GITIGNORE = '# fontphobia: visit cache and verify diff images\ncache/\nverify/\n';
+
+/** Create .fontphobia/ with its .gitignore (replacing 0.1.x's, never one you edited). */
+export function ensureFontphobiaDir(root: string): string {
+  const dir = join(root, FONTPHOBIA_DIR);
+  mkdirSync(dir, { recursive: true });
+  const gi = join(dir, '.gitignore');
+  if (!existsSync(gi) || readFileSync(gi, 'utf8') === OLD_GITIGNORE) writeFileSync(gi, GITIGNORE);
+  return dir;
+}
+
+/** The manifest's path: .fontphobia/manifest.json, or 0.1.x's fontphobia.manifest.json while that's the one present. */
+export function manifestPath(root: string): string {
+  const now = join(root, MANIFEST_FILE);
+  const old = join(root, LEGACY_MANIFEST_FILE);
+  return !existsSync(now) && existsSync(old) ? old : now;
+}
 export const MANIFEST_VERSION = 1;
 
 export interface ManifestOutput {
@@ -95,7 +123,7 @@ export interface Manifest {
 }
 
 export function readManifest(root: string): Manifest | undefined {
-  const f = join(root, MANIFEST_FILE);
+  const f = manifestPath(root);
   if (!existsSync(f)) return undefined;
   const m = JSON.parse(readFileSync(f, 'utf8')) as Manifest;
   if (m.version !== MANIFEST_VERSION) throw new Error(`${MANIFEST_FILE} has version ${m.version}; this fontphobia reads version ${MANIFEST_VERSION}`);
@@ -103,7 +131,20 @@ export function readManifest(root: string): Manifest | undefined {
 }
 
 export const manifestJson = (m: Manifest) => canonicalJson(m);
-export function writeManifest(root: string, m: Manifest) { writeFileSync(join(root, MANIFEST_FILE), manifestJson(m)); }
+export function writeManifest(root: string, m: Manifest, json = manifestJson(m)) {
+  ensureFontphobiaDir(root);
+  writeFileSync(join(root, MANIFEST_FILE), json);
+  rmSync(join(root, LEGACY_MANIFEST_FILE), { force: true });
+}
+
+/** Delete the manifest (wherever it is). */
+export function removeManifest(root: string) {
+  rmSync(join(root, MANIFEST_FILE), { force: true });
+  rmSync(join(root, LEGACY_MANIFEST_FILE), { force: true });
+  // .fontphobia/ holding nothing but its .gitignore goes too, so revert leaves the project as it found it.
+  const dir = join(root, FONTPHOBIA_DIR);
+  if (existsSync(dir) && readdirSync(dir).every((n) => n === '.gitignore')) rmSync(dir, { recursive: true, force: true });
+}
 
 /** Output file name → the entry it belongs to and the original face's descriptors (audit folds them, §M4 notes). */
 export function generatedFaces(m: Manifest | undefined): Map<string, { id: string; descriptors?: Record<string, string> }> {

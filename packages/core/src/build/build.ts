@@ -20,7 +20,7 @@ import { tightenGoogle, type TightenSuggestion } from './google-tighten.ts';
 import { narrowOptions, type OptionsSuggestion } from './narrow-options.ts';
 import { EJECT_KINDS, ejectFramework, ejectSources, hasFrameworkEject, isEjectKind } from './framework-eject.ts';
 import { applyEdits, checkEdits, type Edit } from './edits.ts';
-import { MANIFEST_FILE, MANIFEST_VERSION, manifestJson, readManifest, type Manifest, type ManifestEntry } from './manifest.ts';
+import { MANIFEST_FILE, MANIFEST_VERSION, manifestJson, manifestPath, readManifest, writeManifest, type Manifest, type ManifestEntry } from './manifest.ts';
 
 export interface ProjectBuildOptions {
   version: string;
@@ -330,7 +330,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
   const stale = Object.values(prev?.entries ?? {}).flatMap((e) => e.outputs).filter((x) => !keep.has(x.file) && !Object.values(entries).some((e) => e.outputs.some((y) => y.file === x.file)))
     .filter((x) => existsSync(join(root, x.file)) && sha(readFileSync(join(root, x.file))) === x.sha256).map((x) => x.file);
   const json = manifestJson(manifest);
-  const manifestSame = existsSync(join(root, MANIFEST_FILE)) && readFileSync(join(root, MANIFEST_FILE), 'utf8') === json;
+  const manifestSame = manifestPath(root) === join(root, MANIFEST_FILE) && existsSync(join(root, MANIFEST_FILE)) && readFileSync(join(root, MANIFEST_FILE), 'utf8') === json;
   const unchanged = !edits.length && fontList.every((f) => f.exists) && generatedList.every((g) => g.exists) && !stale.length && (manifestSame || (!Object.keys(entries).length && !google && !options));
 
   const before = new Map([...new Set(edits.map((e) => e.file))].map((f) => [f, readFileSync(join(root, f), 'utf8')]));
@@ -345,7 +345,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
     for (const [file, text] of generated) { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), text); }
     applyEdits(root, edits);
     for (const f of stale) unlinkSync(join(root, f));
-    if (Object.keys(entries).length || google || options) writeFileSync(join(root, MANIFEST_FILE), json);
+    if (Object.keys(entries).length || google || options) writeManifest(root, JSON.parse(json) as Manifest, json);
   }
   return { plan, manifest, fonts: fontList, generated: generatedList, snippets, edits, stale, notWritten, unchanged, suggestions, before };
 }
