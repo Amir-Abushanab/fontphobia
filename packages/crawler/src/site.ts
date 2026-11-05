@@ -2,7 +2,8 @@
 // the framework profile finds, building first when there is no output or it is stale and the caller agrees.
 import { existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { buildAge, buildCommand, detectProject, findSite, type BuildAge, type Project, type SiteSource } from '@fontphobia/core';
+import { join } from 'node:path';
+import { buildAge, buildCommand, detectProject, findSite, KEPT_OUTPUT, type BuildAge, type Project, type SiteSource } from '@fontphobia/core';
 import { isolatedCopy, keepOutput, type Copy } from './isolate.ts';
 import { serveStatic } from './serve.ts';
 import { runCommand, startServer } from './server.ts';
@@ -45,6 +46,14 @@ export function since(ms: number, now = Date.now()): string {
   return `${Math.round(s / 86400)} days ago`;
 }
 
+/** The static output kept from fontphobia's last build in a copy, if nothing changed since. */
+function keptSite(project: Project): SiteSource | undefined {
+  const site = findSite({ ...project, root: join(project.root, KEPT_OUTPUT) });
+  if (site?.mode !== 'static') return undefined; // a server would run from the copy, which is gone
+  const age = buildAge(project, site);
+  return age && !age.newer ? { ...site, reason: `${KEPT_OUTPUT} (fontphobia's last build)` } : undefined;
+}
+
 export async function openSite(o: SiteOptions, project: Project, log: (m: string) => void): Promise<OpenSite> {
   const root = project.root;
   let site: SiteSource | undefined;
@@ -56,6 +65,10 @@ export async function openSite(o: SiteOptions, project: Project, log: (m: string
   else if (o.startCmd) site = { mode: 'server', server: { cmd: o.startCmd, when: '', cwd: root }, reason: '--start-cmd' };
   else {
     site = o.rebuild ? undefined : findSite(project);
+    // fontphobia's own last build (made in a copy, kept in .fontphobia/output) when it's newer than
+    // every source and the project's output isn't: no rebuild on every run.
+    const kept = o.rebuild || o.inPlace ? undefined : keptSite(project);
+    if (kept && (!site || buildAge(project, site)?.newer)) { site = kept; log(`using fontphobia's last build (${KEPT_OUTPUT}), newer than every source`); }
     if (site) {
       age = buildAge(project, site);
       if (age?.newer) {
