@@ -34,6 +34,32 @@ function site(name: string) {
 const usage = JSON.parse(readFileSync(join(repo, 'fixtures/plans/static-css/usage.json'), 'utf8')) as UsageFileJson;
 
 describe('build --write (css adapter, §9)', () => {
+  it('passes the page text to document.fonts.load/check in the site code; revert puts the calls back; check warns about new ones', async () => {
+    const root = site('font-checks');
+    const code = `const faces: string[] = ['1em Inter'];\nexport const ready = () => Promise.all(faces.map((f) => document.fonts.load(f))).then(() => document.fonts.check('1em Inter'));\n`;
+    mkdirSync(join(root, 'src'));
+    writeFileSync(join(root, 'src/fonts.ts'), code);
+    const before = snapshot(root);
+    const preview = await buildProject(root, usage, {}, { version: '1' });
+    expect(preview.edits.filter((e) => e.file === 'src/fonts.ts').map((e) => e.text)).toEqual([', document.body?.innerText', ', document.body?.innerText']);
+    await buildProject(root, usage, {}, { version: '1', write: true });
+    expect(readFileSync(join(root, 'src/fonts.ts'), 'utf8')).toBe(code.replace('load(f)', 'load(f, document.body?.innerText)').replace("check('1em Inter')", "check('1em Inter', document.body?.innerText)"));
+    expect(readManifest(root)!.fontChecks).toHaveLength(2);
+    // A second build finds them fixed and keeps the records for revert.
+    expect((await buildProject(root, usage, {}, { version: '1', write: true })).unchanged).toBe(true);
+    expect(readManifest(root)!.fontChecks).toHaveLength(2);
+    // A call added later: check warns.
+    writeFileSync(join(root, 'src/late.js'), "document.fonts.load('1em Inter');\n");
+    const { checkProject } = await import('../src/index.ts');
+    const c = await checkProject({ root, outputDir: root });
+    expect(c.issues.filter((i) => i.file === 'src/late.js').map((i) => i.severity)).toEqual(['warning']);
+    rmSync(join(root, 'src/late.js'));
+    revertProject(root, { write: true });
+    const after = snapshot(root);
+    for (const f of Object.keys(after)) if (/\.(core|ext|rest)\.[0-9a-f]{8}\.woff2$/.test(f)) delete after[f];
+    expect(after).toEqual(before);
+  }, 300_000);
+
   it('writes the planned files and marked blocks, changes nothing the second time, and reverts byte for byte', async () => {
     const root = site('roundtrip');
     const before = snapshot(root);

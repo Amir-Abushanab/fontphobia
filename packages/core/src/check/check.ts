@@ -8,6 +8,7 @@
 //  - built text (HTML, inline styles, JS/JSON string literals) has characters a face's core and
 //    extended files don't cover. Approximate: unrendered strings cause false alarms; `allowChars`
 //    silences them.
+import { findFontCheckCalls, PAGE_TEXT } from '../project/font-checks.ts';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
@@ -145,6 +146,10 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
     facts.push(f);
   }
 
+  // Font readiness checks (§6): a call added since the build waits for the core file only.
+  for (const call of findFontCheckCalls(root)) {
+    if (call.fixable) add({ kind: 'block', severity: 'warning', file: call.file, message: `${call.file}:${call.line} \`${call.call.length > 60 ? call.call.slice(0, 57) + '…' : call.call}\` waits for the core file only now that the font is split; pass the page's text (\`${PAGE_TEXT}\`) as the second argument, or rerun build to do it` });
+  }
   // fontsource ejects (§6.2): the installed package must be the version the copy was made from.
   for (const [file, ej] of Object.entries(manifest.ejects ?? {})) {
     for (const sn of ej.snippets ?? []) {

@@ -18,6 +18,7 @@ export * from './usage/facts.ts';
 export * from './project/profiles.ts';
 export * from './project/detect.ts';
 export * from './project/offdom.ts';
+export * from './project/font-checks.ts';
 export * from './adapters/css.ts';
 export * from './report/audit.ts';
 export * from './plan/locale.ts';

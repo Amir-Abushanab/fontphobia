@@ -21,6 +21,7 @@ import { narrowOptions, type OptionsSuggestion } from './narrow-options.ts';
 import { EJECT_KINDS, ejectFramework, ejectSources, hasFrameworkEject, isEjectKind } from './framework-eject.ts';
 import { applyEdits, checkEdits, type Edit } from './edits.ts';
 import { MANIFEST_FILE, MANIFEST_VERSION, manifestJson, manifestPath, readManifest, writeManifest, type Manifest, type ManifestEntry } from './manifest.ts';
+import { findFontCheckCalls, fontCheckFix } from '../project/font-checks.ts';
 
 export interface ProjectBuildOptions {
   version: string;
@@ -316,9 +317,21 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
 
   // Ejects this run didn't touch stay (their entries were kept above).
   for (const [k, v] of Object.entries(prev?.ejects ?? {})) if (!ejects[k] && Object.values(entries).some((e) => e.stylesheet === k)) ejects[k] = v;
+  // Font readiness checks in the site's code (§6): once a face is split, `document.fonts.load(font)`
+  // and `.check(font)` wait for its core file only. Each gets the page's text, so it waits for the
+  // files the page uses. Earlier fixes are kept (already fixed calls take two arguments).
+  const fontChecks = [...(prev?.fontChecks ?? [])];
+  if (Object.keys(entries).length) {
+    for (const c of findFontCheckCalls(root)) {
+      if (!c.fixable) continue;
+      const fix = fontCheckFix(c);
+      edits.push({ file: c.file, start: fix.at, end: fix.at, text: fix.text, why: `document.fonts.${c.method}() waits for the files this page uses, not the core file alone` });
+      fontChecks.push({ file: c.file, from: c.call, to: fix.to });
+    }
+  }
   const manifest: Manifest = {
     version: MANIFEST_VERSION, fontphobia: o.version, harfbuzz: harfbuzzVersion(), chrome: usage.meta.chrome, entries,
-    ejects: Object.keys(ejects).length ? ejects : undefined, google, options,
+    ejects: Object.keys(ejects).length ? ejects : undefined, google, options, fontChecks: fontChecks.length ? fontChecks : undefined,
     others: otherFaces(root, css.filter((c) => !generated.has(c.file) && !ejects[c.file]), edits), demands: demandKeys(cssDemands(root)),
   };
   const generatedList = [...generated].sort(([a], [b]) => (a < b ? -1 : 1)).map(([file, text]) => ({ file, bytes: Buffer.byteLength(text), exists: existsSync(join(root, file)) && readFileSync(join(root, file), 'utf8') === text }));

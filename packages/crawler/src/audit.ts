@@ -5,7 +5,7 @@ import { availableParallelism } from 'node:os';
 import { relative, resolve, sep } from 'node:path';
 import { chromium, type Browser } from 'playwright-core';
 import {
-  adobeFaceFacts, findBlock, findLocalFontCalls, isTypekitSheet, type AdobeFaceFacts, generatedFaces, readManifest, buildUsage, classifyFace, detectCss, detectProject, fontFacts, globToRegExp, harfbuzzVersion,
+  adobeFaceFacts, findBlock, findFontCheckCalls, findLocalFontCalls, isTypekitSheet, type AdobeFaceFacts, generatedFaces, readManifest, buildUsage, classifyFace, detectCss, detectProject, fontFacts, globToRegExp, harfbuzzVersion,
   htmlPages, indexFontFiles, isGlob, routesFromFiles, scanOffDom, usageToJson,
   type FaceSource, type FontFacts, type OffDomHit, type Project, type Visit,
 } from '@fontphobia/core';
@@ -256,7 +256,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       const call = calls.find((c) => c.srcs.some((x) => x.file === src.fontFile));
       if (call) sources.set(id, { adapter: 'next-font-local', file: call.file, line: call.line, fontFile: src.fontFile });
     }
-    const offDom = scanOffDom(root);
+    const offDom = [...scanOffDom(root), ...findFontCheckCalls(root).filter((c) => c.fixable).map((c) => ({ file: c.file, line: c.line, kind: 'font check', text: c.call.length > 70 ? c.call.slice(0, 67) + '…' : c.call }))];
 
     const covered = [...pages];
     const dynamicRoutes = fileRoutes.dynamic.filter((d) => {

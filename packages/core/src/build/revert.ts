@@ -16,6 +16,15 @@ export function revertProject(root: string, o: { write?: boolean } = {}): Revert
   const problems: string[] = [];
   const touched = new Set<string>();
   const deleted: string[] = [];
+  // Font readiness checks given the page's text: each call back as it was.
+  for (const fc of m.fontChecks ?? []) {
+    if (!existsSync(join(root, fc.file))) { problems.push(`${fc.file} is gone (a document.fonts call fontphobia changed)`); continue; }
+    const t = read(fc.file);
+    const at = t.indexOf(fc.to);
+    if (at < 0) { problems.push(`the document.fonts call fontphobia changed in ${fc.file} changed since; put the original back yourself:\n${fc.from}`); continue; }
+    texts.set(fc.file, t.slice(0, at) + fc.from + t.slice(at + fc.to.length));
+    touched.add(fc.file);
+  }
   // fontsource ejects (§6.2): imports back to the package; the generated copy goes if unchanged.
   for (const [file, ej] of Object.entries(m.ejects ?? {}).sort(([a], [b]) => (a < b ? -1 : 1))) {
     // next/font/google and Astro ejects: each rewritten snippet back.
