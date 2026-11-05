@@ -212,7 +212,7 @@ async function runBuild(o: BuildFlags & { prompt?: boolean }) {
 
 interface VerifyFlags {
   cwd?: string; usage?: string; dist?: string; buildCmd?: string; startCmd?: string; url?: string; rebuild?: boolean; pages?: string | string[];
-  maxPages?: number; viewports?: string; dpr?: string; browsers?: string; hinting?: boolean; runtime?: string; baseline?: string; concurrency?: number; browser: boolean; json?: boolean; outDir?: string;
+  maxPages?: number; viewports?: string; dpr?: string; browsers?: string; hinting?: boolean; ignore?: string | string[]; mask?: string | string[]; timeout?: number; runtime?: string; baseline?: string; concurrency?: number; browser: boolean; json?: boolean; outDir?: string;
 }
 
 async function runVerify(o: VerifyFlags) {
@@ -233,6 +233,8 @@ async function runVerify(o: VerifyFlags) {
     root, usage, log, browser: o.browser,
     dist: o.dist ?? config.dist, url: o.url ?? config.url, buildCmd: o.buildCmd ?? config.build, startCmd: o.startCmd ?? config.start, rebuild: o.rebuild,
     pages: [...(config.pages ?? []), ...(list(o.pages) ?? [])], maxPages: o.maxPages ?? config.verify?.maxPages,
+    ignore: [...(config.ignore ?? []), ...(list(o.ignore) ?? [])], mask: [...(config.verify?.mask ?? []), ...([o.mask].flat().filter((x): x is string => typeof x === 'string'))],
+    timeout: o.timeout !== undefined ? Number(o.timeout) : config.verify?.timeout,
     viewports: list(o.viewports)?.map(Number) ?? config.verify?.viewports ?? config.viewports, dprs: list(o.dpr)?.map(Number) ?? config.verify?.dprs,
     browsers, hinting: o.hinting ?? config.verify?.hinting, runtime: o.runtime as 'container' | undefined, baseline: o.baseline as 'overlay' | undefined, concurrency: o.concurrency, outDir: join(out, 'verify'),
   });
@@ -263,6 +265,9 @@ verifyOptions(cli
   .option('--url <origin>', 'Verify a running site instead')
   .option('--rebuild', 'Build again even if output exists')
   .option('--pages <paths>', 'Pages that are always compared; repeatable')
+  .option('--ignore <globs>', 'Pages never compared; repeatable')
+  .option('--mask <selector>', 'Hide these elements in both loads (script-driven animations, canvases, embeds); repeatable')
+  .option('--timeout <seconds>', 'How long a page may take to load (default 30)')
   .option('--viewports <list>', 'Viewport widths (default: the audit\'s)')
   .option('--concurrency <n>', 'Parallel comparisons')
   .option('--out-dir <dir>', 'Where report.md and diff images go (default .fontphobia)')

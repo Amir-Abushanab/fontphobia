@@ -85,7 +85,7 @@ Run everything from the project root (or pass `--cwd`). (If pnpm refuses a relea
    - every recorded word is shaped with HarfBuzz from the original and from the split files, and the results must be identical;
    - every page is loaded before and after in the browser, and the layout and pixels are compared.
 
-   Each difference is classified, and a real one fails the run. Diff images go to `.fontphobia/verify/`.
+   Each difference is classified, and a real one fails the run, naming the element where it happened. Diff images go to `.fontphobia/verify/`. Content that changes on its own between loads (script-driven animations, canvases, embeds) can't be compared: hide it with `--mask <selector>`, or skip a page with `--ignore <glob>`.
 
 ## Font sources
 
@@ -130,7 +130,7 @@ Every command takes `--cwd <dir>`, and most take `--json`.
 | `fontphobia` | Audit, plan, ask, write, verify | `--write`/`-u`, `--allow`, `--ci` |
 | `audit` | Crawl and write `.fontphobia/usage.json` and `report.md` | `--dist`, `--build-cmd`, `--start-cmd` (SSR routes), `--url`, `--pages`, `--ignore`, `--viewports`, `--locales`, `--rebuild`, `--no-cache` |
 | `build` | Plan from `usage.json` (no browser). Shows the plan and diff; `--write` applies | `--write`, `--allow`, `--no-remainder` |
-| `verify` | Check the files and shaping, then compare every page before and after | `--browsers`, `--dpr`, `--viewports`, `--baseline overlay\|worktree`, `--hinting`, `--no-browser` |
+| `verify` | Check the files and shaping, then compare every page before and after | `--browsers`, `--dpr`, `--viewports`, `--mask`, `--ignore`, `--timeout`, `--baseline overlay\|worktree`, `--hinting`, `--no-browser` |
 | `check` | Are the subsets still up to date? Exits 1 when the site would render differently | `--url` (crawl production), `--mode warn`, `--strict`, `--allow-chars` |
 | `revert` | Put everything back from the manifest | `--dry-run`, `--keep-kits` |
 | `apply-kit` | Adobe Fonts: remove kit styles nothing uses, through the Typekit API (`TYPEKIT_TOKEN` from fonts.adobe.com/account/tokens) | `--yes`, `--check` |
