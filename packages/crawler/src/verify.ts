@@ -2,7 +2,7 @@
 // build, "after" as served and "before" with the original fonts swapped back in (core/verify/overlay),
 // and compare layout (text boxes, and fonts per node on Chromium) and pixels. Then bytes per page,
 // and that each extended and rest file loads only on pages that use one of its characters.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
 import { join, resolve } from 'node:path';
 import { firefox, webkit, type Browser, type BrowserContext, type CDPSession, type Page } from 'playwright-core';
@@ -409,6 +409,8 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
   // --hinting alone: the worst case is DPR 1 only.
   const dprsFor = (e: Engine) => (e === 'linux-chromium' && o.hinting && !o.browsers?.includes('linux-chromium') ? [1] : dprs);
   const outDir = o.outDir ?? join(root, '.fontphobia', 'verify');
+  // Diff images are this run's only: full-page PNGs add up fast (826 MB after three runs on a 55-page site).
+  rmSync(outDir, { recursive: true, force: true });
   const limitFaces = new Set(Object.values(o.manifest.entries).filter((e) => e.plan.optIns.includes('limit-axes')).map((e) => e.id));
   // The internal family names of fontphobia's files, as getPlatformFontsForNode reports them.
   const ours = new Set<string>();

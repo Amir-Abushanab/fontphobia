@@ -6,9 +6,9 @@
 // real path stays inside the copy, which bundlers that compile dependencies' source need (Astro's
 // .astro components, Turbopack), without the space or time of a copy.
 import { execFile } from 'node:child_process';
-import { copyFileSync, cpSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readlinkSync, realpathSync, rmSync, statSync, symlinkSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readlinkSync, realpathSync, renameSync, rmSync, statSync, symlinkSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
-import { ensureFontphobiaDir } from '@fontphobia/core';
+import { ensureFontphobiaDir, KEPT_OUTPUT } from '@fontphobia/core';
 
 export const git = (cwd: string, args: string[]) => new Promise<string>((resolve, reject) => {
   execFile('git', args, { cwd, maxBuffer: 64 << 20 }, (err, stdout, stderr) => (err ? reject(new Error(`git ${args.join(' ')}: ${(stderr || err.message).trim()}`)) : resolve(stdout)));
@@ -125,3 +125,21 @@ export async function isolatedCopy(root: string, log: (m: string) => void): Prom
     throw e;
   }
 }
+
+/**
+ * The output of a build made in a copy, moved to .fontphobia/output/ before the copy goes: build
+ * reads what frameworks emitted there (the font files and CSS an eject takes over). Caches aren't kept.
+ */
+export function keepOutput(copyRoot: string, root: string, dirs: string[]) {
+  const dest = join(root, KEPT_OUTPUT);
+  rmSync(dest, { recursive: true, force: true });
+  for (const d of new Set(dirs.map((x) => x.split('/')[0]!).filter((x) => x && x !== '.'))) {
+    if (!existsSync(join(copyRoot, d))) continue;
+    mkdirSync(dest, { recursive: true });
+    renameSync(join(copyRoot, d), join(dest, d));
+    for (const cache of ['cache', '.cache']) rmSync(join(dest, d, cache), { recursive: true, force: true });
+  }
+}
+
+/** The project's own output was crawled: an earlier kept output would be stale. */
+export const clearKeptOutput = (root: string) => rmSync(join(root, KEPT_OUTPUT), { recursive: true, force: true });

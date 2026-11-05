@@ -41,9 +41,9 @@ describe('build --write (css adapter, §9)', () => {
     writeFileSync(join(root, 'src/fonts.ts'), code);
     const before = snapshot(root);
     const preview = await buildProject(root, usage, {}, { version: '1' });
-    expect(preview.edits.filter((e) => e.file === 'src/fonts.ts').map((e) => e.text)).toEqual(['document.fonts.load(f).then((faces) => document.fonts.ready.then(() => faces))', "(document.fonts.check('1em Inter') && document.fonts.status === 'loaded')"]);
+    expect(preview.edits.filter((e) => e.file === 'src/fonts.ts').map((e) => e.text)).toEqual(['document.fonts.load(f).then((loaded) => document.fonts.ready.then(() => loaded))', "(document.fonts.check('1em Inter') && document.fonts.status === 'loaded')"]);
     await buildProject(root, usage, {}, { version: '1', write: true });
-    expect(readFileSync(join(root, 'src/fonts.ts'), 'utf8')).toBe(code.replace('document.fonts.load(f)', 'document.fonts.load(f).then((faces) => document.fonts.ready.then(() => faces))').replace("document.fonts.check('1em Inter')", "(document.fonts.check('1em Inter') && document.fonts.status === 'loaded')"));
+    expect(readFileSync(join(root, 'src/fonts.ts'), 'utf8')).toBe(code.replace('document.fonts.load(f)', 'document.fonts.load(f).then((loaded) => document.fonts.ready.then(() => loaded))').replace("document.fonts.check('1em Inter')", "(document.fonts.check('1em Inter') && document.fonts.status === 'loaded')"));
     expect(readManifest(root)!.fontChecks).toHaveLength(2);
     // A second build finds them fixed and keeps the records for revert.
     expect((await buildProject(root, usage, {}, { version: '1', write: true })).unchanged).toBe(true);
@@ -53,6 +53,9 @@ describe('build --write (css adapter, §9)', () => {
     const { checkProject } = await import('../src/index.ts');
     const c = await checkProject({ root, outputDir: root });
     expect(c.issues.filter((i) => i.file === 'src/late.js').map((i) => i.severity)).toEqual(['warning']);
+    // A usage.json from another audit (no face in common with the manifest) isn't used.
+    const stale = await checkProject({ root, outputDir: root, usage: { ...usage, faces: { 'other-400-normal-abc123': usage.faces[Object.keys(usage.faces)[0]!]! } } as UsageFileJson });
+    expect(stale.notes).toContainEqual(expect.stringMatching(/^usage\.json is from a different audit/));
     rmSync(join(root, 'src/late.js'));
     revertProject(root, { write: true });
     const after = snapshot(root);

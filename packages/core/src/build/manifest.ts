@@ -9,6 +9,8 @@ import type { FacePlan, Role } from '../plan/planner.ts';
 /** Everything fontphobia writes for itself lives in this folder; only the manifest and sources/ are committed. */
 export const FONTPHOBIA_DIR = '.fontphobia';
 export const MANIFEST_FILE = '.fontphobia/manifest.json';
+/** Where audit keeps the output of a build it ran in a throwaway copy (crawler/isolate.ts), for build to read. */
+export const KEPT_OUTPUT = '.fontphobia/output';
 /** Where 0.1.x kept the manifest: still read, and moved on the next write. */
 export const LEGACY_MANIFEST_FILE = 'fontphobia.manifest.json';
 const GITIGNORE = `# fontphobia: everything here is ignored except what revert, check and rebuilds need:

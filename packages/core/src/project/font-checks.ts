@@ -4,7 +4,7 @@
 // fonts before showing, measuring or drawing text would go ahead while the characters the page needs
 // from the extended file are still loading. The fix waits for what the browser itself loads for the
 // page, and asks for nothing more:
-//   document.fonts.load(font)  →  document.fonts.load(font).then((f) => document.fonts.ready.then(() => f))
+//   document.fonts.load(font)  →  document.fonts.load(font).then((loaded) => document.fonts.ready.then(() => loaded))
 //   document.fonts.check(font) →  (document.fonts.check(font) && document.fonts.status === 'loaded')
 // `ready` and `status` follow the browser's own loads, which layout drives: only the split files the
 // rendered text needs. (Passing the page's text instead would fetch every file whose characters
@@ -130,7 +130,7 @@ export function findFontCheckCalls(root: string, o: { maxFiles?: number; outputD
 export function fontCheckFix(c: FontCheckCall): { start: number; end: number; text: string } {
   const opt = c.fonts.endsWith('?') ? '?.' : '.';
   const text = c.method === 'load'
-    ? `${c.call}${opt}then((faces) => ${c.fonts}.ready.then(() => faces))`
+    ? `${c.call}${opt}then((loaded) => ${c.fonts}.ready.then(() => loaded))`
     : `(${c.call} && ${c.fonts}.status === 'loaded')`;
   return { start: c.start, end: c.end, text };
 }

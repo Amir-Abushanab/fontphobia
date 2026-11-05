@@ -9,6 +9,7 @@
 //   `<Font>` tag becomes an import of the stylesheet plus the preload links it emitted.
 // - revert puts each edited snippet back and deletes the generated stylesheet.
 import { createHash } from 'node:crypto';
+import { KEPT_OUTPUT } from './manifest.ts';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import postcss, { type AtRule, type Rule } from 'postcss';
@@ -30,12 +31,12 @@ export const isEjectKind = (k: string | undefined): k is EjectKind => !!k && (EJ
 const sha = (b: Uint8Array | string) => createHash('sha256').update(b).digest('hex');
 const base = (u: string) => posix.basename(u.split(/[?#]/)[0]!);
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-const OUTPUT_DIRS = ['out', '.next', 'dist', 'dist/client', 'build'];
+const OUTPUT_DIRS = ['out', '.next', 'dist', 'dist/client', 'build', '.output/public'];
 
-/** Files under the build output dirs, by base name. */
+/** Files under the build output dirs (the kept output of fontphobia's own build first), by base name. */
 function builtFiles(root: string, pred: (rel: string) => boolean): Map<string, string> {
   const out = new Map<string, string>();
-  for (const d of OUTPUT_DIRS) {
+  for (const d of [...OUTPUT_DIRS.map((x) => `${KEPT_OUTPUT}/${x}`), ...OUTPUT_DIRS]) {
     if (!existsSync(join(root, d))) continue;
     for (const rel of listFiles(join(root, d), pred, { skip: (_r, n) => n === 'node_modules' || n === 'cache', max: 100_000 })) {
       const p = `${d}/${rel}`;

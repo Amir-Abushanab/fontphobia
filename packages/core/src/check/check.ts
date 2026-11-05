@@ -107,16 +107,24 @@ const pageOf = (rel: string) => {
 
 interface EntryFacts { e: ManifestEntry; source?: FontFacts; outputs: FontFacts[]; kept: Set<number>; rest: Set<number>; families: string }
 
-export async function checkProject(o: CheckOptions): Promise<CheckResult> {
+export async function checkProject(opts: CheckOptions): Promise<CheckResult> {
+  let o = opts;
   const root = o.root;
   const manifest: Manifest | undefined = readManifest(root);
   const notes: string[] = [];
   if (!manifest || (!Object.keys(manifest.entries).length && !manifest.google?.length && !manifest.options?.length && !manifest.kits?.length)) {
-    return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: ['no fontphobia.manifest.json: nothing has been built to check'] };
+    return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: ['no .fontphobia/manifest.json: nothing has been built to check'] };
   }
   const issues: CheckIssue[] = [];
   const add = (i: Omit<CheckIssue, 'severity'> & { severity?: CheckIssue['severity'] }) => issues.push({ severity: 'error', ...i });
   const allow = new Set([...(o.allowChars ?? '')].map((c) => c.codePointAt(0)!));
+  // A usage.json from another audit (none of its faces is in the manifest) would say no page draws
+  // any built face, and silence the character check: ignored, every face counts on every page.
+  const ids = Object.keys(manifest.entries);
+  if (o.usage && ids.length && !ids.some((id) => o.usage!.faces[id])) {
+    notes.push("usage.json is from a different audit (none of its faces is in the manifest), so it isn't used; rerun audit");
+    o = { ...o, usage: undefined };
+  }
 
   // 1. Sources, outputs and blocks, as built.
   const facts: EntryFacts[] = [];
@@ -330,7 +338,7 @@ export function formatCheck(r: CheckResult): string {
  */
 export async function checkUsage(root: string, usage: UsageFileJson, o: { strict?: boolean } = {}): Promise<CheckResult> {
   const manifest = readManifest(root);
-  if (!manifest || !Object.keys(manifest.entries).length) return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: ['no fontphobia.manifest.json: nothing has been built to check'] };
+  if (!manifest || !Object.keys(manifest.entries).length) return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: ['no .fontphobia/manifest.json: nothing has been built to check'] };
   const issues: CheckIssue[] = [];
   let outputs = 0;
   for (const e of Object.values(manifest.entries).sort((a, b) => (a.id < b.id ? -1 : 1))) {

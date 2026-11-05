@@ -3,7 +3,7 @@
 import { existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { buildAge, buildCommand, detectProject, findSite, type BuildAge, type Project, type SiteSource } from '@fontphobia/core';
-import { isolatedCopy, type Copy } from './isolate.ts';
+import { isolatedCopy, keepOutput, type Copy } from './isolate.ts';
 import { serveStatic } from './serve.ts';
 import { runCommand, startServer } from './server.ts';
 
@@ -31,6 +31,8 @@ export interface OpenSite {
   age?: BuildAge;
   /** The project root the served output belongs to: the project, or the copy it was built in. */
   root: string;
+  /** Built in a copy: move its output into .fontphobia/output/ (call before stop). */
+  keepOutput?: () => void;
   stop(): Promise<void>;
 }
 
@@ -85,10 +87,10 @@ export async function openSite(o: SiteOptions, project: Project, log: (m: string
     if (!existsSync(site.dir!) || !statSync(site.dir!).isDirectory()) { await copy?.remove(); throw new Error(`${site.dir} is not a directory`); }
     const s = await serveStatic(site.dir!, { spaFallback: site.spaFallback });
     log(`serving ${site.dir} (${site.reason})`);
-    return { mode: 'static', base: s.url, site, built, age, root: copy?.root ?? root, stop: async () => { await s.close(); await copy?.remove(); } };
+    return { mode: 'static', base: s.url, site, built, age, root: copy?.root ?? root, keepOutput: copy && (() => keepOutput(copy!.root, root, project.profile.output)), stop: async () => { await s.close(); await copy?.remove(); } };
   }
   log(`starting: ${site.server!.cmd}`);
   const s = await startServer(site.server!.cmd, { cwd: site.server!.cwd, env: site.server!.env }).catch(async (e) => { await copy?.remove(); throw e; });
   log(`server at ${s.url}`);
-  return { mode: 'server', base: s.url.replace(/\/?$/, '/'), site, built, age, root: copy?.root ?? root, stop: async () => { await s.stop(); await copy?.remove(); } };
+  return { mode: 'server', base: s.url.replace(/\/?$/, '/'), site, built, age, root: copy?.root ?? root, keepOutput: copy && (() => keepOutput(copy!.root, root, project.profile.output)), stop: async () => { await s.stop(); await copy?.remove(); } };
 }

@@ -9,6 +9,7 @@ import {
   htmlPages, indexFontFiles, isGlob, routesFromFiles, scanOffDom, usageToJson,
   type FaceSource, type FontFacts, type OffDomHit, type Project, type Visit,
 } from '@fontphobia/core';
+import { clearKeptOutput } from './isolate.ts';
 import { openSite, since, type SiteOptions } from './site.ts';
 import { pageKey, visitPage, type VisitOptions } from './visit.ts';
 import { VisitCache } from './visit-cache.ts';
@@ -293,6 +294,9 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     return { usage: json, crawl, offDom, project };
   } finally {
     await browser?.close().catch(() => {});
+    // What build reads from the output (an eject's font files and CSS): kept from fontphobia's own
+    // build in a copy, or cleared when the project's own output was crawled.
+    try { if (opened.keepOutput) opened.keepOutput(); else if (mode !== 'url') clearKeptOutput(root); } catch (e) { log(`couldn't keep the build output: ${(e as Error).message}`); }
     await stop();
   }
 }
