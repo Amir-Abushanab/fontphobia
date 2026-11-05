@@ -2,7 +2,7 @@
 // sites that fetch data at build time do) leaves the project untouched, and the copy has every
 // uncommitted change, untracked file and .env file, so it builds what's on disk.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -32,17 +32,26 @@ function repo(): string {
   writeFileSync(join(root, 'new.txt'), 'untracked');
   rmSync(join(root, 'gone.txt'));
   writeFileSync(join(root, '.env'), 'SECRET=1');
+  // An installed package, and a link to it the way pnpm lays them out.
+  mkdirSync(join(root, 'node_modules/.pnpm/dep/node_modules/dep'), { recursive: true });
+  writeFileSync(join(root, 'node_modules/.pnpm/dep/node_modules/dep/index.astro'), '<p>dep</p>');
+  symlinkSync('.pnpm/dep/node_modules/dep', join(root, 'node_modules/dep'), 'junction');
+  symlinkSync(join(root, 'node_modules/.pnpm/dep/node_modules/dep'), join(root, 'node_modules/alias'), 'junction'); // absolute, as Windows junctions are
   return root;
 }
 
 describe('isolated builds', () => {
   it('copies the working tree as it is on disk, and removes the worktree afterwards', async () => {
     const root = repo();
-    const copy = await isolatedCopy(root, detectProject, () => {});
+    const copy = await isolatedCopy(root, () => {});
     expect(readFileSync(join(copy.root, 'page.txt'), 'utf8')).toBe('uncommitted');
     expect(readFileSync(join(copy.root, 'new.txt'), 'utf8')).toBe('untracked');
     expect(existsSync(join(copy.root, 'gone.txt'))).toBe(false);
     expect(readFileSync(join(copy.root, '.env'), 'utf8')).toBe('SECRET=1');
+    // Dependencies: hard-linked, so their real paths stay in the copy (Astro compiles .astro files from packages).
+    expect(realpathSync(join(copy.root, 'node_modules/dep/index.astro')).startsWith(realpathSync(copy.root))).toBe(true);
+    expect(realpathSync(join(copy.root, 'node_modules/alias/index.astro')).startsWith(realpathSync(copy.root))).toBe(true);
+    expect(copy.root.startsWith(join(root, '.fontphobia', 'tmp'))).toBe(true);
     await copy.remove();
     expect(existsSync(copy.root)).toBe(false);
     expect(sh(root, 'worktree', 'list').trim().split('\n')).toHaveLength(1);

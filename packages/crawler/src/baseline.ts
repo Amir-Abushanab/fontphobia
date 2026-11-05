@@ -2,12 +2,11 @@
 // fontphobia's blocks reverted there if they're already committed. It works for every adapter,
 // where the overlay only knows how to swap `@font-face` rules back. The working tree may differ
 // from HEAD only by fontphobia's own changes, so any other difference is content, not fonts.
-import { existsSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, realpathSync, rmSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { buildCommand, detectProject, LEGACY_MANIFEST_FILE, manifestPath, MANIFEST_FILE, revertProject, type Manifest } from '@fontphobia/core';
 import { openSite, type OpenSite, type SiteOptions } from './site.ts';
-import { git, linkDependencies } from './isolate.ts';
+import { git, linkDependencies, scratch } from './isolate.ts';
 
 export interface Baseline { site: OpenSite; dir: string; reverted: boolean; stop(): Promise<void> }
 
@@ -48,7 +47,7 @@ export async function worktreeBaseline(root: string, manifest: Manifest, o: Site
     throw new Error(`The worktree baseline compares HEAD with your working tree, which has changes besides fontphobia's: ${other.slice(0, 5).join(', ')}${other.length > 5 ? ` and ${other.length - 5} more` : ''}. Commit or stash them first.`);
   }
 
-  const dir = mkdtempSync(join(tmpdir(), 'fontphobia-baseline-'));
+  const dir = scratch(root, 'baseline-');
   await git(top, ['worktree', 'add', '--detach', dir, 'HEAD']);
   const cleanup = async () => {
     await git(top, ['worktree', 'remove', '--force', dir]).catch(() => {});
@@ -65,7 +64,7 @@ export async function worktreeBaseline(root: string, manifest: Manifest, o: Site
       reverted = true;
     }
     const project = detectProject(wroot);
-    linkDependencies([[top, dir], [root, wroot]], project);
+    linkDependencies([[top, dir], [root, wroot]]);
     const cmd = o.buildCmd ?? buildCommand(project);
     log(`baseline: HEAD in a git worktree${reverted ? ', fontphobia\'s committed edits reverted' : ''}${cmd ? `, building with ${cmd}` : ''}`);
     const site = await openSite({ dist: o.dist, buildCmd: o.buildCmd, startCmd: o.startCmd, rebuild: !!cmd && !o.dist && !o.startCmd, inPlace: true }, project, (m) => log(`baseline: ${m}`));

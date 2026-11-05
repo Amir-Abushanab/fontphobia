@@ -1,12 +1,14 @@
 // Font readiness checks in the site's own code (§6, found on principlestash.com):
-// `document.fonts.load('1em Fraunces')` and `document.fonts.check('1em Fraunces')` without the text
-// argument test the text " ". Before the split that loaded the whole font; after it, only the core
-// file. Code that waits for fonts before showing text, measuring it or drawing it on a canvas would
-// then go ahead while the page's extended characters are still loading. The fix passes the page's
-// rendered text, so the call waits for exactly the files the page uses:
-//   document.fonts.load('1em Fraunces', document.body?.innerText)
-// `document.body?.innerText` is a string or undefined, so it type-checks under strict TypeScript,
-// and before <body> exists (a script in <head>) it is undefined, which is the old behavior.
+// `document.fonts.load('1em Fraunces')` and `document.fonts.check('1em Fraunces')` test the text " ".
+// Before the split that meant the whole font; after it, only the core file. Code that waits for
+// fonts before showing, measuring or drawing text would go ahead while the characters the page needs
+// from the extended file are still loading. The fix waits for what the browser itself loads for the
+// page, and asks for nothing more:
+//   document.fonts.load(font)  →  document.fonts.load(font).then((f) => document.fonts.ready.then(() => f))
+//   document.fonts.check(font) →  (document.fonts.check(font) && document.fonts.status === 'loaded')
+// `ready` and `status` follow the browser's own loads, which layout drives: only the split files the
+// rendered text needs. (Passing the page's text instead would fetch every file whose characters
+// appear anywhere on the page, in any font.) Both keep their types under strict TypeScript.
 //
 // Parsed, not pattern-matched: TypeScript, JSX/TSX and JavaScript, and the <script> blocks of
 // .astro, .vue, .svelte and .html files, with @babel/parser.
@@ -14,19 +16,19 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { parse, type ParserPlugin } from '@babel/parser';
 
-export const PAGE_TEXT = 'document.body?.innerText';
 
 export interface FontCheckCall {
   /** Project-relative, '/'-separated. */
   file: string;
   line: number;
   method: 'load' | 'check';
-  /** The call as written, e.g. `document.fonts.load('1em Fraunces')`, and where it starts in the file. */
+  /** The call as written, e.g. `document.fonts.load('1em Fraunces')`, and where it is in the file. */
   call: string;
   start: number;
-  /** Offset in the file where the second argument goes (after the first argument). */
-  insertAt: number;
-  /** false when the call already passes text (or something we can't extend, like a spread). */
+  end: number;
+  /** The `document.fonts` part as written (`window.document.fonts`, `document.fonts?`…). */
+  fonts: string;
+  /** false when the call passes text (the author chose what to wait for) or was fixed already. */
   fixable: boolean;
 }
 
@@ -69,9 +71,14 @@ function callsIn(b: Block, file: string, text: string): FontCheckCall[] {
     ast = parse(b.code, { sourceType: 'unambiguous', errorRecovery: true, allowReturnOutsideFunction: true, allowAwaitOutsideFunction: true, allowImportExportEverywhere: true, plugins }) as unknown as Node;
   } catch { return []; } // not parseable even with recovery: skipped, never edited
   const out: FontCheckCall[] = [];
-  const visit = (n: unknown) => {
+  const src = (n: Node) => b.code.slice(n.start, n.end);
+  // Already fixed: `load(…).then((…) => ….ready…)`, or `(check(…) && ….status === 'loaded')`.
+  const fixedAlready = (method: string, node: Node, parent: Node | undefined, grand: Node | undefined) => (method === 'load'
+    ? isMember(parent) && parent.object === node && propName(parent) === 'then' && !!grand && grand.callee === parent && /\.ready\b/.test(src(grand))
+    : parent?.type === 'LogicalExpression' && parent.operator === '&&' && parent.left === node && /\.status\s*===\s*['"]loaded['"]/.test(src(parent.right as Node)));
+  const visit = (n: unknown, parents: Node[]) => {
     if (!n || typeof n !== 'object') return;
-    if (Array.isArray(n)) { for (const x of n) visit(x); return; }
+    if (Array.isArray(n)) { for (const x of n) visit(x, parents); return; }
     const node = n as Node;
     if (typeof node.type !== 'string') return;
     if (node.type === 'CallExpression' || node.type === 'OptionalCallExpression') {
@@ -80,17 +87,18 @@ function callsIn(b: Block, file: string, text: string): FontCheckCall[] {
       const fonts = isMember(callee) ? (callee.object as Node) : undefined;
       if ((method === 'load' || method === 'check') && isMember(fonts) && propName(fonts) === 'fonts' && isDocument(fonts.object as Node)) {
         const args = node.arguments as Node[];
-        const first = args[0];
         out.push({
           file, line: text.slice(0, b.offset + node.start).split('\n').length, method,
-          call: b.code.slice(node.start, node.end), start: b.offset + node.start, insertAt: b.offset + (first?.end ?? node.end),
-          fixable: args.length === 1 && first!.type !== 'SpreadElement',
+          call: src(node), start: b.offset + node.start, end: b.offset + node.end,
+          fonts: src(fonts) + (callee.optional ? '?' : ''),
+          fixable: args.length === 1 && args[0]!.type !== 'SpreadElement' && !fixedAlready(method, node, parents.at(-1), parents.at(-2)),
         });
       }
     }
-    for (const k of Object.keys(node)) if (k !== 'loc' && k !== 'start' && k !== 'end' && k !== 'extra' && k !== 'leadingComments' && k !== 'trailingComments') visit(node[k]);
+    const next = [...parents, node];
+    for (const k of Object.keys(node)) if (k !== 'loc' && k !== 'start' && k !== 'end' && k !== 'extra' && k !== 'leadingComments' && k !== 'trailingComments') visit(node[k], next);
   };
-  visit(ast);
+  visit(ast, []);
   return out;
 }
 
@@ -118,9 +126,11 @@ export function findFontCheckCalls(root: string, o: { maxFiles?: number; outputD
   return out;
 }
 
-/** The edit that passes the page's text to a call (inserted after its first argument). */
-export function fontCheckFix(c: FontCheckCall): { at: number; text: string; to: string } {
-  const text = `, ${PAGE_TEXT}`;
-  const k = c.insertAt - c.start;
-  return { at: c.insertAt, text, to: c.call.slice(0, k) + text + c.call.slice(k) };
+/** The call's replacement: wait for the browser's own loads (see the top of this file). */
+export function fontCheckFix(c: FontCheckCall): { start: number; end: number; text: string } {
+  const opt = c.fonts.endsWith('?') ? '?.' : '.';
+  const text = c.method === 'load'
+    ? `${c.call}${opt}then((faces) => ${c.fonts}.ready.then(() => faces))`
+    : `(${c.call} && ${c.fonts}.status === 'loaded')`;
+  return { start: c.start, end: c.end, text };
 }

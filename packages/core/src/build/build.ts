@@ -318,15 +318,15 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
   // Ejects this run didn't touch stay (their entries were kept above).
   for (const [k, v] of Object.entries(prev?.ejects ?? {})) if (!ejects[k] && Object.values(entries).some((e) => e.stylesheet === k)) ejects[k] = v;
   // Font readiness checks in the site's code (§6): once a face is split, `document.fonts.load(font)`
-  // and `.check(font)` wait for its core file only. Each gets the page's text, so it waits for the
-  // files the page uses. Earlier fixes are kept (already fixed calls take two arguments).
+  // and `.check(font)` wait for its core file only. Each also waits for the browser's own font loads
+  // (project/font-checks.ts). Earlier fixes are kept for revert; fixed calls are recognized.
   const fontChecks = [...(prev?.fontChecks ?? [])];
   if (Object.keys(entries).length) {
     for (const c of findFontCheckCalls(root)) {
       if (!c.fixable) continue;
       const fix = fontCheckFix(c);
-      edits.push({ file: c.file, start: fix.at, end: fix.at, text: fix.text, why: `document.fonts.${c.method}() waits for the files this page uses, not the core file alone` });
-      fontChecks.push({ file: c.file, from: c.call, to: fix.to });
+      edits.push({ file: c.file, start: fix.start, end: fix.end, text: fix.text, why: `document.fonts.${c.method}() waits for every font file the page's text needs, not the core file alone` });
+      fontChecks.push({ file: c.file, from: c.call, to: fix.text });
     }
   }
   const manifest: Manifest = {

@@ -67,7 +67,7 @@ export async function openSite(o: SiteOptions, project: Project, log: (m: string
       const cmd = o.buildCmd ?? buildCommand(project);
       if (!cmd) throw new Error(`No build output found for ${project.profile.name} (looked in ${project.profile.output.join(', ') || 'nothing'}) and no build script. Pass --dist, --build-cmd, --start-cmd or --url.`);
       // In a throwaway copy: a build may write more than its output (data fetched into tracked files).
-      copy = o.inPlace ? undefined : await isolatedCopy(root, detectProject, log);
+      copy = o.inPlace ? undefined : await isolatedCopy(root, log);
       const where = copy ? detectProject(copy.root) : project;
       log(`building: ${cmd}`);
       const r = await runCommand(cmd, where.root);

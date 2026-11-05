@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import ts from 'typescript';
 import { afterAll, describe, expect, it } from 'vitest';
-import { findFontCheckCalls, fontCheckFix, PAGE_TEXT } from '../src/index.ts';
+import { findFontCheckCalls, fontCheckFix } from '../src/index.ts';
 
 const tmp = mkdtempSync(join(tmpdir(), 'fontphobia-fontchecks-'));
 afterAll(() => rmSync(tmp, { recursive: true, force: true }));
@@ -17,7 +17,7 @@ function project(files: Record<string, string>): string {
 }
 const apply = (text: string, calls: ReturnType<typeof findFontCheckCalls>) => {
   let out = text;
-  for (const c of [...calls].filter((x) => x.fixable).sort((a, b) => b.insertAt - a.insertAt)) { const f = fontCheckFix(c); out = out.slice(0, f.at) + f.text + out.slice(f.at); }
+  for (const c of [...calls].filter((x) => x.fixable).sort((a, b) => b.start - a.start)) { const f = fontCheckFix(c); out = out.slice(0, f.start) + f.text + out.slice(f.end); }
   return out;
 };
 
@@ -47,7 +47,18 @@ describe('font readiness checks', () => {
       'src/legacy.js:1 load fix document.fonts.load(\'1em X\',)',
       'src/legacy.js:2 check fix document.fonts[\'check\'](\'1em X\')',
     ]);
-    expect(fontCheckFix(calls.find((c) => c.file === 'src/legacy.js')!).to).toBe(`document.fonts.load('1em X', ${PAGE_TEXT},)`);
+    expect(fontCheckFix(calls.find((c) => c.file === 'src/legacy.js')!).text).toBe("document.fonts.load('1em X',).then((faces) => document.fonts.ready.then(() => faces))");
+    expect(fontCheckFix(calls.find((c) => c.method === 'check' && c.file === 'src/App.tsx')!).text).toBe("(document.fonts?.check('1em Inter') && document.fonts?.status === 'loaded')");
+    expect(fontCheckFix(calls.find((c) => c.file === 'src/App.tsx' && c.method === 'load')!).text).toBe('window.document.fonts.load(`${700} 1em Inter`).then((faces) => window.document.fonts.ready.then(() => faces))');
+  });
+
+  it('recognizes calls it already fixed, so a rebuild changes nothing', () => {
+    const code = `export const go = async (font: string) => { await document.fonts.load(font); return !document.fonts.check(font); };\n`;
+    const root = project({ 'src/a.ts': code });
+    const fixed = apply(code, findFontCheckCalls(root));
+    expect(fixed).toBe("export const go = async (font: string) => { await document.fonts.load(font).then((faces) => document.fonts.ready.then(() => faces)); return !(document.fonts.check(font) && document.fonts.status === 'loaded'); };\n");
+    writeFileSync(join(root, 'src/a.ts'), fixed);
+    expect(findFontCheckCalls(root).map((c) => c.fixable)).toEqual([false, false]);
   });
 
   it('the fixed TypeScript and TSX type-check under strict mode with the DOM library', () => {
@@ -58,7 +69,7 @@ describe('font readiness checks', () => {
     const root = project(files);
     const calls = findFontCheckCalls(root);
     const fixed = Object.fromEntries(Object.entries(files).map(([f, t]) => [f, apply(t, calls.filter((c) => c.file === f))]));
-    expect(fixed['a.ts']).toContain(`document.fonts.load(x, ${PAGE_TEXT})`);
+    expect(fixed['a.ts']).toContain('document.fonts.load(x).then((faces) => document.fonts.ready.then(() => faces))');
     const host = ts.createCompilerHost({});
     const read = host.readFile.bind(host);
     host.readFile = (f) => (f.endsWith('a.ts') ? fixed['a.ts'] : f.endsWith('b.tsx') ? fixed['b.tsx'] : read(f));

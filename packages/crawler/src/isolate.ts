@@ -1,12 +1,14 @@
 // Builds run in a throwaway copy of the project, never in it: a site's build can do more than write
 // its output (fetch data into tracked files, bump caches), and fontphobia should change nothing but
 // what it means to change. The copy is a git worktree at HEAD with the working tree's changes laid
-// over it (so it builds exactly what's on disk), or a plain copy outside git.
+// over it (so it builds exactly what's on disk), or a plain copy outside git. It lives in
+// .fontphobia/tmp/ (ignored), on the project's own disk, so node_modules can be hard-linked in: every
+// real path stays inside the copy, which bundlers that compile dependencies' source need (Astro's
+// .astro components, Turbopack), without the space or time of a copy.
 import { execFile } from 'node:child_process';
-import { constants, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join, relative, sep } from 'node:path';
-import type { Project } from '@fontphobia/core';
+import { copyFileSync, cpSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readlinkSync, realpathSync, rmSync, statSync, symlinkSync } from 'node:fs';
+import { dirname, isAbsolute, join, relative, sep } from 'node:path';
+import { ensureFontphobiaDir } from '@fontphobia/core';
 
 export const git = (cwd: string, args: string[]) => new Promise<string>((resolve, reject) => {
   execFile('git', args, { cwd, maxBuffer: 64 << 20 }, (err, stdout, stderr) => (err ? reject(new Error(`git ${args.join(' ')}: ${(stderr || err.message).trim()}`)) : resolve(stdout)));
@@ -34,17 +36,44 @@ export async function gitChanges(top: string): Promise<{ path: string; deleted: 
 }
 
 /**
- * Dependencies aren't in git: reuse the installed ones. Turbopack (Next 16's default) won't resolve
- * through a node_modules that links outside the project, so for Next they're cloned (copy-on-write
- * on APFS, btrfs and XFS; a plain copy elsewhere), keeping pnpm's own links.
+ * The same tree with every file hard-linked (copied where the disk can't link) and every link kept.
+ * A link to an absolute path inside `from` (pnpm's junctions on Windows) points into `to` instead.
  */
-export function linkDependencies(pairs: [from: string, to: string][], project: Project) {
+export function linkTree(from: string, to: string, top = { from: realpathSync.native(from), to }) {
+  mkdirSync(to, { recursive: true });
+  for (const e of readdirSync(from, { withFileTypes: true })) {
+    const a = join(from, e.name), b = join(to, e.name);
+    if (e.isSymbolicLink()) {
+      let target = readlinkSync(a);
+      if (isAbsolute(target)) {
+        // Compared as real paths (macOS: /var is /private/var).
+        let real: string | undefined;
+        try { real = realpathSync.native(target); } catch { /* dangling */ }
+        if (real && (real === top.from || real.startsWith(top.from + sep))) target = join(top.to, relative(top.from, real));
+      }
+      let dir = false;
+      try { dir = statSync(a).isDirectory(); } catch { /* dangling */ }
+      symlinkSync(target, b, dir ? 'junction' : 'file');
+    } else if (e.isDirectory()) linkTree(a, b, top);
+    else { try { linkSync(a, b); } catch { copyFileSync(a, b); } }
+  }
+}
+
+/** Dependencies aren't in git: the installed ones, hard-linked in (see the top of this file). */
+export function linkDependencies(pairs: [from: string, to: string][]) {
   for (const [from, to] of pairs) {
     const nm = join(from, 'node_modules');
     if (!existsSync(nm) || existsSync(join(to, 'node_modules'))) continue;
-    if (project.profile.id === 'next') cpSync(nm, join(to, 'node_modules'), { recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE });
-    else symlinkSync(nm, join(to, 'node_modules'), 'junction');
+    linkTree(nm, join(to, 'node_modules'));
   }
+}
+
+/** A fresh folder in .fontphobia/tmp/ for a throwaway copy (leftovers of crashed runs older than a day go). */
+export function scratch(root: string, prefix: string): string {
+  const base = join(ensureFontphobiaDir(root), 'tmp');
+  mkdirSync(base, { recursive: true });
+  for (const n of readdirSync(base)) { try { if (Date.now() - statSync(join(base, n)).mtimeMs > 86_400_000) rmSync(join(base, n), { recursive: true, force: true }); } catch { /* in use */ } }
+  return mkdtempSync(join(base, prefix));
 }
 
 /** Ignored files a build commonly reads: `.env`, `.env.local`, `.env.production`… at the project's top level. */
@@ -60,13 +89,14 @@ export interface Copy {
 const NOT_COPIED = new Set(['node_modules', '.git', '.fontphobia']);
 
 /** A copy of the project as it is on disk, to build in. */
-export async function isolatedCopy(root: string, detect: (dir: string) => Project, log: (m: string) => void): Promise<Copy> {
+export async function isolatedCopy(root: string, log: (m: string) => void): Promise<Copy> {
   const g = await gitTop(root);
-  const dir = mkdtempSync(join(tmpdir(), 'fontphobia-build-'));
+  const dir = scratch(root, 'build-');
   if (!g) {
     const wroot = join(dir, 'project');
-    cpSync(root, wroot, { recursive: true, verbatimSymlinks: true, filter: (src) => !NOT_COPIED.has(src.slice(root.length + 1).split(sep)[0] ?? '') });
-    linkDependencies([[root, wroot]], detect(wroot));
+    mkdirSync(wroot);
+    for (const n of readdirSync(root)) if (!NOT_COPIED.has(n)) cpSync(join(root, n), join(wroot, n), { recursive: true, verbatimSymlinks: true });
+    linkDependencies([[root, wroot]]);
     log(`building in a copy of the project (${wroot})`);
     return { root: wroot, remove: async () => { rmSync(dir, { recursive: true, force: true }); } };
   }
@@ -87,8 +117,8 @@ export async function isolatedCopy(root: string, detect: (dir: string) => Projec
     }
     const wroot = rel ? join(dir, rel) : dir;
     for (const [from, to] of [[top, dir], [root, wroot]] as const) for (const n of envFiles(from)) if (!existsSync(join(to, n))) cpSync(join(from, n), join(to, n));
-    linkDependencies([[top, dir], [root, wroot]], detect(wroot));
-    log(`building in a git worktree of the working tree (${dir})`);
+    linkDependencies([[top, dir], [root, wroot]]);
+    log(`building in a git worktree of the working tree (${relative(root, dir).split(sep).join('/')})`);
     return { root: wroot, remove };
   } catch (e) {
     await remove();

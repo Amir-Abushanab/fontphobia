@@ -47,7 +47,7 @@ Run everything from the project root (or pass `--cwd`). (If pnpm refuses a relea
 2. **Confirm.** fontphobia then:
    - writes the subset files next to the original fonts;
    - replaces each `@font-face` with a marked block of three rules;
-   - gives `document.fonts.load(font)` and `document.fonts.check(font)` calls in your code the page's text (`document.body?.innerText`) as a second argument, so code that waits for fonts still waits for every file the page uses, not the core file alone. It reads TypeScript, JSX/TSX and JavaScript, including `<script>` blocks in `.astro`, `.vue`, `.svelte` and `.html` files, and the change type-checks under strict TypeScript;
+   - makes `document.fonts.load(font)` and `document.fonts.check(font)` calls in your code also wait for the browser's own font loads (`document.fonts.ready`, `document.fonts.status`). Code that waits for fonts then still waits for every file the page's text needs, not the core file alone, and nothing extra downloads. It reads TypeScript, JSX/TSX and JavaScript, including `<script>` blocks in `.astro`, `.vue`, `.svelte` and `.html` files, and the change type-checks under strict TypeScript;
    - records what it changed in `.fontphobia/manifest.json`.
 
    Then it runs `verify`, which rebuilds the site and compares every page before and after. Use `--write` (or `-u`) to skip the question.

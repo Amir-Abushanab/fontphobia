@@ -34,16 +34,16 @@ function site(name: string) {
 const usage = JSON.parse(readFileSync(join(repo, 'fixtures/plans/static-css/usage.json'), 'utf8')) as UsageFileJson;
 
 describe('build --write (css adapter, §9)', () => {
-  it('passes the page text to document.fonts.load/check in the site code; revert puts the calls back; check warns about new ones', async () => {
+  it('makes document.fonts.load/check in the site code wait for the browser’s own loads; revert puts the calls back; check warns about new ones', async () => {
     const root = site('font-checks');
     const code = `const faces: string[] = ['1em Inter'];\nexport const ready = () => Promise.all(faces.map((f) => document.fonts.load(f))).then(() => document.fonts.check('1em Inter'));\n`;
     mkdirSync(join(root, 'src'));
     writeFileSync(join(root, 'src/fonts.ts'), code);
     const before = snapshot(root);
     const preview = await buildProject(root, usage, {}, { version: '1' });
-    expect(preview.edits.filter((e) => e.file === 'src/fonts.ts').map((e) => e.text)).toEqual([', document.body?.innerText', ', document.body?.innerText']);
+    expect(preview.edits.filter((e) => e.file === 'src/fonts.ts').map((e) => e.text)).toEqual(['document.fonts.load(f).then((faces) => document.fonts.ready.then(() => faces))', "(document.fonts.check('1em Inter') && document.fonts.status === 'loaded')"]);
     await buildProject(root, usage, {}, { version: '1', write: true });
-    expect(readFileSync(join(root, 'src/fonts.ts'), 'utf8')).toBe(code.replace('load(f)', 'load(f, document.body?.innerText)').replace("check('1em Inter')", "check('1em Inter', document.body?.innerText)"));
+    expect(readFileSync(join(root, 'src/fonts.ts'), 'utf8')).toBe(code.replace('document.fonts.load(f)', 'document.fonts.load(f).then((faces) => document.fonts.ready.then(() => faces))').replace("document.fonts.check('1em Inter')", "(document.fonts.check('1em Inter') && document.fonts.status === 'loaded')"));
     expect(readManifest(root)!.fontChecks).toHaveLength(2);
     // A second build finds them fixed and keeps the records for revert.
     expect((await buildProject(root, usage, {}, { version: '1', write: true })).unchanged).toBe(true);
