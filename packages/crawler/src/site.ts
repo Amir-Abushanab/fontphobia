@@ -48,7 +48,9 @@ export function since(ms: number, now = Date.now()): string {
 
 /** The static output kept from fontphobia's last build in a copy, if nothing changed since. */
 function keptSite(project: Project): SiteSource | undefined {
-  const site = findSite({ ...project, root: join(project.root, KEPT_OUTPUT) });
+  const root = join(project.root, KEPT_OUTPUT);
+  if (!existsSync(root)) return undefined;
+  const site = findSite({ ...project, root });
   if (site?.mode !== 'static') return undefined; // a server would run from the copy, which is gone
   const age = buildAge(project, site);
   return age && !age.newer ? { ...site, reason: `${KEPT_OUTPUT} (fontphobia's last build)` } : undefined;
