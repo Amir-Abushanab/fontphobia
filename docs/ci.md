@@ -55,7 +55,7 @@ Run this when fonts change (after `build --write`, or on a pull request that tou
 name: Fonts (verify)
 on:
   pull_request:
-    paths: ['fontphobia.manifest.json']
+    paths: ['.fontphobia/manifest.json']
 jobs:
   verify:
     strategy:

@@ -15,7 +15,7 @@ type UsageJson = {
   }>;
   unloaded: Record<string, { family: string; descriptors: Record<string, string>; sheet: string; urls: string[] }>;
   declarations?: { file: string; line: number; family: string; weight?: string; style?: string; files: string[]; manual?: string }[];
-  offDom?: { file: string; line: number; kind: string }[];
+  offDom?: { file: string; line: number; kind: string; text?: string }[];
 };
 
 export interface CrawlFacts {
@@ -115,7 +115,10 @@ export function auditFindings(u: UsageJson, crawl: CrawlFacts): Finding[] {
   for (const d of dis) out.push({ kind: 'cross-check', text: `Chrome drew text with ${d} where the CSS matching predicted another face; its characters were added to every candidate face` });
   for (const d of crawl.dynamicRoutes) out.push({ kind: 'routes', text: `${d} is a dynamic route with no crawled example: add sample paths to \`pages\`` });
   for (const [p, e] of Object.entries(crawl.failed)) out.push({ kind: 'failed', text: `${p}: ${e}` });
-  for (const h of u.offDom ?? []) out.push({ kind: 'off-DOM', text: `${h.file}:${h.line} uses fonts outside the DOM (${h.kind}); those files keep working because outputs are new files` });
+  for (const h of u.offDom ?? []) {
+    if (h.kind === 'font check') out.push({ kind: 'font check', text: `${h.file}:${h.line} \`${h.text ?? 'document.fonts'}\` would wait for the core file only once the font is split; build makes it also wait for the browser's own font loads (\`document.fonts.ready\`), so it covers every file the page's text needs and fetches nothing more` });
+    else out.push({ kind: 'off-DOM', text: `${h.file}:${h.line} uses fonts outside the DOM (${h.kind}); those files keep working because outputs are new files` });
+  }
   for (const [id, f] of Object.entries(u.faces)) if (f.wordsTruncated) out.push({ kind: 'usage.json', text: `${id}: word list capped` });
   for (const [id, f] of Object.entries(u.faces)) if (f.source.adapter === 'unknown') out.push({ kind: 'source', text: `${id} (${f.files[0]?.url ?? f.family}): no declaration found in the repo` });
   if ([...Object.values(u.faces), ...Object.values(u.unloaded)].some((f) => isTypekitSheet((f as { sheet?: string }).sheet))) out.push(...adobeFindings(u as unknown as AdobeUsage, crawl.adobe ?? []));

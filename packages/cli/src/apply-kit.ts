@@ -3,7 +3,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  checkLiveKit, desiredWeights, getKit, getPublishedKit, sameFamilies, isTypekitSheet, kitIdOf, manifestJson, MANIFEST_FILE, MANIFEST_VERSION, plannedFamilies, planKit, readManifest, repoText, setKitFamilies,
+  checkLiveKit, desiredWeights, getKit, getPublishedKit, sameFamilies, isTypekitSheet, kitIdOf, writeManifest, MANIFEST_FILE, MANIFEST_VERSION, plannedFamilies, planKit, readManifest, repoText, setKitFamilies,
   harfbuzzVersion, type KitApi, type KitUsageFace, type Manifest, type UsageFileJson,
 } from '@fontphobia/core';
 
@@ -69,7 +69,7 @@ export async function applyKit(root: string, usage: UsageFileJson, o: { yes?: bo
     m.kits = [...(m.kits ?? []).filter((k) => k.kit !== p.kit), { kit: p.kit, previous, applied }].sort((x, y) => (x.kit < y.kit ? -1 : 1));
     o.log(`kit ${p.kit}: published.`);
   }
-  writeFileSync(join(root, MANIFEST_FILE), manifestJson(m));
+  writeManifest(root, m);
   o.log(`Recorded the previous settings in ${MANIFEST_FILE}; \`fontphobia revert\` restores them.\nAdobe's CDN can take a few minutes; then \`fontphobia apply-kit --check\` confirms the live kit serves every face and character the pages use.`);
   return 0;
 }
@@ -84,7 +84,7 @@ export async function revertKits(root: string, log: (s: string) => void, o: { ke
   if (!m?.kits?.length) return [];
   if (o.keep) {
     for (const k of m.kits) log(`kit ${k.kit}: left as it is (--keep-kits)`);
-    delete m.kits; writeFileSync(join(root, MANIFEST_FILE), manifestJson(m));
+    delete m.kits; writeManifest(root, m);
     return [];
   }
   const a = api();
@@ -113,7 +113,7 @@ export async function revertKits(root: string, log: (s: string) => void, o: { ke
   // Kits restored so far aren't restored again on the next run.
   m.kits = m.kits.filter((k) => !done.has(k.kit));
   if (!m.kits.length) delete m.kits;
-  writeFileSync(join(root, MANIFEST_FILE), manifestJson(m));
+  writeManifest(root, m);
   return problems;
 }
 

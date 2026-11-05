@@ -2,13 +2,14 @@
 // and turn the visits into usage.json. The only environment-dependent step in the pipeline (§4).
 import { readFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
-import { resolve } from 'node:path';
+import { relative, resolve, sep } from 'node:path';
 import { chromium, type Browser } from 'playwright-core';
 import {
-  adobeFaceFacts, findBlock, findLocalFontCalls, isTypekitSheet, type AdobeFaceFacts, generatedFaces, readManifest, buildUsage, classifyFace, detectCss, detectProject, fontFacts, globToRegExp, harfbuzzVersion,
+  adobeFaceFacts, findBlock, findFontCheckCalls, findLocalFontCalls, isTypekitSheet, type AdobeFaceFacts, generatedFaces, readManifest, buildUsage, classifyFace, detectCss, detectProject, fontFacts, globToRegExp, harfbuzzVersion,
   htmlPages, indexFontFiles, isGlob, routesFromFiles, scanOffDom, usageToJson,
   type FaceSource, type FontFacts, type OffDomHit, type Project, type Visit,
 } from '@fontphobia/core';
+import { clearKeptOutput } from './isolate.ts';
 import { openSite, since, type SiteOptions } from './site.ts';
 import { pageKey, visitPage, type VisitOptions } from './visit.ts';
 import { VisitCache } from './visit-cache.ts';
@@ -236,7 +237,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     // Faces fontphobia generated fold back into the original face (§M4 notes).
     const manifest = readManifest(root);
     const usage = buildUsage(visitsOut, facts, { locales: o.locales, maxWords: o.maxWords ?? 10_000, generated: generatedFaces(manifest) });
-    const outputDirs = site?.dir ? [site.dir.slice(root.length + 1).split('\\').join('/')] : [];
+    const outputDirs = site?.dir ? [relative(opened.root, site.dir).split(sep).join('/')] : [];
     const css = detectCss(root, { outputDirs });
     const fontIndex = indexFontFiles(root, { outputDirs });
     const sources = new Map<string, FaceSource>();
@@ -256,7 +257,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       const call = calls.find((c) => c.srcs.some((x) => x.file === src.fontFile));
       if (call) sources.set(id, { adapter: 'next-font-local', file: call.file, line: call.line, fontFile: src.fontFile });
     }
-    const offDom = scanOffDom(root);
+    const offDom = [...scanOffDom(root), ...findFontCheckCalls(root).filter((c) => c.fixable).map((c) => ({ file: c.file, line: c.line, kind: 'font check', text: c.call.length > 70 ? c.call.slice(0, 67) + '…' : c.call }))];
 
     const covered = [...pages];
     const dynamicRoutes = fileRoutes.dynamic.filter((d) => {
@@ -265,7 +266,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     });
     const crawl: CrawlInfo = {
       framework: { id: project.profile.id, name: project.profile.name, tier: project.profile.tier },
-      mode, source: o.url ?? (site?.dir !== undefined ? site.dir.slice(root.length + 1).split('\\').join('/') || '.' : site?.server?.cmd ?? ''), built,
+      mode, source: o.url ?? (site?.dir !== undefined ? relative(opened.root, site.dir).split(sep).join('/') || '.' : site?.server?.cmd ?? ''), built,
       build: age ? { at: new Date(age.builtAt).toISOString(), output: age.output, newer: age.newer && { file: age.newer.file, at: new Date(age.newer.mtime).toISOString(), count: age.newer.count } } : undefined,
       pages: [...pages].sort(), failed: Object.fromEntries(Object.entries(failed).sort()), dynamicRoutes, routeSources: fileRoutes.sources,
       visits: visitsOut.length, cache: cache ? { reused: cache.stats.hits, visited: visitsOut.length - cache.stats.hits } : undefined, viewports, fontSizes: [...fontSizes].sort((a, b) => a - b), durationMs: Date.now() - t0,
@@ -293,6 +294,9 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     return { usage: json, crawl, offDom, project };
   } finally {
     await browser?.close().catch(() => {});
+    // What build reads from the output (an eject's font files and CSS): kept from fontphobia's own
+    // build in a copy, or cleared when the project's own output was crawled.
+    try { if (opened.keepOutput) opened.keepOutput(); else if (mode !== 'url') clearKeptOutput(root); } catch (e) { log(`couldn't keep the build output: ${(e as Error).message}`); }
     await stop();
   }
 }

@@ -16,7 +16,7 @@ export interface VitePluginLike {
 }
 
 export interface FontphobiaViteOptions {
-  /** Project root holding fontphobia.manifest.json (default: Vite's root, else the working directory). */
+  /** Project root holding .fontphobia/manifest.json (default: Vite's root, else the working directory). */
   root?: string;
   /** The dev-time character warning (default true). */
   devWarnings?: boolean;
@@ -26,7 +26,8 @@ export const OUTPUT_NAME = /\.(core|ext|rest)\.[0-9a-f]{8}\.woff2$/;
 interface ManifestLike { entries: Record<string, { family: string; outputs: { role: string; file: string; unicodeRange: string }[] }> }
 
 function readManifest(root: string): ManifestLike | undefined {
-  const f = join(root, 'fontphobia.manifest.json');
+  // .fontphobia/manifest.json, or 0.1.x's fontphobia.manifest.json (no core import: this loads with Vite's config).
+  const f = [join(root, '.fontphobia', 'manifest.json'), join(root, 'fontphobia.manifest.json')].find((x) => existsSync(x)) ?? join(root, '.fontphobia', 'manifest.json');
   try { return existsSync(f) ? (JSON.parse(readFileSync(f, 'utf8')) as ManifestLike) : undefined; } catch { return undefined; }
 }
 

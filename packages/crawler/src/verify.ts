@@ -2,14 +2,14 @@
 // build, "after" as served and "before" with the original fonts swapped back in (core/verify/overlay),
 // and compare layout (text boxes, and fonts per node on Chromium) and pixels. Then bytes per page,
 // and that each extended and rest file loads only on pages that use one of its characters.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
 import { join, resolve } from 'node:path';
 import { firefox, webkit, type Browser, type BrowserContext, type CDPSession, type Page } from 'playwright-core';
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 import {
-  codePointsOf, createOverlay, detectProject, nameStrings, parseUnicodeRange, woff2Decompress,
+  codePointsOf, createOverlay, detectProject, globToRegExp, nameStrings, parseUnicodeRange, woff2Decompress,
   type Manifest, type Overlay, type StaticVerify, type UsageFileJson,
 } from '@fontphobia/core';
 import { launchChrome } from './audit.ts';
@@ -34,6 +34,15 @@ export interface VerifyOptions extends SiteOptions {
   staticResult?: StaticVerify;
   /** Pages that are always verified (config `pages`). */
   pages?: string[];
+  /** Pages never compared (globs; config `ignore`). */
+  ignore?: string[];
+  /**
+   * CSS selectors hidden in both loads (visibility: hidden), for content that differs between loads
+   * by itself: animations driven by script, canvases, embeds. Hidden text isn't compared.
+   */
+  mask?: string[];
+  /** Seconds a page may take to load (default 30). */
+  timeout?: number;
   /** Cap before the set cover kicks in (default 200). */
   maxPages?: number;
   viewports?: number[];
@@ -57,7 +66,12 @@ export interface VerifyOptions extends SiteOptions {
   log?: (m: string) => void;
 }
 
-export interface NodeDiff { text: string; cause: string }
+export interface NodeDiff {
+  text: string;
+  cause: string;
+  /** A CSS selector for the element that holds the text (Chromium). */
+  where?: string;
+}
 
 export interface Comparison {
   page: string;
@@ -96,6 +110,8 @@ export interface BrowserVerify {
 }
 
 const STABLE_CSS = '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}';
+/** --mask: the elements and everything in them hidden in both loads (layout kept, so nothing else moves). */
+const maskCss = (mask: string[] | undefined) => (mask?.length ? mask.map((m) => `:where(${m}),:where(${m}) *`).join(',') + '{visibility:hidden!important}' : '');
 const FIXED_TIME = new Date('2026-01-01T00:00:00Z');
 
 async function pool<T>(items: T[], n: number, fn: (x: T) => Promise<void>) {
@@ -180,7 +196,7 @@ async function launch(engine: Engine, linux: () => Promise<LinuxBrowsers>): Prom
 type Snapshots = Map<string, Promise<{ status: number; headers: Record<string, string>; body: Buffer } | undefined>>;
 
 /** `before`: rewrite to the original fonts (overlay); `plain`: serve as is and note which outputs the CSS uses. */
-async function context(browser: Browser, o: { viewport: number; dpr: number; engine: Engine }, overlay: Overlay, mode: 'before' | 'plain', root: string, hits: Set<string>, local: Set<string>, snapshots: Snapshots): Promise<BrowserContext> {
+async function context(browser: Browser, o: { viewport: number; dpr: number; engine: Engine; mask?: string[] }, overlay: Overlay, mode: 'before' | 'plain', root: string, hits: Set<string>, local: Set<string>, snapshots: Snapshots): Promise<BrowserContext> {
   const before = mode === 'before';
   const ctx = await browser.newContext({ viewport: { width: o.viewport, height: 900 }, deviceScaleFactor: o.dpr, locale: 'en-US', timezoneId: 'UTC', reducedMotion: 'reduce' });
   await ctx.clock.setFixedTime(FIXED_TIME);
@@ -190,7 +206,7 @@ async function context(browser: Browser, o: { viewport: number; dpr: number; eng
     Math.random = () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
     const add = () => { const s = document.createElement('style'); s.textContent = css; (document.head ?? document.documentElement).append(s); };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();
-  }, { css: STABLE_CSS });
+  }, { css: STABLE_CSS + maskCss(o.mask) });
   // Adobe's font server counts page views (§6.6).
   await ctx.route(/^https?:\/\/p\.typekit\.net\//, (r) => r.abort());
   await ctx.route(/.*/, async (route) => {
@@ -242,7 +258,7 @@ async function context(browser: Browser, o: { viewport: number; dpr: number; eng
 }
 
 /** Load, settle (§10.3 "Stable screenshots"), and capture layout, fonts and pixels. */
-async function capture(ctx: BrowserContext, url: string, engine: Engine): Promise<{ page: Page; cdp?: CDPSession; snap: Snapshot }> {
+async function capture(ctx: BrowserContext, url: string, engine: Engine, timeout = 30): Promise<{ page: Page; cdp?: CDPSession; snap: Snapshot }> {
   const page = await ctx.newPage();
   const fonts: Snapshot['fonts'] = [];
   const pending: Promise<void>[] = [];
@@ -250,7 +266,7 @@ async function capture(ctx: BrowserContext, url: string, engine: Engine): Promis
     if (r.request().resourceType() !== 'font') return;
     pending.push(r.body().then((b) => { fonts.push({ url: r.url(), bytes: b.byteLength, status: r.status() }); }, () => { fonts.push({ url: r.url(), bytes: 0, status: r.status() }); }));
   });
-  const resp = await page.goto(url, { waitUntil: 'load', timeout: 30_000 });
+  const resp = await page.goto(url, { waitUntil: 'load', timeout: timeout * 1000 });
   if (!resp || resp.status() >= 400) throw new Error(`HTTP ${resp?.status() ?? 0}`);
   await page.evaluate(async () => {
     for (const el of document.querySelectorAll<HTMLImageElement | HTMLIFrameElement>('[loading="lazy"]')) el.loading = 'eager';
@@ -273,7 +289,7 @@ async function capture(ctx: BrowserContext, url: string, engine: Engine): Promis
   let cdp: CDPSession | undefined;
   if (engine.endsWith('chromium')) {
     cdp = await ctx.newCDPSession(page);
-    const snap = await cdp.send('DOMSnapshot.captureSnapshot', { computedStyles: [] });
+    const snap = await cdp.send('DOMSnapshot.captureSnapshot', { computedStyles: ['visibility'] });
     const S = snap.strings;
     nodes = [];
     snap.documents.forEach((doc, di) => {
@@ -284,6 +300,9 @@ async function capture(ctx: BrowserContext, url: string, engine: Engine): Promis
         const t = L.text[li];
         const text = t !== undefined && t >= 0 ? S[t]! : '';
         if (!text.trim()) return;
+        // Hidden text (--mask, or hidden by the page) never renders: not compared.
+        const vis = L.styles[li]?.[0];
+        if (vis !== undefined && /^(hidden|collapse)$/.test(S[vis] ?? '')) return;
         // The owning element: the nearest element ancestor that isn't a pseudo-element.
         let owner: number | undefined;
         for (let i = n.parentIndex![ni]!; i >= 0; i = n.parentIndex![i]!) if (n.nodeType![i] === 1) { owner = n.backendNodeId![i]; break; }
@@ -300,6 +319,9 @@ async function capture(ctx: BrowserContext, url: string, engine: Engine): Promis
           if (n.nodeType === 1) { const sr = (n as Element).shadowRoot; if (sr) walk(sr, `${prefix}${i}/`); continue; }
           const text = n.nodeValue ?? '';
           if (!text.trim()) continue;
+          // Hidden text (--mask, or hidden by the page) never renders: not compared.
+          const parent = n.parentElement;
+          if (parent && /^(hidden|collapse)$/.test(getComputedStyle(parent).visibility)) continue;
           const r = document.createRange();
           r.selectNodeContents(n);
           const boxes = [...r.getClientRects()].map((b) => ({ x: b.x + scrollX, y: b.y + scrollY, w: b.width, h: b.height }));
@@ -313,6 +335,35 @@ async function capture(ctx: BrowserContext, url: string, engine: Engine): Promis
   let shot: Buffer;
   try { shot = await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide', scale: 'device' }); } catch { shot = await page.screenshot({ animations: 'disabled', caret: 'hide', scale: 'device' }); }
   return { page, cdp, snap: { nodes, png: PNG.sync.read(shot), fonts } };
+}
+
+/** A short CSS selector per element (by backend node id): up to 4 levels, stopping at an id. */
+async function selectorsOf(cdp: CDPSession | undefined, owners: number[]): Promise<Map<number, string>> {
+  const out = new Map<number, string>();
+  if (!cdp || !owners.length) return out;
+  const fn = `function () {
+    const parts = [];
+    for (let el = this; el && el.nodeType === 1 && parts.length < 4; el = el.parentElement) {
+      let s = el.localName;
+      if (el.id) { parts.unshift(s + '#' + CSS.escape(el.id)); break; }
+      s += [...el.classList].slice(0, 2).map((c) => '.' + CSS.escape(c)).join('');
+      const p = el.parentElement;
+      const same = p ? [...p.children].filter((c) => c.localName === el.localName) : [];
+      if (same.length > 1) s += ':nth-of-type(' + (same.indexOf(el) + 1) + ')';
+      parts.unshift(s);
+    }
+    return parts.join(' > ');
+  }`;
+  await cdp.send('DOM.enable').catch(() => {});
+  await Promise.all([...new Set(owners)].map(async (id) => {
+    try {
+      const { object } = await cdp.send('DOM.resolveNode', { backendNodeId: id });
+      if (!object.objectId) return;
+      const r = await cdp.send('Runtime.callFunctionOn', { objectId: object.objectId, functionDeclaration: fn, returnByValue: true });
+      if (typeof r.result.value === 'string' && r.result.value) out.set(id, r.result.value);
+    } catch { /* gone */ }
+  }));
+  return out;
 }
 
 async function platformFonts(cdp: CDPSession | undefined, owners: number[]): Promise<Map<number, Map<string, number>>> {
@@ -346,7 +397,9 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
   const project = detectProject(root);
   const overlay = createOverlay(o.manifest);
   const entryIds = new Set(Object.keys(o.manifest.entries));
-  const { pages, skipped } = selectPages(o.usage, entryIds, o.maxPages ?? 200, o.pages);
+  const ignored = (o.ignore ?? []).map(globToRegExp);
+  const usable = ignored.length ? { ...o.usage, pages: Object.fromEntries(Object.entries(o.usage.pages).filter(([p]) => !ignored.some((r) => r.test(p)))) } : o.usage;
+  const { pages, skipped } = selectPages(usable, entryIds, o.maxPages ?? 200, (o.pages ?? []).filter((p) => !ignored.some((r) => r.test(p))));
   if (skipped) log(`verifying ${pages.length} pages chosen to cover every face × character class (${skipped} more not visited; raise --max-pages to include them)`);
   const viewports = o.viewports?.length ? o.viewports : o.usage.meta.viewports;
   const dprs = o.dprs?.length ? o.dprs : [1, 2];
@@ -356,6 +409,8 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
   // --hinting alone: the worst case is DPR 1 only.
   const dprsFor = (e: Engine) => (e === 'linux-chromium' && o.hinting && !o.browsers?.includes('linux-chromium') ? [1] : dprs);
   const outDir = o.outDir ?? join(root, '.fontphobia', 'verify');
+  // Diff images are this run's only: full-page PNGs add up fast (826 MB after three runs on a 55-page site).
+  rmSync(outDir, { recursive: true, force: true });
   const limitFaces = new Set(Object.values(o.manifest.entries).filter((e) => e.plan.optIns.includes('limit-axes')).map((e) => e.id));
   // The internal family names of fontphobia's files, as getPlatformFontsForNode reports them.
   const ours = new Set<string>();
@@ -416,9 +471,9 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
       const beforeUrl = baseline ? new URL(t.page.replace(/^\//, ''), baseline.site.base).href : url;
       const base: Comparison = { page: t.page, viewport: t.viewport, dpr: t.dpr, browser: t.engine, class: 'failed', causes: [], nodes: 0, moved: 0, maxDx: 0, pixels: 0, examples: [] };
       const hitsB = new Set<string>(), hitsA = new Set<string>();
-      const [cb, ca] = await Promise.all([context(t.browser, t, overlay, baseline ? 'plain' : 'before', root, hitsB, local, snapshots), context(t.browser, t, overlay, 'plain', root, hitsA, local, snapshots)]);
+      const [cb, ca] = await Promise.all([context(t.browser, { ...t, mask: o.mask }, overlay, baseline ? 'plain' : 'before', root, hitsB, local, snapshots), context(t.browser, { ...t, mask: o.mask }, overlay, 'plain', root, hitsA, local, snapshots)]);
       try {
-        const [b, a] = await Promise.all([capture(cb, beforeUrl, t.engine), capture(ca, url, t.engine)]);
+        const [b, a] = await Promise.all([capture(cb, beforeUrl, t.engine, o.timeout), capture(ca, url, t.engine, o.timeout)]);
         for (const id of hitsA) usedInAfter.add(id);
         const drawn = Object.keys(o.usage.pages[t.page]?.faces ?? {}).filter((id) => entryIds.has(id));
         let c = await compare(t, base, b, a, drawn.some(roundingOk), o.manifest, outDir, ours);
@@ -433,9 +488,9 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
           const fresh = t.engine.startsWith('linux-') ? undefined : await launch(t.engine, getLinux).catch(() => undefined);
           const br = fresh ?? t.browser;
           try {
-            const [cb2, ca2] = await Promise.all([context(br, t, overlay, baseline ? 'plain' : 'before', root, new Set(), local, snapshots), context(br, t, overlay, 'plain', root, new Set(), local, snapshots)]);
+            const [cb2, ca2] = await Promise.all([context(br, { ...t, mask: o.mask }, overlay, baseline ? 'plain' : 'before', root, new Set(), local, snapshots), context(br, { ...t, mask: o.mask }, overlay, 'plain', root, new Set(), local, snapshots)]);
             try {
-              const [b2, a2] = await Promise.all([capture(cb2, beforeUrl, t.engine), capture(ca2, url, t.engine)]);
+              const [b2, a2] = await Promise.all([capture(cb2, beforeUrl, t.engine, o.timeout), capture(ca2, url, t.engine, o.timeout)]);
               const again = await compare(t, base, b2, a2, drawn.some(roundingOk), o.manifest, outDir, ours);
               loadsB.push(b2.snap.png); loadsA.push(a2.snap.png);
               if (again.class === 'identical') c = { ...c, class: 'flaky', causes: [`${c.causes.join('; ')}; identical on load ${attempt + 2}`] };
@@ -587,6 +642,7 @@ async function compare(
   };
   let fallback = false;
   let unrelated = 0;
+  const exampleOwners: (number | undefined)[] = [];
   for (const i of flagged) {
     const n = A.nodes[i]!;
     const ob = B.nodes[i]!.owner;
@@ -610,8 +666,11 @@ async function compare(
         cause = linesChanged ? `line breaks changed (${nb.boxes.length} → ${n.boxes.length} lines)` : nb.boxes.some((x, k) => x.y !== n.boxes[k]!.y || x.h !== n.boxes[k]!.h) ? 'box height or position changed' : 'width changed (shaping or advance widths)';
       } else cause = 'pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions)';
     }
-    if (r.examples.length < 12) r.examples.push({ text: snippet(n.text), cause });
+    if (r.examples.length < 12) { r.examples.push({ text: snippet(n.text), cause }); exampleOwners.push(n.owner); }
   }
+  // Where each example is, as a selector: text alone ("Projects") is hard to find on a big page.
+  const where = await selectorsOf(a.cdp, exampleOwners.filter((x): x is number => x !== undefined));
+  r.examples.forEach((e, k) => { const o = exampleOwners[k]; const w = o !== undefined ? where.get(o) : undefined; if (w) e.where = w; });
   if (!flagged.length) r.examples.push({ text: '', cause: 'pixels differ outside the text boxes the verifier maps (form controls or replaced content)' });
   r.causes = [...new Set(r.examples.map((x) => x.cause.replace(/\d+ glyph\(s\)/, 'some glyphs')))];
 
