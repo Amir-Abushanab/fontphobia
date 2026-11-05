@@ -327,7 +327,8 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       expect(readFileSync(join(root, `.fontphobia/sources/google/${id}.woff2`)).byteLength).toBeGreaterThan(1000);
       const u2 = (await audit(opts)).usage as unknown as UsageFileJson;
       // Google sometimes serves a face from an on-the-fly /l/font?kit= URL instead (spike 6): say which if the ids differ.
-      expect(Object.keys(u2.faces).filter((k) => k.startsWith('fraunces'))).toContain(id);
+      const fr = (u: UsageFileJson) => Object.entries(u.faces).filter(([k]) => k.startsWith('fraunces')).map(([k, f]) => `${k} ${f.files.map((x) => x.url).join(' ')}`);
+      expect(Object.keys(u2.faces).filter((k) => k.startsWith('fraunces')), `before: ${fr(u1).join('; ')} | after: ${fr(u2).join('; ')}`).toContain(id);
       expect(u2.faces[id]!.chars).toBe(u1.faces[id]!.chars);
       expect(u2.faces[id]!.files.every((f) => f.url.startsWith('/fonts/fontphobia/'))).toBe(true);
       expect((await buildProject(root, u2, {}, { version: 'test' })).unchanged).toBe(true); // stays self-hosted
