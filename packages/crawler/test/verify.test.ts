@@ -107,6 +107,8 @@ describe.skipIf(!chrome)('verify in Chrome (§10.3)', () => {
       const bad = r.browser!.comparisons.filter((c) => c.class === 'regression');
       expect(bad.length).toBeGreaterThan(0);
       expect(bad.flatMap((c) => c.causes)).toContainEqual(expect.stringMatching(cause));
+      // Each example says where the text is.
+      expect(bad.flatMap((c) => c.examples).filter((e) => e.text).every((e) => typeof e.where === 'string' && e.where.length > 0)).toBe(true);
       expect(r.static.ok).toBe(false);
     }, 300_000);
   }

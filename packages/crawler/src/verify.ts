@@ -57,7 +57,12 @@ export interface VerifyOptions extends SiteOptions {
   log?: (m: string) => void;
 }
 
-export interface NodeDiff { text: string; cause: string }
+export interface NodeDiff {
+  text: string;
+  cause: string;
+  /** A CSS selector for the element that holds the text (Chromium). */
+  where?: string;
+}
 
 export interface Comparison {
   page: string;
@@ -313,6 +318,35 @@ async function capture(ctx: BrowserContext, url: string, engine: Engine): Promis
   let shot: Buffer;
   try { shot = await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide', scale: 'device' }); } catch { shot = await page.screenshot({ animations: 'disabled', caret: 'hide', scale: 'device' }); }
   return { page, cdp, snap: { nodes, png: PNG.sync.read(shot), fonts } };
+}
+
+/** A short CSS selector per element (by backend node id): up to 4 levels, stopping at an id. */
+async function selectorsOf(cdp: CDPSession | undefined, owners: number[]): Promise<Map<number, string>> {
+  const out = new Map<number, string>();
+  if (!cdp || !owners.length) return out;
+  const fn = `function () {
+    const parts = [];
+    for (let el = this; el && el.nodeType === 1 && parts.length < 4; el = el.parentElement) {
+      let s = el.localName;
+      if (el.id) { parts.unshift(s + '#' + CSS.escape(el.id)); break; }
+      s += [...el.classList].slice(0, 2).map((c) => '.' + CSS.escape(c)).join('');
+      const p = el.parentElement;
+      const same = p ? [...p.children].filter((c) => c.localName === el.localName) : [];
+      if (same.length > 1) s += ':nth-of-type(' + (same.indexOf(el) + 1) + ')';
+      parts.unshift(s);
+    }
+    return parts.join(' > ');
+  }`;
+  await cdp.send('DOM.enable').catch(() => {});
+  await Promise.all([...new Set(owners)].map(async (id) => {
+    try {
+      const { object } = await cdp.send('DOM.resolveNode', { backendNodeId: id });
+      if (!object.objectId) return;
+      const r = await cdp.send('Runtime.callFunctionOn', { objectId: object.objectId, functionDeclaration: fn, returnByValue: true });
+      if (typeof r.result.value === 'string' && r.result.value) out.set(id, r.result.value);
+    } catch { /* gone */ }
+  }));
+  return out;
 }
 
 async function platformFonts(cdp: CDPSession | undefined, owners: number[]): Promise<Map<number, Map<string, number>>> {
@@ -587,6 +621,7 @@ async function compare(
   };
   let fallback = false;
   let unrelated = 0;
+  const exampleOwners: (number | undefined)[] = [];
   for (const i of flagged) {
     const n = A.nodes[i]!;
     const ob = B.nodes[i]!.owner;
@@ -610,8 +645,11 @@ async function compare(
         cause = linesChanged ? `line breaks changed (${nb.boxes.length} → ${n.boxes.length} lines)` : nb.boxes.some((x, k) => x.y !== n.boxes[k]!.y || x.h !== n.boxes[k]!.h) ? 'box height or position changed' : 'width changed (shaping or advance widths)';
       } else cause = 'pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions)';
     }
-    if (r.examples.length < 12) r.examples.push({ text: snippet(n.text), cause });
+    if (r.examples.length < 12) { r.examples.push({ text: snippet(n.text), cause }); exampleOwners.push(n.owner); }
   }
+  // Where each example is, as a selector: text alone ("Projects") is hard to find on a big page.
+  const where = await selectorsOf(a.cdp, exampleOwners.filter((x): x is number => x !== undefined));
+  r.examples.forEach((e, k) => { const o = exampleOwners[k]; const w = o !== undefined ? where.get(o) : undefined; if (w) e.where = w; });
   if (!flagged.length) r.examples.push({ text: '', cause: 'pixels differ outside the text boxes the verifier maps (form controls or replaced content)' });
   r.causes = [...new Set(r.examples.map((x) => x.cause.replace(/\d+ glyph\(s\)/, 'some glyphs')))];
 

@@ -47,7 +47,7 @@ function lines(r: VerifyResult, root: string, md: boolean): string[] {
     item(`${b.browsers.map((x) => `${x.engine} ${x.version}`).join(', ')} · ${b.pages.length} page(s)${b.skipped ? ` (set cover; ${b.skipped} more not visited)` : ''} · ${b.comparisons.length} comparison(s): ${count('identical')} identical, ${count('sub-pixel rounding')} sub-pixel rounding, ${count('regression')} regression(s)${count('unrelated') ? `, ${count('unrelated')} with pixel noise in text fontphobia didn't touch` : ''}${count('flaky') ? `, ${count('flaky')} flaky (a pixel difference that didn't reproduce)` : ''}${count('content changed') ? `, ${count('content changed')} content changed (left out)` : ''}${count('failed') ? `, ${count('failed')} failed to load` : ''}`);
     for (const c of b.comparisons.filter((x) => x.class === 'regression' || x.class === 'failed')) {
       item(`${c.class}: ${where(c)}: ${c.causes.join('; ')}${c.moved ? ` (${c.moved} of ${c.nodes} text boxes moved, up to ${c.maxDx} px)` : ''}${c.pixels ? `, ${c.pixels} px differ` : ''}`);
-      for (const e of c.examples.slice(0, 3)) if (e.text) L.push(md ? `  - ${e.text}: ${e.cause}` : `      ${e.text}: ${e.cause}`);
+      for (const e of c.examples.slice(0, 3)) if (e.text) { const w = e.where ? (md ? ` (\`${e.where}\`)` : ` (${e.where})`) : ''; L.push(md ? `  - ${e.text}${w}: ${e.cause}` : `      ${e.text}${w}: ${e.cause}`); }
       if (c.diffImage) L.push(md ? `  - diff: \`${relative(root, c.diffImage)}\`` : `      diff: ${relative(root, c.diffImage)}`);
     }
     for (const c of b.comparisons.filter((x) => x.class === 'unrelated').slice(0, 5)) item(`unrelated: ${where(c)}: ${c.causes.join('; ')}`);
