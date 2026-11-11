@@ -3,83 +3,81 @@ import { join } from 'node:path';
 
 const kb = (value) => `${(value / 1024).toFixed(1)} KB`;
 const percent = (before, after) => Math.round((1 - after / before) * 100);
-const escape = (value) => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+const escape = (value) => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 
 export function refreshWalkthrough(repo, results, report) {
   const path = join(repo, 'site/index.html');
   let html = readFileSync(path, 'utf8');
   const mobile = results.pages.filter((page) => page.viewport === 390 && page.dpr === 2);
   const before = mobile[0].before.fontBytes;
-  const minimum = Math.min(...mobile.map((p) => p.after.fontBytes));
-  const maximum = Math.max(...mobile.map((p) => p.after.fontBytes));
-  const inter = results.faces.find((face) => face.family === 'Inter');
-  const shaping = results.faces.filter((face) => face.repair?.count).map((face) => `${face.family}: ${face.repair.count} characters moved into core`).join('; ');
-  html = html.replace(/(<h1 id="content"[^>]*>[\s\S]*?<\/h1>\s*)<p>[\s\S]*?<\/p>/, `$1<p>fontphobia splits fonts by the characters your pages use, then checks the result in Chrome. The bakery below downloads ${kb(minimum)}–${kb(maximum)} of fonts per page, down from ${kb(before)}.</p>`);
-  html = html.replace(/<meta property="og:description"[^>]*>/, '<meta property="og:description" content="Browse the bakery with original and optimized fonts, try the font playground, and inspect the measured results.">');
-  const problem = `<h2 id="problem">Why split a font?</h2>
-<p>The bakery uses ${inter.used} of the ${inter.source.characters.toLocaleString('en-US')} characters in its ${kb(inter.source.bytes)} Inter variable font. A browser downloads that whole file even when a page uses only a few dozen characters.</p>
-<p>fontphobia puts frequently used characters in a core file, less common ones in an extended file, and the remaining character set in a rest file. CSS tells the browser which files the page needs.</p>
-<p>It checks word shaping before writing the split, then compares the pages in Chrome. Options that change rendering are off by default.</p>
+  const savings = mobile.map((page) => percent(before, page.after.fontBytes));
+  html = html.replace(/(<h1 id="content"[^>]*>[\s\S]*?<\/h1>\s*)<p>[\s\S]*?<\/p>/, '$1<p>Split fonts around the text on your site. Check the result in Chrome.</p>');
+  html = html.replace(/<meta property="og:description"[^>]*>/, '<meta property="og:description" content="Browse the bakery before and after, see the measured savings, and try the live font playground.">');
 
-`;
-  html = html.replace(/<h2 id="problem">[\s\S]*?(?=<h2 id="how">)/, problem);
+  const titles = { '/': 'Home', '/menu.html': 'Menu', '/about.html': 'Visit us', '/journal/levain.html': 'Journal' };
   const rows = mobile.map((p) => {
-    const title = { '/': 'Home', '/menu.html': 'Menu', '/about.html': 'Visit us', '/journal/levain.html': 'Journal' }[p.page];
     const file = p.page === '/' ? '' : p.page.slice(1);
-    return `<tr><th scope="row"><a href="bakery/after/${file}">${title}</a></th><td class="n">${kb(p.before.fontBytes)} → ${kb(p.after.fontBytes)}<br><small>${percent(p.before.fontBytes, p.after.fontBytes)}% less · ${p.before.fontRequests} → ${p.after.fontRequests} requests</small></td><td class="n">${kb(p.before.totalBytes)} → ${kb(p.after.totalBytes)}<br><small>${percent(p.before.totalBytes, p.after.totalBytes)}% less</small></td></tr>`;
+    return `<tr><th scope="row"><a href="bakery/after/${file}">${titles[p.page]}</a></th><td class="n"><span class="was">${kb(p.before.fontBytes)} →</span><strong>${kb(p.after.fontBytes)}</strong><small>${percent(p.before.fontBytes, p.after.fontBytes)}% less</small></td><td class="n"><span class="was">${kb(p.before.totalBytes)} →</span><strong>${kb(p.after.totalBytes)}</strong><small>${percent(p.before.totalBytes, p.after.totalBytes)}% less</small></td></tr>`;
+  }).join('\n');
+
+  // Both families use one byte scale; total split size can exceed the original.
+  const scale = Math.max(...results.faces.map((face) => Math.max(face.source.bytes, face.outputs.reduce((sum, output) => sum + output.bytes, 0))));
+  const bars = [...results.faces].sort((a, b) => b.family.localeCompare(a.family)).map((face) => {
+    const original = face.source.bytes / scale * 100;
+    const total = face.outputs.reduce((sum, output) => sum + output.bytes, 0);
+    const parts = face.outputs.map((output) => `<div class="${output.role}" style="width:${output.bytes / total * 100}%"></div>`).join('');
+    return `<div class="font-bars"><div class="bar-row"><div class="lbl">${escape(face.family)}<small>Original · ${kb(face.source.bytes)}</small></div><div class="track" role="img" aria-label="Original ${escape(face.family)}: ${kb(face.source.bytes)}"><div class="orig" style="width:${original}%"></div></div></div>
+<div class="bar-row"><div class="lbl">Subsetted<small>Loaded as needed</small></div><div class="track" role="img" aria-label="Subsetted ${escape(face.family)}: ${face.outputs.map((output) => `${output.role === 'ext' ? 'extended' : output.role} ${kb(output.bytes)}`).join(', ')}"><div class="split-files" style="width:${total / scale * 100}%">${parts}</div></div></div></div>`;
   }).join('\n');
   const fileRows = results.faces.flatMap((face) => face.outputs.map((output) => `<tr><th scope="row">${escape(face.family)} ${output.role === 'ext' ? 'extended' : output.role}</th><td class="n">${kb(output.bytes)}</td></tr>`)).join('\n');
   const image = results.limitAxes.image;
-  // Keep the neighbouring sentence outside the magnified phrase.
   const crop = { ...image.crop, x: image.crop.x + 8, width: image.crop.width - 16 };
   const cropStyle = `--diff-ratio:${crop.width} / ${crop.height};--diff-image-width:${image.width / crop.width * 100}%;--diff-image-left:${-crop.x / crop.width * 100}%;--diff-image-top:${-crop.y / crop.width * 100}%`;
-  const section = `<h2 id="walkthrough">Walkthrough: Little Levain</h2>
-<p class="lead">Four pages, responsive photos, a searchable menu, ingredient filters, emoji and a journal. Little Levain is a fictional bakery; the sites below are working copies you can browse.</p>
-<div class="bakery-links"><a href="bakery/before/">Browse original fonts →</a><a href="bakery/after/">Browse optimized fonts →</a></div>
-<figure><a class="bakery-preview" href="bakery/after/" aria-label="Browse the optimized Little Levain home page"><img src="img/bakery-home.jpg" width="1280" height="900" loading="lazy" alt="Little Levain's home page, with large serif type and a photograph of sourdough loaves."></a><figcaption>Open either version and use the bar at the top to switch fonts on the same page.</figcaption></figure>
-<p>Both versions have identical photos, content and menu behaviour. Only the font declarations and downloaded font files change. The baseline self-hosts the full Inter variable WOFF2 (${kb(inter.source.bytes)}) and Google's Latin Fraunces WOFF2 (${kb(results.faces.find((f) => f.family === 'Fraunces').source.bytes)}).</p>
 
-<h3 id="audit">1. Measure the whole site</h3>
-<p>The audit visits all four pages at ${results.verification.comparisons.map((c) => c.viewport).filter((n, i, a) => a.indexOf(n) === i).join(', ')} px widths, plus a browser font-size sweep. It records characters, weights, font features and words from rendered text.</p>
-<p>These are cold-cache measurements of the published copies at 390 px wide and 2× density, after all photos have loaded:</p>
-<div class="scroll"><table class="t"><caption>Font savings and whole-page resource savings</caption><thead><tr><th scope="col">Page</th><th scope="col">Fonts, before → after</th><th scope="col">All resources, before → after</th></tr></thead><tbody>${rows}</tbody></table></div>
-<p class="small-print">Resource sizes count response bodies, including photos, HTML, CSS, JavaScript and fonts. They exclude HTTP headers, TLS and gzip savings on text files. Each visit uses a fresh browser context and loads lazy images too. Emoji use the same system font in both copies.</p>
-<p>These results apply to these input fonts. A site already serving language subsets may save less. The <a href="bakery/measurements.json">full measurements</a> include every resource's size and hash, results at 390 and 1280 px at 1× and 2× density, and the source fingerprint.</p>
+  const section = `<h2 id="walkthrough">Browse the bakery</h2>
+<p>Four pages, photos, a searchable menu. Switch between original and optimized fonts as you browse.</p>
+<div class="bakery-links"><a href="bakery/before/">Original fonts →</a><a href="bakery/after/">Optimized fonts →</a></div>
+<figure class="bakery-hero"><a class="bakery-preview" href="bakery/after/" aria-label="Browse the optimized Little Levain home page"><img src="img/bakery-home.jpg" width="1280" height="900" fetchpriority="high" alt="Little Levain's home page, with large serif type and a photograph of sourdough loaves."></a><figcaption>Little Levain · a fictional bakery, with measured downloads</figcaption></figure>
+<div class="result-heading"><p><strong>${Math.min(...savings)}–${Math.max(...savings)}%</strong> less font data</p><span>Same photos, content and interactions.</span></div>
+<div class="scroll"><table class="t results"><caption>Cold-cache downloads · before → after</caption><thead><tr><th scope="col">Page</th><th scope="col">Fonts</th><th scope="col">Whole page</th></tr></thead><tbody>${rows}</tbody></table></div>
+<p class="small-print" id="verify">Same layout across all ${results.verification.publicComparisons.length} browser checks.</p>
+<details class="disclosure" id="audit"><summary>How we measured and checked</summary>
+<p>Cold-cache visits at 390 px and 2× density, with every photo loaded. Sizes count response bodies: HTML, CSS, JavaScript, photos and fonts. They exclude headers and gzip savings on text.</p>
+<p>Only the fonts change. The baseline self-hosts full Inter and Google's Latin Fraunces. Sites already using language subsets may save less.</p>
+<p>Font verification passed ${results.verification.comparisons.length} comparisons. Separate checks of the published copies cover all four pages at 390 and 1280 px, at 1× and 2× density, plus a filtered menu.</p>
+<p>Text pixels matched within one RGB level per channel. Photos have identical bytes, positions and sizes; we mask them for pixel checks because Chrome can resample the same JPEG differently. The text tolerance covers colour noise also seen with unchanged fonts. Strict and unmasked counts are in the raw results.</p>
+<figure><a class="bakery-preview" href="bakery/after/menu.html"><img src="img/bakery-menu.jpg" width="1280" height="900" loading="lazy" alt="The bakery menu with search, category filters and a vegan-only checkbox."></a><figcaption>Try “creme”, Pastry or Vegan only in either version.</figcaption></figure>
+<p><a href="bakery/measurements.json">Full measurements</a> · <a href="https://github.com/Amir-Abushanab/fontphobia/tree/main/examples/bakery">Source and photo credits</a></p>
+</details>
 
-<h3 id="plan">2. Split the fonts</h3>
-<p>Core keeps the common characters. Extended contains the remaining text used on this site. Rest preserves the rest of the original character set, so later content can still use it.</p>
-<div class="scroll"><table class="t"><caption>Generated font files</caption><thead><tr><th scope="col">File</th><th scope="col">Size</th></tr></thead><tbody>${fileRows}</tbody></table></div>
-<p>${shaping ? `${escape(shaping)}. ` : ''}HarfBuzz checks the recorded words against the original font and moves characters when a file boundary changes kerning or shaping. Variable axes, hinting, font features and glyph names are kept.</p>
-
-<h3 id="build">3. Write the files and CSS</h3>
-<div class="term"><div class="bar"><span>your copy of examples/bakery</span></div><pre><span class="c">pnpm dlx fontphobia</span></pre></div>
-<p>The command shows the plan and asks before writing. It creates content-hashed WOFF2 files and replaces each original <code>@font-face</code> with core, extended and rest rules. The photos and JavaScript are unchanged.</p>
-<details class="transcript"><summary>Full plan and verification output</summary><div class="term"><pre>${escape(report)}</pre></div></details>
-
-<h3 id="verify">4. Check rendering, including the published copies</h3>
-<p>The font verifier checks the files, word shaping and ${results.verification.comparisons.length} viewport/density comparisons in Chrome. It passed. A separate comparison of the actual original and optimized URLs found <strong>identical layout in all ${results.verification.publicComparisons.length} cases</strong>, with text pixels matching within one RGB level per colour channel, plus the filtered menu state.</p>
-<p class="small-print">Photos are masked during pixel comparisons: Chrome can resample the same JPEG differently between loads. Their response bytes, positions and sizes match exactly. Photos remain visible and fully included in bandwidth measurements. The one-level text tolerance covers colour noise also observed between repeated captures with unchanged fonts. Strict and unmasked pixel counts are in the full results.</p>
-<figure><a class="bakery-preview" href="bakery/after/menu.html" aria-label="Browse the optimized bakery menu"><img src="img/bakery-menu.jpg" width="1280" height="900" loading="lazy" alt="The bakery menu with a croissant photograph, search, category filters and a vegan-only checkbox."></a><figcaption>Try searching for “creme”, choosing Pastry, or turning on Vegan only in either version.</figcaption></figure>
-
-<h3 id="verify-fail">What an optional trade-off looks like</h3>
-<p>The deployed optimized copy uses the defaults. A separate build with <code>--allow limit-axes</code> saves another ${kb(results.limitAxes.saving)} across the active font files. Its verification ${results.limitAxes.ok ? 'passes within the allowed rounding' : 'fails'}; here is the measured menu diff.</p>
+<h2 id="problem">One font, three files</h2>
+<p>The browser loads core first, then only the extra files your text needs.</p>
+<figure class="panel" id="plan">
+  <div class="bars">${bars}</div>
+  <div class="legend"><span><i class="sw core"></i>Core</span><span><i class="sw ext"></i>Extended</span><span><i class="sw rest"></i>Rest</span></div>
+  <figcaption>The bakery's files, to scale. Together they are larger than the original; each page downloads only the files it needs.</figcaption>
+</figure>
+<details class="disclosure"><summary>Exact file sizes and build output</summary>
+<div class="scroll"><table class="t"><caption>The bakery's generated fonts</caption><thead><tr><th scope="col">File</th><th scope="col">Size</th></tr></thead><tbody>${fileRows}</tbody></table></div>
+<p>HarfBuzz checks words before splitting. Characters move into core if a split changes their shaping. Axes, hinting, font features and glyph names are kept.</p>
+<div class="term"><pre>${escape(report)}</pre></div>
+<p><code>pnpm bakery:build</code> reproduces these copies, measurements and screenshots. Pages checks their hashes before publishing.</p>
+<p><a href="bakery/report.txt">Build report</a> · <a href="bakery/font-files.json">Font file data</a></p>
+</details>
+<details class="disclosure" id="verify-fail"><summary>See a change the rendering check caught</summary>
+<p>The optional <code>limit-axes</code> build saves another ${kb(results.limitAxes.saving)}, but ${results.limitAxes.ok ? 'passes with rounding' : 'fails verification'}. The browsable demo uses the defaults.</p>
 <figure class="diff-figure" style="${cropStyle}">
   <svg class="diff-filters" width="0" height="0" aria-hidden="true"><defs><filter id="diff-highlight" color-interpolation-filters="sRGB"><feComponentTransfer><feFuncR type="gamma" amplitude="1" exponent="5" offset="0"/><feFuncG type="gamma" amplitude="1" exponent="5" offset="0"/><feFuncB type="gamma" amplitude="1" exponent="5" offset="0"/></feComponentTransfer><feColorMatrix type="matrix" values="1 0 0 0 0  0 0.25 0.75 0 0  0 0 1 0 0  0 0 0 1 0"/></filter></defs></svg>
-  <p class="diff-label">Detail: “Prices in euros.”</p>
-  <div class="diff-detail"><img class="diff-highlight" src="img/verify-limit-axes.png" width="${image.width}" height="${image.height}" loading="lazy" alt="Magnified menu diff around the words Prices in euros, with changed pixels shown in orange."></div>
+  <p class="diff-label">“Prices in euros.”</p>
+  <div class="diff-detail"><img class="diff-highlight" src="img/verify-limit-axes.png" width="${image.width}" height="${image.height}" loading="lazy" alt="Magnified menu diff around Prices in euros, with changed pixels shown in orange."></div>
   <div class="legend"><span><i class="sw changed"></i>Changed pixels</span><span><i class="sw context"></i>Text for context</span></div>
-  <details class="diff-full"><summary>Show the full diff</summary><a href="img/verify-limit-axes.png">Open the original PNG (${image.width} × ${image.height})</a><img class="diff-highlight" src="img/verify-limit-axes.png" width="${image.width}" height="${image.height}" loading="lazy" alt="Full menu diff from the separate limit-axes build, with changed pixels shown in orange."></details>
-  <figcaption>Changed pixels from the current bakery's <code>limit-axes</code> build. Detail enlarged and contrast increased; the original uses yellow. Photos masked. Captured at 360 px and 2× density.</figcaption>
+  <details class="diff-full"><summary>Full diff</summary><a href="img/verify-limit-axes.png">Original PNG (${image.width} × ${image.height})</a><img class="diff-highlight" src="img/verify-limit-axes.png" width="${image.width}" height="${image.height}" loading="lazy" alt="Full limit-axes menu diff, with changed pixels in orange."></details>
+  <figcaption>Measured at 360 px and 2× density. Detail enlarged, contrast increased, photos masked.</figcaption>
 </figure>
-<details class="transcript"><summary>Verification output with limit-axes</summary><div class="term"><pre>${escape(results.limitAxes.report)}</pre></div></details>
-
-<h3 id="check">5. Keep it current</h3>
-<p>Add <code>fontphobia check</code> after your build. It checks the fonts, CSS and built content without opening a browser. New text that loads the rest file produces a warning; <code>--strict</code> makes that fail the check.</p>
-<p>The demo build is reproducible: <code>pnpm bakery:build</code> rebuilds both copies, reruns the measurements and updates this walkthrough. GitHub Pages checks their source and output hashes before publishing.</p>
-<p><a href="bakery/report.txt">Download the build report</a> · <a href="bakery/font-files.json">Inspect the font files</a> · <a href="https://github.com/Amir-Abushanab/fontphobia/tree/main/examples/bakery">Source and photo credits</a></p>
-<hr>
-
-`;
-  html = html.replace(/<h2 id="walkthrough">[\s\S]*?(?=<h2 id="beyond">)/, section);
+<details class="transcript"><summary>Verification output</summary><div class="term"><pre>${escape(results.limitAxes.report)}</pre></div></details>
+</details>`;
+  const marker = /<!-- bakery:start -->[\s\S]*?<!-- bakery:end -->/;
+  if (!marker.test(html)) throw new Error('Bakery walkthrough markers are missing.');
+  html = html.replace(marker, () => `<!-- bakery:start -->\n${section}\n<!-- bakery:end -->`);
   writeFileSync(path, html);
 }

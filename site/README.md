@@ -4,6 +4,8 @@ This is a static site, published by `.github/workflows/pages.yml`. No browser de
 
 The browsable `bakery/before/` and `bakery/after/` copies come from `examples/bakery`. Run `pnpm bakery:build` after changing that source; it reruns the audit, verification and resource measurements, then refreshes the copies, reports, screenshots, and walkthrough. `node scripts/check-bakery.mjs` refuses stale source/output pairs. See `examples/bakery/README.md` for the measurement scope and photo credits.
 
+`scripts/bakery-walkthrough.mjs` renders the section between the `bakery:start` and `bakery:end` comments, including the font-size diagram. Its numbers come from the measured files. Keep the overview brief; methodology, build output and the optional failing diff live in native disclosures. The playground and setup sections are edited directly in `index.html`.
+
 The walkthrough's own crawl excludes `/bakery/**`, which the bakery builder audits separately. Its manifest records the original bakery font declarations as unchanged faces, so `check` tracks them without optimizing the baseline.
 
 Its rendering check masks images, as the bakery check does, to compare font rendering without JPEG rasterization noise.
