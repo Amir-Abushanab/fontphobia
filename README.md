@@ -5,7 +5,7 @@ Shrink your site's web fonts without changing how anything renders.
 fontphobia crawls your built site in Chrome, records exactly which characters, weights, features and axis values each font draws on each page, and splits every font into a small **core** file, an **extended** file and a lazy **rest** file. Text renders with the same glyphs, hinting, kerning and metrics as before, and `verify` proves it pixel for pixel.
 
 ```sh
-pnpm dlx fontphobia@0.1.1
+pnpm dlx fontphobia@0.2.0
 ```
 
 - **Nothing is written until you confirm.** The default command audits, shows the plan and the diff, and asks.
@@ -40,7 +40,7 @@ Run everything from the project root (or pass `--cwd`). (If pnpm refuses a relea
 
 1. **Audit and plan.**
    ```sh
-   pnpm dlx fontphobia@0.1.1
+   pnpm dlx fontphobia@0.2.0
    ```
    fontphobia detects the framework, builds the site if there's no build (or asks if it's stale) in a throwaway copy of the project, so the build can't touch your files, and crawls every page it can find at 4 viewport widths, plus a browser font-size sweep. It then prints each face's size now and after, the saving per page, the opt-ins with their savings, and the exact edits.
 
@@ -63,7 +63,7 @@ Run everything from the project root (or pass `--cwd`). (If pnpm refuses a relea
 
 5. **Undo any time:**
    ```sh
-   pnpm dlx fontphobia@0.1.1 revert
+   pnpm dlx fontphobia@0.2.0 revert
    ```
 
 ## How it works
@@ -172,7 +172,7 @@ Run it after your build with your framework's hook:
 | Anything else (SvelteKit, TanStack Start, Angular, Hugo…) | `"postbuild": "fontphobia check"` in `package.json` |
 
 **Setting these up:**
-- **Install:** the integrations need fontphobia in the project: `pnpm add -D fontphobia@0.1.1`.
+- **Install:** the integrations need fontphobia in the project: `pnpm add -D fontphobia@0.2.0`.
 - **Options:** each one takes `{ mode: 'warn' | 'error', strict, allowChars }`. The Next adapter reads them from the config's `check` key instead.
 - **What they skip:** none of them subsets anything, opens a browser or touches the network.
 
@@ -180,13 +180,13 @@ Run it after your build with your framework's hook:
 
 Three recipes; full workflow files are in [docs/ci.md](https://github.com/Amir-Abushanab/fontphobia/blob/main/docs/ci.md).
 
-- **On every pull request:** build the site, then run `pnpm dlx fontphobia@0.1.1 check`.
+- **On every pull request:** build the site, then run `pnpm dlx fontphobia@0.2.0 check`.
 - **On a schedule, against production:**
   ```sh
-  pnpm dlx fontphobia@0.1.1 check --url https://example.com
+  pnpm dlx fontphobia@0.2.0 check --url https://example.com
   ```
   This crawls the live site and compares what it draws with the files. It catches content from a CMS that the repo never sees.
-- **Verify on Windows and Linux** when you change fonts. Hinting and rasterization differ by OS, so run `pnpm dlx fontphobia@0.1.1 verify` on `windows-latest`, and add `--hinting` on `ubuntu-latest`.
+- **Verify on Windows and Linux** when you change fonts. Hinting and rasterization differ by OS, so run `pnpm dlx fontphobia@0.2.0 verify` on `windows-latest`, and add `--hinting` on `ubuntu-latest`.
 
 ## Configuration
 
