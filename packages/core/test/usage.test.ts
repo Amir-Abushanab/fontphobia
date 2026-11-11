@@ -179,6 +179,13 @@ describe('buildUsage', () => {
     expect([...l.rendered.axes.get('opsz')!].sort()).toEqual([16, 24]);
     expect([...l.rendered.axes.get('wght')!].sort()).toEqual([400, 650]);
   });
+  it('records characters drawn in text set in a system font, apart from fallback', () => {
+    const mono = [row(), row({ 'font-family': 'monospace' })];
+    const p = buildUsage([visit('/code', [{ text: 'a ≤ b', style: 1, kind: 'text' }, { text: 'Hi', style: 0, kind: 'text' }], mono)], facts).pages.get('/code')!;
+    expect(charsToRanges(p.system)).toBe('U+61-62, U+2264');
+    expect(p.fallback.size).toBe(0);
+    expect(u.pages.get('/')!.system.size).toBe(0);
+  });
   it('skips fonts that are not installed in a stack', () => {
     expect(byFile('latin.woff2').chars.has('x'.codePointAt(0)!)).toBe(true);
     expect(u.pages.get('/')!.fallback.has('Not Installed')).toBe(false);

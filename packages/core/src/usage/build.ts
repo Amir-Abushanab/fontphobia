@@ -60,6 +60,8 @@ export interface PageUsage {
   preloads: Map<string, { crossorigin: string | null; used: boolean; type?: string }>;
   /** Characters drawn by a system font although the stack starts with a web font. */
   fallback: Map<string, Set<number>>;
+  /** Characters drawn by a system font in text whose stack starts with one (code blocks in Menlo). */
+  system: Set<number>;
   /** Families Chrome reported drawing that the attribution didn't predict. */
   disagreements: Set<string>;
   notes: Set<string>;
@@ -124,7 +126,7 @@ export function buildUsage(visits: Visit[], facts: Map<string, FontFacts>, opts:
 
   for (const v of ordered) {
     const vl = label(v);
-    const page = pages.get(v.page) ?? { visits: new Set(), private: !!v.private, faces: new Map(), fonts: new Map(), preloads: new Map(), fallback: new Map(), disagreements: new Set(), notes: new Set() };
+    const page = pages.get(v.page) ?? { visits: new Set(), private: !!v.private, faces: new Map(), fonts: new Map(), preloads: new Map(), fallback: new Map(), system: new Set(), disagreements: new Set(), notes: new Set() };
     pages.set(v.page, page);
     page.visits.add(vl);
     for (const n of v.notes) page.notes.add(n);
@@ -256,7 +258,9 @@ export function buildUsage(visits: Visit[], facts: Map<string, FontFacts>, opts:
           record(f, st, !!opts.declared);
           out.push(f);
         } else {
-          if (webFirst && !isSpace(ch) && !opts.rule) { const s = page.fallback.get(r.system) ?? new Set<number>(); page.fallback.set(r.system, s); s.add(cp); }
+          if (!isSpace(ch) && !opts.rule) {
+            if (webFirst) { const s = page.fallback.get(r.system) ?? new Set<number>(); page.fallback.set(r.system, s); s.add(cp); } else page.system.add(cp);
+          }
           out.push(null);
         }
       }

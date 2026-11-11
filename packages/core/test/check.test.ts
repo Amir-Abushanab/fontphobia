@@ -56,6 +56,16 @@ describe('check (§12)', () => {
     expect((await kinds(root)).join('\n')).toMatch(/^source: fonts\/DejaVuSans\.ttf changed since the build$/m);
   }, 300_000);
 
+  it('a character the audit saw drawn in a system font (a <pre> in Menlo) is not new content', async () => {
+    const root = await built('system');
+    const about = join(root, 'about/index.html');
+    writeFileSync(about, readFileSync(about, 'utf8').replace('Only ASCII here', 'Only ASCII here, ≤ 2'));
+    expect((await kinds(root)).join('\n')).toMatch(/^chars: Inter: ≤ \(U\+2264\) would load the rest file/m);
+    const seen = structuredClone(usage) as UsageFileJson & { pages: Record<string, { system?: string }> };
+    seen.pages['/about/']!.system = 'U+2264';
+    expect((await checkProject({ root, usage: seen })).issues).toEqual([]);
+  }, 300_000);
+
   it('with limit-axes, catches a weight outside the kept range (150, below it; @media print asks for 900)', async () => {
     const root = await built('axes', ['limit-axes']);
     expect(await kinds(root)).toEqual([]);
