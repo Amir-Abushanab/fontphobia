@@ -111,6 +111,8 @@ function preloadEdits(root: string, files: string[], names: string[], to: string
     const text = readFileSync(join(root, file), 'utf8');
     if (!/preload/i.test(text)) continue;
     for (const m of text.matchAll(re)) {
+      // An @font-face src next to a preload (an inline <style> in the same <head>) isn't a preload.
+      if (/url\(\s*$/i.test(text.slice(Math.max(0, m.index - 8), m.index))) continue;
       const near = text.slice(Math.max(0, m.index - 300), m.index + m[0].length + 300);
       if (!/rel\s*[:=]\s*\{?\s*["'`]preload/i.test(near)) continue;
       const from = m[2]!;

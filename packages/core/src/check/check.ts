@@ -263,8 +263,8 @@ export async function checkProject(opts: CheckOptions): Promise<CheckResult> {
     // From JS/JSON only: bundles escape non-ASCII, so UI text and Unicode tables (React's, regexes)
     // look the same. Reported as a note; prerendered HTML is what fails the check.
     const scripted = new Map<string, { cps: Set<number>; files: Set<string> }>();
-    type PageJson = { faces: Record<string, string>; fallback?: Record<string, string> };
-    const pageChars = (pg: PageJson) => new Set([...Object.values(pg.faces), ...Object.values(pg.fallback ?? {})].flatMap((r) => [...rangeSet(r)]));
+    type PageJson = { faces: Record<string, string>; fallback?: Record<string, string>; system?: string };
+    const pageChars = (pg: PageJson) => new Set([...Object.values(pg.faces), ...Object.values(pg.fallback ?? {}), ...(pg.system ? [pg.system] : [])].flatMap((r) => [...rangeSet(r)]));
     const allSeen = new Set(Object.values(o.usage?.pages ?? {}).flatMap((pg) => [...pageChars(pg as PageJson)]));
     for (const rel of files) {
       let text: string;
@@ -276,7 +276,7 @@ export async function checkProject(opts: CheckOptions): Promise<CheckResult> {
       // Faces drawn on this page (from the audit); unknown pages and scripts: every face.
       const pg = isHtml ? o.usage?.pages[pageOf(rel)] : undefined;
       const drawn = pg ? facts.filter((f) => pg.faces[f.e.id]) : facts;
-      // Characters the audit already saw (drawn by some face, or falling back) aren't new content.
+      // Characters the audit already saw (drawn by some face, falling back, or in text set in a system font) aren't new content.
       const seen = pg ? pageChars(pg) : allSeen;
       for (const c of chars) {
         if (seen.has(c)) continue;
