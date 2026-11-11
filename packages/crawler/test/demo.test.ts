@@ -12,6 +12,9 @@ const data = JSON.parse(readFileSync(new URL('demo-data.json', site), 'utf8')) a
 };
 
 it('the demo data matches the shipped font manifest and source coverage', async () => {
+  const embedded = readFileSync(new URL('index.html', site), 'utf8').match(/<script id="font-data" type="application\/json">([\s\S]*?)<\/script>/)?.[1];
+  expect(embedded).toBeDefined();
+  expect(JSON.parse(embedded!)).toEqual(data);
   const manifest = JSON.parse(readFileSync(new URL('.fontphobia/manifest.json', site), 'utf8')) as Manifest;
   for (const face of data.faces) {
     const entry = Object.values(manifest.entries).find((e) => e.family === face.family)!;
@@ -130,20 +133,43 @@ describe.skipIf(!browser)('the live font examples', () => {
     } finally { await page.close(); }
   });
 
-  it('keeps the walkthrough available without JavaScript or demo data', async () => {
+  it('runs the playground and original-font comparison directly from a local file', async () => {
+    const page = await browser!.newPage();
+    try {
+      const errors: string[] = [];
+      page.on('pageerror', (error) => errors.push(error.message));
+      await page.goto(new URL('index.html', site).href);
+      await page.locator('#font-demo').waitFor({ state: 'visible' });
+      expect(await visible(page, '#demo-message')).toBe(false);
+      await page.getByRole('button', { name: 'Greek', exact: true }).click();
+      expect(await content(page, '[data-file="rest"] .file-state')).toBe('Needed');
+      await page.locator('#demo-comparison > summary').click();
+      await page.locator('#compare-previews').waitFor({ state: 'visible' });
+      expect(await page.evaluate(() => document.fonts.check('400 32px "Inter Original"'))).toBe(true);
+      expect(errors).toEqual([]);
+    } finally { await page.close(); }
+  });
+
+  it('keeps the walkthrough available without JavaScript or with invalid embedded data', async () => {
     const context = await browser!.newContext({ javaScriptEnabled: false });
     try {
       const page = await context.newPage();
       await page.goto(server.url);
       expect(await visible(page, '#font-demo')).toBe(false);
-      expect(await visible(page, '#demo-message')).toBe(true);
+      expect(await visible(page, '#demo-noscript')).toBe(true);
+      expect(await visible(page, '#demo-message')).toBe(false);
       expect(await visible(page, '#walkthrough')).toBe(true);
     } finally { await context.close(); }
     const page = await browser!.newPage();
     try {
-      await page.route('**/demo-data.json', (route) => route.fulfill({ status: 500, body: '' }));
+      await page.route(server.url, async (route) => {
+        const response = await route.fetch();
+        const body = (await response.text()).replace(/(<script id="font-data" type="application\/json">)[\s\S]*?(<\/script>)/, '$1invalid JSON$2');
+        await route.fulfill({ response, body });
+      });
       await page.goto(server.url);
-      await page.waitForFunction(() => document.querySelector('#demo-message')?.textContent?.includes('could not load'));
+      await page.waitForFunction(() => document.querySelector('#demo-message')?.textContent?.includes('could not start'));
+      expect(await visible(page, '#demo-message')).toBe(true);
       expect(await visible(page, '#font-demo')).toBe(false);
       expect(await visible(page, '#walkthrough')).toBe(true);
     } finally { await page.close(); }

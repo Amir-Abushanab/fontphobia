@@ -14,7 +14,19 @@ for (const entry of Object.values(manifest.entries)) {
     outputs: entry.outputs.map(({ role, bytes, url, unicodeRange }) => ({ role, bytes, url, ranges: parseUnicodeRange(unicodeRange) })),
   });
 }
-writeFileSync(new URL('demo-data.json', site), JSON.stringify({
+const data = {
   _comment: 'Generated from .fontphobia/manifest.json and the source fonts by scripts/site-demo-data.mjs.',
   faces,
-}) + '\n');
+};
+writeFileSync(new URL('demo-data.json', site), JSON.stringify(data) + '\n');
+// Embed the same metadata so the playground also works when index.html is opened
+// directly from disk. Escaping < keeps future font names safe inside a script block.
+const index = new URL('index.html', site);
+const embedded = `<script id="font-data" type="application/json">${JSON.stringify(data).replaceAll('<', '\\u003c')}</script>`;
+let html = readFileSync(index, 'utf8');
+if (html.includes('<script id="font-data"')) {
+  html = html.replace(/<script id="font-data" type="application\/json">[\s\S]*?<\/script>/, () => embedded);
+} else {
+  html = html.replace(/<script\b[^>]*\bsrc="demo\.js(?:\?[^\"]*)?"[^>]*><\/script>/, (script) => `${embedded}\n${script}`);
+}
+writeFileSync(index, html);
