@@ -21,21 +21,21 @@
       "id": "fraunces-100-900-normal",
       "outputs": [
         {
-          "bytes": 44880,
-          "file": "fonts/Fraunces.core.2e5d7593.woff2",
+          "bytes": 44824,
+          "file": "fonts/Fraunces.core.c9537fed.woff2",
           "role": "core",
-          "sha256": "2e5d759351738781f349ce9e43cfa7fe21b53aeac69e08eb5f2847a8d691b968",
-          "unicodeRange": "U+20-7E, U+A0, U+E8, U+2013-2014, U+2018-2019, U+201C-201D, U+2026",
-          "url": "fonts/Fraunces.core.2e5d7593.woff2"
+          "sha256": "c9537fedd315df8c32d897b98f5572bbdad187374dc5ec41b6854d17454392aa",
+          "unicodeRange": "U+20-7E, U+A0, U+2013-2014, U+2018-2019, U+201C-201D, U+2026",
+          "url": "fonts/Fraunces.core.c9537fed.woff2"
         },
         {
-          "bytes": 42364,
-          "file": "fonts/Fraunces.ext.a8b25ee4.woff2",
+          "bytes": 42420,
+          "file": "fonts/Fraunces.ext.5d2a488c.woff2",
           "hintRefs": "U+30, U+43, U+45, U+48, U+4C, U+4F, U+51, U+53-55, U+58, U+5A, U+62-6B, U+6E-73, U+75-76, U+78-7A",
           "role": "ext",
-          "sha256": "a8b25ee4b95c08b95a01b8bb8628454d655a08f7fda56e7677952ef6102e2288",
-          "unicodeRange": "U+A1-E7, U+E9-FF, U+131, U+152-153, U+300-301, U+303-304, U+308, U+2032-2033, U+2212",
-          "url": "fonts/Fraunces.ext.a8b25ee4.woff2"
+          "sha256": "5d2a488c71dc922855b81173a24051d4efb1b746c8f1fdbfb3059e8123dfa6f7",
+          "unicodeRange": "U+A1-FF, U+131, U+152-153, U+300-301, U+303-304, U+308, U+2032-2033, U+2212",
+          "url": "fonts/Fraunces.ext.5d2a488c.woff2"
         },
         {
           "bytes": 22496,
@@ -115,8 +115,19 @@
       "stylesheet": "index.html"
     }
   },
-  "fontphobia": "0.1.1",
+  "fontphobia": "0.2.0",
   "harfbuzz": "15.0.0",
-  "others": [],
+  "others": [
+    {
+      "family": "Fraunces",
+      "file": "bakery/before/styles.css",
+      "sha256": "509c8714ea22be4a321d76ed435bee2eed1faa2ca0d5e10bb4c8b5a2d048d3e2"
+    },
+    {
+      "family": "Inter",
+      "file": "bakery/before/styles.css",
+      "sha256": "6b8d2bd6a3692d6d0e8b58b15f2554a2b514672a9b5562d1481e49a0be0f8954"
+    }
+  ],
   "version": 1
 }

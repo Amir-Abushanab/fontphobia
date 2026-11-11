@@ -1,0 +1,5 @@
+{
+  "ignore": ["/bakery/**"],
+  "verify": { "mask": ["img"] },
+  "check": { "allowChars": "≤" }
+}

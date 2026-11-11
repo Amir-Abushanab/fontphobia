@@ -5,6 +5,7 @@
   "packageManager": "pnpm@12.9.1",
   "engines": { "node": ">=22" },
   "scripts": {
+    "bakery:build": "node scripts/build-bakery.mjs",
     "build": "pnpm -r build",
     "test": "vitest run",
     "golden": "vitest run packages/core/test/golden.test.ts",

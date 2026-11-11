@@ -1,0 +1,34 @@
+# Walkthrough and font playground
+
+This is a static site, published by `.github/workflows/pages.yml`. No browser dependencies are shipped to visitors. Pages validates the bakery's generated files before uploading this directory.
+
+The browsable `bakery/before/` and `bakery/after/` copies come from `examples/bakery`. Run `pnpm bakery:build` after changing that source; it reruns the audit, verification and resource measurements, then refreshes the copies, reports, screenshots, and walkthrough. `node scripts/check-bakery.mjs` refuses stale source/output pairs. See `examples/bakery/README.md` for the measurement scope and photo credits.
+
+The walkthrough's own crawl excludes `/bakery/**`, which the bakery builder audits separately. Its manifest records the original bakery font declarations as unchanged faces, so `check` tracks them without optimizing the baseline.
+
+Its rendering check masks images, as the bakery check does, to compare font rendering without JPEG rasterization noise.
+`check.allowChars` covers `≤`, which appears only in the system-monospace verification transcript inside a collapsed disclosure.
+
+`demo.js` uses the character ranges and sizes in `demo-data.json` to show which of this page's font files a sentence needs. This is a calculation for the entered text, not a network measurement of the whole page. Original fonts are loaded with `FontFace` only when the comparison is opened.
+
+After changing the page, check its existing font coverage before rebuilding:
+
+```sh
+node packages/cli/src/cli.ts audit --cwd site --dist .
+node packages/cli/src/cli.ts check --cwd site
+node packages/cli/src/cli.ts verify --cwd site
+```
+
+If the fonts need rebuilding, regenerate the demo metadata afterwards:
+
+```sh
+node scripts/site-demo-data.mjs
+```
+
+The Greek preset deliberately exercises Inter's rest file; Fraunces lacks those characters and uses a fallback. `check` may note these strings in `demo.js`. They are examples of content outside the subsets, rather than text to promote into the page's core file.
+
+Run the data consistency and Chrome interaction tests with:
+
+```sh
+pnpm vitest run packages/crawler/test/demo.test.ts
+```

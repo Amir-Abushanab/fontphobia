@@ -5,3 +5,5 @@
 *.woff binary
 *.woff2 binary
 *.wasm binary
+
+site/bakery/** linguist-generated=true
