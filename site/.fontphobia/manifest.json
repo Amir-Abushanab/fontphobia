@@ -8,7 +8,6 @@
     "*|feature|tnum",
     "var(--sans)|axis|wght=500",
     "var(--sans)|axis|wght=600",
-    "var(--sans)|axis|wght=650",
     "var(--serif)|axis|opsz=36",
     "var(--serif)|axis|opsz=72",
     "var(--serif)|axis|wght=500",
@@ -22,21 +21,21 @@
       "id": "fraunces-100-900-normal",
       "outputs": [
         {
-          "bytes": 44812,
-          "file": "fonts/Fraunces.core.8a4d7836.woff2",
+          "bytes": 44880,
+          "file": "fonts/Fraunces.core.2e5d7593.woff2",
           "role": "core",
-          "sha256": "8a4d7836c3d9f768172cf00bc1e57ee6c0611bbb58af08a6a26b0c9584e87001",
-          "unicodeRange": "U+20-7E, U+A0, U+B7, U+E8, U+2013-2014, U+2018-2019, U+201C-201D, U+2026",
-          "url": "fonts/Fraunces.core.8a4d7836.woff2"
+          "sha256": "2e5d759351738781f349ce9e43cfa7fe21b53aeac69e08eb5f2847a8d691b968",
+          "unicodeRange": "U+20-7E, U+A0, U+E8, U+2013-2014, U+2018-2019, U+201C-201D, U+2026",
+          "url": "fonts/Fraunces.core.2e5d7593.woff2"
         },
         {
-          "bytes": 42464,
-          "file": "fonts/Fraunces.ext.273b9267.woff2",
+          "bytes": 42364,
+          "file": "fonts/Fraunces.ext.a8b25ee4.woff2",
           "hintRefs": "U+30, U+43, U+45, U+48, U+4C, U+4F, U+51, U+53-55, U+58, U+5A, U+62-6B, U+6E-73, U+75-76, U+78-7A",
           "role": "ext",
-          "sha256": "273b92678e53e285e669a5431c46d2d28b60fe2572643705508324558ea57465",
-          "unicodeRange": "U+A1-B6, U+B8-E7, U+E9-FF, U+131, U+152-153, U+300-301, U+303-304, U+308, U+2032-2033, U+2212",
-          "url": "fonts/Fraunces.ext.273b9267.woff2"
+          "sha256": "a8b25ee4b95c08b95a01b8bb8628454d655a08f7fda56e7677952ef6102e2288",
+          "unicodeRange": "U+A1-E7, U+E9-FF, U+131, U+152-153, U+300-301, U+303-304, U+308, U+2032-2033, U+2212",
+          "url": "fonts/Fraunces.ext.a8b25ee4.woff2"
         },
         {
           "bytes": 22496,
@@ -116,7 +115,7 @@
       "stylesheet": "index.html"
     }
   },
-  "fontphobia": "0.2.0",
+  "fontphobia": "0.1.1",
   "harfbuzz": "15.0.0",
   "others": [],
   "version": 1
