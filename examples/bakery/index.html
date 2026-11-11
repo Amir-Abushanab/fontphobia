@@ -3,19 +3,40 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fresh bread, slowly · Little Levain</title>
+<meta name="description" content="A fictional neighbourhood bakery serving sourdough, butter pastry and coffee on Mill Street.">
+<title>Fresh bread, every morning · Little Levain</title>
 <link rel="stylesheet" href="styles.css">
+<script src="bakery.js" defer></script>
 </head>
 <body>
-<header><a class="brand" href="index.html">Little Levain</a><nav><a href="menu.html">Menu</a><a href="journal/levain.html">Journal</a><a href="about.html">About</a></nav></header>
-<main>
-<h1>Fresh bread, slowly.</h1>
-<p class="lede">We bake naturally leavened bread in small batches, every morning, with flour milled down the road.</p>
-<h2>This week</h2>
-<p>The rye is back. So is the seeded loaf that sells out by nine, and a new cardamom bun we can't stop eating. Come early, or call ahead and we'll hold one for you.</p>
-<h2>Visit us</h2>
-<p>14 Mill Street, next to the old station. Open Wednesday to Sunday, from 7am until we run out (usually around 2pm).</p>
+<a class="skip" href="#content">Skip to content</a>
+<!-- bakery:comparison-bar -->
+<div class="container">
+<header class="site-header"><a class="brand" href="./">Little Levain<small>Bread &amp; the everyday</small></a><nav class="site-nav" aria-label="Main"><a href="menu.html">Menu</a><a href="journal/levain.html">Journal</a><a href="about.html">Visit us</a></nav></header>
+<main id="content">
+
+<section class="hero">
+<div><p class="eyebrow">Your neighbourhood bakehouse</p><h1>Bread, baked<br>every morning.</h1><p class="lede">A dark crust, a soft middle, and something warm to take home. We make sourdough and pastry on Mill Street, Wednesday to Sunday.</p><div class="actions"><a class="button" href="menu.html">See the menu</a><a class="quiet-link" href="about.html#visit">Plan your visit</a></div><p class="small"><span aria-hidden="true">☕</span> Coffee from opening. First loaves at 7:30 (8 on Sunday).</p></div>
+<img class="hero-photo" src="images/loaves-640.jpg" srcset="images/loaves-640.jpg 640w, images/loaves-1280.jpg 1280w" sizes="(max-width: 560px) calc(100vw - 40px), (max-width: 1160px) 48vw, 540px" width="1280" height="1920" alt="Two flour-dusted sourdough loaves resting on a linen cloth." fetchpriority="high">
+</section>
+<div class="service-strip"><span><span aria-hidden="true">🌾</span> Stone-milled flour, 40 km from here</span><span><span aria-hidden="true">🍞</span> Sourdough fermented for 30 hours</span><span><span aria-hidden="true">🥐</span> Pastry folded and baked in-house</span></div>
+<section class="section">
+<div class="section-head"><div><p class="eyebrow">On the counter</p><h2>The usuals. And a few extras.</h2></div><a class="quiet-link" href="menu.html">All bread &amp; pastry →</a></div>
+<div class="cards">
+<article class="story-card"><a href="menu.html#bread"><img class="crop-loaves" src="images/loaves-640.jpg" srcset="images/loaves-640.jpg 640w, images/loaves-1280.jpg 1280w" sizes="(max-width: 560px) calc(100vw - 40px), 350px" width="1280" height="1920" alt="A wheat sourdough loaf with a deeply browned crust." loading="lazy"><div class="card-copy"><span class="eyebrow">Every bake day</span><h3>Country sourdough</h3><p>Wheat, a little wholegrain rye, water and salt. Our everyday loaf.</p><span class="price">€6.50 / 800 g</span></div></a></article>
+<article class="story-card"><a href="menu.html#pastry"><img class="" src="images/croissants-640.jpg" srcset="images/croissants-640.jpg 640w, images/croissants-1280.jpg 1280w" sizes="(max-width: 560px) calc(100vw - 40px), 350px" width="1280" height="825" alt="Golden croissants with crisp, layered edges on a counter." loading="lazy"><div class="card-copy"><span class="eyebrow">From 7am</span><h3>Butter croissant</h3><p>Made over three days. Best eaten over a plate, for the crumbs.</p><span class="price">€2.60 each</span></div></a></article>
+<article class="story-card"><a href="journal/levain.html"><img class="" src="images/kneading-640.jpg" srcset="images/kneading-640.jpg 640w, images/kneading-1280.jpg 1280w" sizes="(max-width: 560px) calc(100vw - 40px), 350px" width="1280" height="1592" alt="A baker folding dough by hand on a floured workbench." loading="lazy"><div class="card-copy"><span class="eyebrow">From the bakehouse</span><h3>What takes 30 hours?</h3><p>A look at our starter, the overnight proof, and the next morning’s bake.</p><span class="quiet-link">Read our notes →</span></div></a></article>
+</div>
+</section>
+<section class="section split-section"><div class="copy"><p class="eyebrow">This week</p><h2>The rye is back.</h2><p>Our seeded rye is on the counter again, alongside rosemary focaccia and the cardamom buns. The crème brûlée tart is staying for another week, too.</p><p>Come before nine for the widest choice. After that, there’s usually still a loaf and a coffee to be had.</p><a class="button" href="menu.html">Find your morning order</a></div><img class="" src="images/croissants-640.jpg" srcset="images/croissants-640.jpg 640w, images/croissants-1280.jpg 1280w" sizes="(max-width: 560px) calc(100vw - 40px), (max-width: 1160px) 48vw, 540px" width="1280" height="825" alt="Fresh butter croissants cooling before the morning service." loading="lazy"></section>
+
 </main>
-<footer>Little Levain · 14 Mill Street · Open Wednesday to Sunday, 7am–2pm</footer>
+<footer class="site-footer">
+<div><a class="brand" href="./">Little Levain</a><p>14 Mill Street, by the old station.<br>Wed–Sat, 7am–2pm. Sunday, 8am–1pm.</p></div>
+<div><strong>Find your way</strong><a href="menu.html">The menu</a><a href="about.html#visit">Hours &amp; getting here</a><a href="journal/levain.html">From the bakehouse</a></div>
+<div><strong>A little note</strong><p>Walk-ins welcome. Bread and pastry are baked in small batches, so the counter changes through the morning.</p></div>
+</footer>
+<div class="credit">A fictional bakery, made for the fontphobia demo. <a href="about.html#photography">Photography credits</a></div>
+</div>
 </body>
 </html>

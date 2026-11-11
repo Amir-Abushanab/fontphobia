@@ -117,6 +117,17 @@
   },
   "fontphobia": "0.2.0",
   "harfbuzz": "15.0.0",
-  "others": [],
+  "others": [
+    {
+      "family": "Fraunces",
+      "file": "bakery/before/styles.css",
+      "sha256": "509c8714ea22be4a321d76ed435bee2eed1faa2ca0d5e10bb4c8b5a2d048d3e2"
+    },
+    {
+      "family": "Inter",
+      "file": "bakery/before/styles.css",
+      "sha256": "6b8d2bd6a3692d6d0e8b58b15f2554a2b514672a9b5562d1481e49a0be0f8954"
+    }
+  ],
   "version": 1
 }

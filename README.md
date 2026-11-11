@@ -4,6 +4,8 @@ Shrink your site's web fonts without changing how anything renders.
 
 **[Read the walkthrough](https://amir-abushanab.github.io/fontphobia/)**: fontphobia on a real site, step by step, with its actual output.
 
+Browse the bakery with [original fonts](https://amir-abushanab.github.io/fontphobia/bakery/before/) or [optimized fonts](https://amir-abushanab.github.io/fontphobia/bakery/after/). Both versions have the same photos, menu filters and content; the walkthrough reports font savings separately from total resource savings.
+
 fontphobia crawls your built site in Chrome, records exactly which characters, weights, features and axis values each font draws on each page, and splits every font into a small **core** file, an **extended** file and a lazy **rest** file. Text renders with the same glyphs, hinting, kerning and metrics as before, and `verify` proves it pixel for pixel.
 
 ```sh

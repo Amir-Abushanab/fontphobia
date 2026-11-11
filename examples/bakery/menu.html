@@ -3,30 +3,48 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Menu · Little Levain</title>
+<meta name="description" content="Browse the bakery menu: sourdough, pastry and coffee, with prices, ingredients and vegan filters.">
+<title>The menu · Little Levain</title>
 <link rel="stylesheet" href="styles.css">
+<script src="bakery.js" defer></script>
 </head>
 <body>
-<header><a class="brand" href="index.html">Little Levain</a><nav><a href="menu.html">Menu</a><a href="journal/levain.html">Journal</a><a href="about.html">About</a></nav></header>
-<main>
-<h1>Menu</h1>
-<p class="lede">Prices in euros. Everything is baked on site.</p>
-<h2>Bread</h2>
-<table>
-<tr><td>Country sourdough</td><td>€6.50</td></tr>
-<tr><td>Seeded rye, ½ loaf</td><td>€4.20</td></tr>
-<tr><td>Baguette</td><td>€2.80</td></tr>
-<tr><td>Focaccia with rosemary &amp; sea salt</td><td>€5.00</td></tr>
-</table>
-<h2>Pastry</h2>
-<table>
-<tr><td>Croissant</td><td>€2.60</td></tr>
-<tr><td>Pain au chocolat</td><td>€2.90</td></tr>
-<tr><td>Cardamom bun</td><td>€3.40</td></tr>
-<tr><td>Crème brûlée tart</td><td>€4.80</td></tr>
-</table>
-<p class="small">Allergens: ask us. Most of our bread is vegan; the pastry isn't.</p>
+<a class="skip" href="#content">Skip to content</a>
+<!-- bakery:comparison-bar -->
+<div class="container">
+<header class="site-header"><a class="brand" href="./">Little Levain<small>Bread &amp; the everyday</small></a><nav class="site-nav" aria-label="Main"><a href="menu.html" aria-current="page">Menu</a><a href="journal/levain.html">Journal</a><a href="about.html">Visit us</a></nav></header>
+<main id="content">
+
+<section class="page-heading"><p class="eyebrow">Bread · pastry · coffee</p><h1>On the counter.</h1><p class="lede"><span id="diff-phrase">Prices in euros.</span> Everything is baked on site. This is our regular menu; small seasonal bakes join it through the week.</p></section>
+<img class="menu-cover" src="images/croissants-640.jpg" srcset="images/croissants-640.jpg 640w, images/croissants-1280.jpg 1280w" sizes="(max-width: 1160px) calc(100vw - 40px), 1104px" width="1280" height="825" alt="Butter croissants ready for the morning counter." fetchpriority="high">
+<div id="menu-tools" class="menu-tools" hidden>
+<div class="search-field"><label for="menu-search">Find something</label><input id="menu-search" type="search" placeholder="Try rye, croissant or coffee" autocomplete="off"></div>
+<fieldset><legend>Browse the counter</legend><div class="menu-tabs"><button type="button" data-category="all" aria-pressed="true">Everything</button><button type="button" data-category="bread" aria-pressed="false">Bread</button><button type="button" data-category="pastry" aria-pressed="false">Pastry</button><button type="button" data-category="coffee" aria-pressed="false">Coffee</button></div></fieldset>
+<label class="vegan-control" for="vegan-only"><input id="vegan-only" type="checkbox"> Vegan only</label>
+</div>
+<p class="menu-status" id="menu-status" role="status">12 of 12 items shown</p>
+<div id="menu-items" class="menu-grid"><article class="menu-item" data-kind="bread" data-vegan="true" id="bread"><header><h2>Country sourdough</h2><span class="price">€6.50</span></header><p>800 g. Wheat with a little wholegrain rye; a good loaf for toast tomorrow.</p><span class="diet">🌱 Vegan · Contains: Wheat</span></article>
+<article class="menu-item" data-kind="bread" data-vegan="true"><header><h2>Seeded rye, ½ loaf</h2><span class="price">€4.20</span></header><p>500 g. Sunflower, pumpkin and linseed, soaked overnight.</p><span class="diet">🌱 Vegan · Contains: Wheat, rye, seeds</span></article>
+<article class="menu-item" data-kind="bread" data-vegan="true"><header><h2>Baguette</h2><span class="price">€2.80</span></header><p>A thin, crisp crust and an open crumb. Out of the oven at 8am.</p><span class="diet">🌱 Vegan · Contains: Wheat</span></article>
+<article class="menu-item" data-kind="bread" data-vegan="true"><header><h2>Rosemary focaccia</h2><span class="price">€5.00</span></header><p>A generous square with olive oil, flaky sea salt and fresh rosemary.</p><span class="diet">🌱 Vegan · Contains: Wheat</span></article>
+<article class="menu-item" data-kind="pastry" data-vegan="false" id="pastry"><header><h2>Butter croissant</h2><span class="price">€2.60</span></header><p>Three-day dough, cultured butter and plenty of layers.</p><span class="diet">Contains: Wheat, milk, egg</span></article>
+<article class="menu-item" data-kind="pastry" data-vegan="false"><header><h2>Pain au chocolat</h2><span class="price">€2.90</span></header><p>The same croissant dough, with two batons of dark chocolate.</p><span class="diet">Contains: Wheat, milk, egg, soy</span></article>
+<article class="menu-item" data-kind="pastry" data-vegan="false"><header><h2>Cardamom bun</h2><span class="price">€3.40</span></header><p>Twisted by hand, brushed with syrup, finished with cardamom sugar.</p><span class="diet">Contains: Wheat, milk, egg</span></article>
+<article class="menu-item" data-kind="pastry" data-vegan="false"><header><h2>Crème brûlée tart</h2><span class="price">€4.80</span></header><p>Vanilla custard, a crisp pastry shell and a thin burnt-sugar lid.</p><span class="diet">Contains: Wheat, milk, egg</span></article>
+<article class="menu-item" data-kind="coffee" data-vegan="true" id="coffee"><header><h2>Espresso</h2><span class="price">€2.40</span></header><p>A short, balanced double shot from our house blend.</p><span class="diet">🌱 Vegan · Contains: None</span></article>
+<article class="menu-item" data-kind="coffee" data-vegan="false"><header><h2>Flat white</h2><span class="price">€3.60</span></header><p>A double shot with steamed milk. Oat milk is available at no extra charge.</p><span class="diet">Contains: Milk (or oats)</span></article>
+<article class="menu-item" data-kind="coffee" data-vegan="true"><header><h2>Filter coffee</h2><span class="price">€3.00</span></header><p>Batch brewed through the morning. Ask what we’re pouring.</p><span class="diet">🌱 Vegan · Contains: None</span></article>
+<article class="menu-item" data-kind="coffee" data-vegan="false"><header><h2>Hot chocolate</h2><span class="price">€3.80</span></header><p>Dark chocolate, cocoa and steamed milk.</p><span class="diet">Contains: Milk</span></article></div>
+<p id="menu-empty" hidden>No matches. Try a different search, or choose Everything.</p>
+<aside class="recipe-notes"><h2>Before you order</h2><p>We work with wheat, rye, milk, eggs, nuts and seeds in the same kitchen. The notes above list ingredients, but we can’t guarantee any item is free from traces of allergens.</p><p class="small">Bread freezes well. Ask us to slice your loaf, and toast it straight from frozen.</p></aside>
+
 </main>
-<footer>Little Levain · 14 Mill Street · Open Wednesday to Sunday, 7am–2pm</footer>
+<footer class="site-footer">
+<div><a class="brand" href="./">Little Levain</a><p>14 Mill Street, by the old station.<br>Wed–Sat, 7am–2pm. Sunday, 8am–1pm.</p></div>
+<div><strong>Find your way</strong><a href="menu.html">The menu</a><a href="about.html#visit">Hours &amp; getting here</a><a href="journal/levain.html">From the bakehouse</a></div>
+<div><strong>A little note</strong><p>Walk-ins welcome. Bread and pastry are baked in small batches, so the counter changes through the morning.</p></div>
+</footer>
+<div class="credit">A fictional bakery, made for the fontphobia demo. <a href="about.html#photography">Photography credits</a></div>
+</div>
 </body>
 </html>
