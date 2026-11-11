@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // fontphobia CLI: audit (M2), build and revert (M3–M4), verify (M5), check (M6).
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { cac } from 'cac';
@@ -9,11 +9,21 @@ import {
   auditMarkdown, buildProject, canonicalJson, formatAudit, formatEdits, formatPlan, kb, MANIFEST_FILE, revertProject, type UsageFileJson, formatInspection, formatUnicodeRange, harfbuzzVersion, inspectFont, parseUnicodeRange,
   rangesFromCodePoints, subsetFont, codePointsOf, type AxisSetting, type SubsetOptions,
 } from '@fontphobia/core';
-import { loadConfig } from './config.ts';
+import { loadConfig, selfUrl as selfUrlOf } from './config.ts';
 import { applyKit, readUsage, revertKits } from './apply-kit.ts';
 import pkg from '../package.json' with { type: 'json' };
 
 const cli = cac('fontphobia');
+
+// cac turns numeric-looking values into numbers (`--text 2024`, `--name-ids 0`): string options are put back as strings.
+const strs = <T extends object>(o: T, ...keys: (keyof T)[]): T => { for (const k of keys) if (o[k] !== undefined && o[k] !== true) (o as Record<keyof T, unknown>)[k] = Array.isArray(o[k]) ? (o[k] as unknown[]).map(String) : String(o[k]); return o; };
+
+/** The project root for --cwd: it must be an existing directory. */
+function rootOf(cwd?: string): string {
+  const root = resolve(cwd === undefined ? '.' : String(cwd));
+  if (!existsSync(root) || !statSync(root).isDirectory()) throw new Error(`${root} is not a directory`);
+  return root;
+}
 
 cli
   .command('inspect <font>', "Show a font's tables, axes, features, hinting and sizes")
@@ -33,11 +43,12 @@ cli
   .option('--axis <tag=value>', 'Pin an axis (wght=400) or limit it (wght=400:700). Changes widths slightly. Repeatable')
   .option('--no-hinting', 'Drop TrueType hinting (changes rendering on Windows and Linux)')
   .action(async (file: string, o: { output?: string; unicodes?: string; text?: string; features: string; nameIds?: string; axis?: string | string[]; hinting: boolean }) => {
+    strs(o, 'output', 'unicodes', 'text', 'features', 'nameIds', 'axis');
     if (!o.output) throw new Error('--output is required');
     if (extname(o.output) !== '.woff2') throw new Error('--output must end in .woff2');
     const opts: SubsetOptions = { unicodes: '*', hinting: o.hinting };
-    if (o.unicodes || o.text) {
-      const cps = new Set<number>(o.unicodes ? codePointsOf(parseUnicodeRange(o.unicodes)) : []);
+    if (o.unicodes !== undefined || o.text !== undefined) {
+      const cps = new Set<number>(o.unicodes !== undefined ? codePointsOf(parseUnicodeRange(o.unicodes)) : []);
       for (const ch of o.text ?? '') cps.add(ch.codePointAt(0)!);
       opts.unicodes = cps;
     }
@@ -47,7 +58,7 @@ cli
       const tags = f.split(',').map((t) => t.trim()).filter(Boolean);
       opts.features = tags.every((t) => t.startsWith('+')) ? { add: tags.map((t) => t.slice(1)) } : { only: tags };
     }
-    if (o.nameIds) opts.nameIds = o.nameIds === '*' ? '*' : o.nameIds.split(',').map(Number);
+    if (o.nameIds !== undefined) opts.nameIds = o.nameIds === '*' ? '*' : o.nameIds.split(',').map(Number);
     for (const a of [o.axis ?? []].flat()) {
       const m = a.match(/^([\x20-\x7e]{4})=(-?[\d.]+)(?::(-?[\d.]+))?$/);
       if (!m) throw new Error(`Bad --axis ${JSON.stringify(a)}; use wght=400 or wght=400:700`);
@@ -78,7 +89,8 @@ interface AuditFlags {
 }
 
 async function runAudit(o: AuditFlags, how: { summary: boolean } = { summary: true }) {
-  const root = resolve(o.cwd ?? '.');
+  strs(o, 'cwd', 'dist', 'buildCmd', 'startCmd', 'url', 'pages', 'ignore', 'viewports', 'locales', 'outDir');
+  const root = rootOf(o.cwd);
   const { config, file } = await loadConfig(root, selfUrl());
   const quiet = !!o.json;
   const log = (m: string) => { if (!quiet) process.stderr.write(`  ${m}\n`); };
@@ -93,7 +105,7 @@ async function runAudit(o: AuditFlags, how: { summary: boolean } = { summary: tr
     rebuild: o.rebuild, pages: [...(config.pages ?? []), ...(list(o.pages) ?? [])], ignore: [...(config.ignore ?? []), ...(list(o.ignore) ?? [])],
     viewports: list(o.viewports)?.map(Number) ?? config.viewports, locales: list(o.locales) ?? config.locales,
     maxPages: o.maxPages ?? config.maxPages, concurrency: o.concurrency, fontSizeSweep: o.fontSizeSweep, cache: o.cache,
-    storageState: config.auth?.storageState, privatePages: config.auth?.pages,
+    storageState: config.auth?.storageState ? resolve(root, config.auth.storageState) : undefined, privatePages: config.auth?.pages,
     onStale: interactive ? async (age) => {
       const n = age.newer!;
       const rl = createInterface({ input: process.stdin, output: process.stderr });
@@ -137,7 +149,7 @@ auditCommand(cli.command('audit', "Measure the fonts and each page's usage; writ
 
 interface BuildFlags { cwd?: string; usage?: string; allow?: string | string[]; remainder: boolean; write?: boolean; u?: boolean; json?: boolean; ci?: boolean }
 
-const selfUrl = () => new URL(import.meta.url.endsWith('.ts') ? './index.ts' : './index.mjs', import.meta.url).href;
+const selfUrl = () => selfUrlOf(import.meta.url);
 
 async function ask(q: string): Promise<boolean> {
   const rl = createInterface({ input: process.stdin, output: process.stderr });
@@ -146,7 +158,8 @@ async function ask(q: string): Promise<boolean> {
 }
 
 async function runBuild(o: BuildFlags & { prompt?: boolean }) {
-  const root = resolve(o.cwd ?? '.');
+  strs(o, 'cwd', 'usage', 'allow');
+  const root = rootOf(o.cwd);
   const { config, file } = await loadConfig(root, selfUrl());
   const usageFile = resolve(root, o.usage ?? '.fontphobia/usage.json');
   if (!existsSync(usageFile)) throw new Error(`${usageFile} doesn't exist; run \`fontphobia audit\` first`);
@@ -216,7 +229,8 @@ interface VerifyFlags {
 }
 
 async function runVerify(o: VerifyFlags) {
-  const root = resolve(o.cwd ?? '.');
+  strs(o, 'cwd', 'usage', 'dist', 'buildCmd', 'startCmd', 'url', 'pages', 'ignore', 'mask', 'viewports', 'dpr', 'browsers', 'outDir', 'runtime', 'baseline');
+  const root = rootOf(o.cwd);
   const { config } = await loadConfig(root, selfUrl());
   const usageFile = resolve(root, o.usage ?? join(o.outDir ?? '.fontphobia', 'usage.json'));
   if (!existsSync(usageFile)) throw new Error(`${usageFile} doesn't exist; run \`fontphobia audit\` first`);
@@ -290,24 +304,36 @@ buildOptions(cli
 interface CheckFlags { cwd?: string; dist?: string; url?: string; usage?: string; allowChars?: string; mode?: string; strict?: boolean; json?: boolean; outDir?: string; viewports?: string; maxPages?: number }
 
 async function runCheck(o: CheckFlags) {
-  const root = resolve(o.cwd ?? '.');
+  strs(o, 'cwd', 'dist', 'url', 'usage', 'allowChars', 'mode', 'outDir', 'viewports');
+  const root = rootOf(o.cwd);
   const { config } = await loadConfig(root, selfUrl());
   const mode = o.mode ?? config.check?.mode ?? 'error';
   if (mode !== 'warn' && mode !== 'error') throw new Error(`Unknown --mode ${mode}; use warn or error`);
   const usageFile = resolve(root, o.usage ?? join(o.outDir ?? '.fontphobia', 'usage.json'));
   const usage = existsSync(usageFile) ? (JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson) : undefined;
   let r;
+  let failed: Record<string, string> = {};
   if (o.url) {
     // Exact mode: crawl production in Chrome and compare what it draws with the written files.
     const { audit } = await import('@fontphobia/crawler');
     const log = (m: string) => { if (!o.json) process.stderr.write(`  ${m}\n`); };
-    const a = await audit({ root, url: o.url, fontphobiaVersion: pkg.version, log, cache: false, viewports: list(o.viewports)?.map(Number) ?? config.viewports, maxPages: o.maxPages ?? config.maxPages, locales: config.locales });
+    const a = await audit({
+      root, url: o.url, fontphobiaVersion: pkg.version, log, cache: false, viewports: list(o.viewports)?.map(Number) ?? config.viewports, maxPages: o.maxPages ?? config.maxPages, locales: config.locales,
+      pages: config.pages, ignore: config.ignore, storageState: config.auth?.storageState ? resolve(root, config.auth.storageState) : undefined, privatePages: config.auth?.pages,
+    });
+    failed = a.crawl.failed;
     r = await checkUsage(root, a.usage as unknown as UsageFileJson, { strict: o.strict ?? config.check?.strict });
   } else {
     r = await checkProject({ root, outputDir: o.dist ? resolve(root, o.dist) : config.dist ? resolve(root, config.dist) : undefined, usage, allowChars: o.allowChars ?? config.check?.allowChars, strict: o.strict ?? config.check?.strict });
   }
-  process.stdout.write((o.json ? JSON.stringify(r, null, 2) : formatCheck(r)) + '\n');
-  if (!r.ok && mode === 'error') process.exitCode = 1;
+  const nFailed = Object.keys(failed).length;
+  if (o.json) process.stdout.write(JSON.stringify(nFailed ? { ...r, failed } : r, null, 2) + '\n');
+  else {
+    process.stdout.write(formatCheck(r) + '\n');
+    if (nFailed) process.stdout.write(`${nFailed} page(s) could not be loaded:\n${Object.entries(failed).slice(0, 10).map(([p, e]) => `  ${p}: ${e}`).join('\n')}${nFailed > 10 ? `\n  … and ${nFailed - 10} more` : ''}\n`);
+  }
+  // Nothing checked (no manifest, pages that didn't load) is a failure unless the mode is warn.
+  if ((!r.ok || r.noManifest || nFailed) && mode === 'error') process.exitCode = 1;
 }
 
 cli
@@ -330,7 +356,8 @@ cli
   .option('--dry-run', 'Only show what would change')
   .option('--keep-kits', 'Leave Adobe kits changed by apply-kit as they are')
   .action(async (o: { cwd?: string; dryRun?: boolean; keepKits?: boolean }) => {
-    const root = resolve(o.cwd ?? '.');
+    strs(o, 'cwd');
+    const root = rootOf(o.cwd);
     // Adobe kits first (the API, with TYPEKIT_TOKEN); the files only once they're back.
     if (!o.dryRun) {
       const kp = await revertKits(root, (m) => process.stdout.write(m + '\n'), { keep: o.keepKits });
@@ -352,7 +379,8 @@ cli
   .option('--yes', 'Apply and publish without asking')
   .option('--check', 'Only check that the live kit serves every face and character the pages use')
   .action(async (o: { cwd?: string; usage?: string; yes?: boolean; check?: boolean }) => {
-    const root = resolve(o.cwd ?? '.');
+    strs(o, 'cwd', 'usage');
+    const root = rootOf(o.cwd);
     const usage = readUsage(root, o.usage);
     if (!usage) throw new Error('No usage.json: run `fontphobia audit` first');
     const interactive = !process.env.CI && process.stdin.isTTY && process.stderr.isTTY;

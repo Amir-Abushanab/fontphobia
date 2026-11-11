@@ -52,9 +52,11 @@ beforeAll(async () => {
 const tmp = mkdtempSync(join(tmpdir(), 'fontphobia-kit-'));
 afterAll(() => { server.close(); rmSync(tmp, { recursive: true, force: true }); delete process.env.TYPEKIT_TOKEN; delete process.env.TYPEKIT_API; delete process.env.TYPEKIT_CSS; });
 
+/** usage.json stores `chars` as a unicode-range string. */
+const ranges = (s: string) => [...new Set([...s].map((c) => 'U+' + c.codePointAt(0)!.toString(16).toUpperCase()))].join(', ');
 const usage = {
   version: 1, meta: { fontphobia: '1', harfbuzz: '1', chrome: '150', framework: 'static', mode: 'static', viewports: [1280], fontSizes: [16] },
-  faces: { 'inter-400-normal': { family: 'inter', descriptors: { 'font-weight': '400', 'font-style': 'normal' }, sheet: 'https://use.typekit.net/abc1234.css', source: { adapter: 'adobe-fonts' }, files: [], chars: 'Hello, café', count: 9, inserted: {}, contexts: [], rendered: { weight: [400] }, declared: {}, features: [], locales: ['en'], pages: ['/'] } },
+  faces: { 'inter-400-normal': { family: 'inter', descriptors: { 'font-weight': '400', 'font-style': 'normal' }, sheet: 'https://use.typekit.net/abc1234.css', source: { adapter: 'adobe-fonts' }, files: [], chars: ranges('Hello, café'), count: 9, inserted: {}, contexts: [], rendered: { weight: [400] }, declared: {}, features: [], locales: ['en'], pages: ['/'] } },
   pages: {},
 } as unknown as UsageFileJson;
 
@@ -73,7 +75,7 @@ describe('apply-kit', () => {
     expect(readManifest(root)!.kits).toEqual([{ kit: 'abc1234', previous: [{ id: 'gkmg', variations: ['n3', 'n4', 'n7', 'i4'], subset: 'all' }], applied: [{ id: 'gkmg', variations: ['n4', 'n7', 'i4'], subset: 'all' }] }]);
     // The live kit serves the face and every character.
     expect(await applyKit(root, usage, { ...o, check: true })).toBe(0);
-    expect(await applyKit(root, { ...usage, faces: { x: { ...usage.faces['inter-400-normal']!, chars: 'Hello ☃' } } } as UsageFileJson, { ...o, check: true })).toBe(1);
+    expect(await applyKit(root, { ...usage, faces: { x: { ...usage.faces['inter-400-normal']!, chars: ranges('Hello ☃') } } } as UsageFileJson, { ...o, check: true })).toBe(1);
     expect(log.at(-1)).toContain('no longer has ☃');
     posts.length = 0;
     expect(await revertKits(root, () => {})).toEqual([]);
@@ -108,7 +110,7 @@ describe('apply-kit', () => {
     const root = mkdtempSync(join(tmp, 'site2-'));
     const log: string[] = [];
     reset([{ ...start[0]!, variations: ['n4'] }]);
-    const u = { ...usage, faces: { x: { ...usage.faces['inter-400-normal']!, chars: 'Hello ‚quoted‘' } } } as UsageFileJson;
+    const u = { ...usage, faces: { x: { ...usage.faces['inter-400-normal']!, chars: ranges('Hello ‚quoted‘') } } } as UsageFileJson;
     expect(await applyKit(root, u, { ask: async () => false, interactive: false, version: '1', log: (m) => log.push(m) })).toBe(0);
     expect(log).toEqual(['kit abc1234: nothing to change']);
   });

@@ -4,17 +4,19 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { checkProject, formatCheck, type UsageFileJson } from '@fontphobia/core';
-import { loadConfig } from './config.ts';
+import { loadConfig, selfUrl } from './config.ts';
 import type { FontphobiaCheckOptions, Logger } from './integration.ts';
 
 export async function runCheck(root: string, outputDir: string | undefined, opts: FontphobiaCheckOptions, log: Logger): Promise<void> {
   // Options given to the integration win; the rest come from fontphobia.config's `check`.
-  const fromConfig = (await loadConfig(root, import.meta.url).catch(() => ({ config: {} as { check?: FontphobiaCheckOptions } }))).config.check ?? {};
+  // A config that fails to load fails the check with its error.
+  const fromConfig = (await loadConfig(root, selfUrl(import.meta.url))).config.check ?? {};
   const o = { ...fromConfig, ...Object.fromEntries(Object.entries(opts).filter(([, v]) => v !== undefined)) } as FontphobiaCheckOptions;
   const usageFile = join(root, '.fontphobia', 'usage.json');
   const usage = existsSync(usageFile) ? (JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson) : undefined;
   const r = await checkProject({ root, outputDir, usage, allowChars: o.allowChars, strict: o.strict });
   const text = formatCheck(r);
+  if (r.noManifest) { log.warn(text); return; }
   if (!r.issues.length) { log.info(text); return; }
   if (r.ok || o.mode === 'warn') { log.warn(text); return; }
   throw new Error(text);
