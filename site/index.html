@@ -226,7 +226,20 @@ figcaption { font-size: 14px; color: var(--muted); margin-top: 10px; line-height
 .shape .word .cut { position: relative; }
 .shape .word .cut::before { content: ''; position: absolute; left: -0.04em; top: -6px; bottom: -8px; border-left: 2px dashed var(--bad); }
 
-.diffimg { border-radius: 14px; border: 1px solid var(--line); overflow: hidden; background: #fff; max-width: 420px; margin: 0 auto; }
+.diff-figure { padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+.diff-figure .diff-label { margin: 0 0 12px; font-size: 14px; color: var(--ink-2); }
+.diff-detail { aspect-ratio: 300 / 64; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+/* Magnify the original bitmap's x=32..332, y=184..248 ("Prices in euros."). */
+.diff-detail img { width: 240%; max-width: none; margin-left: -10.666667%; margin-top: -61.333333%; }
+.diff-highlight { filter: url(#diff-highlight); }
+.diff-figure .legend { justify-content: center; }
+.sw.changed { background: #ff4000; }
+.sw.context { background: #e5e5e5; border: 1px solid #999; }
+.diff-figure figcaption { max-width: 38em; margin: 14px auto 0; text-align: center; }
+.diff-full { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 12px; font-size: 14px; }
+.diff-full summary { padding: 8px 0; }
+.diff-full img { margin-top: 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.diff-filters { position: absolute; width: 0; height: 0; overflow: hidden; }
 
 .foot { border-top: 1px solid var(--line); padding: 34px 20px 60px; text-align: center; color: var(--muted); font-size: 14px; }
 .foot .mark { color: var(--ink); width: 200px; margin: 0 auto 12px; }
@@ -653,9 +666,29 @@ In the browser ("before" is this build with the original fonts swapped back)
 
 <span class="r">Verify failed. Diff images are in .fontphobia/verify. `fontphobia revert` restores the original fonts.</span></pre></div>
 
-<figure>
-  <div class="diffimg"><img src="img/verify-limit-axes.png" width="720" height="1400" alt="A diff image of the menu page: the page's text is drawn faintly, and almost every glyph edge is highlighted in yellow where pixels changed."></div>
-  <figcaption>The diff image verify wrote for the menu at 360 px wide and 2× density. Yellow is every pixel that changed.</figcaption>
+<figure class="diff-figure">
+  <svg class="diff-filters" width="0" height="0" aria-hidden="true">
+    <defs>
+      <filter id="diff-highlight" color-interpolation-filters="sRGB">
+        <feComponentTransfer>
+          <feFuncR type="gamma" amplitude="1" exponent="5" offset="0"/>
+          <feFuncG type="gamma" amplitude="1" exponent="5" offset="0"/>
+          <feFuncB type="gamma" amplitude="1" exponent="5" offset="0"/>
+        </feComponentTransfer>
+        <!-- Map yellow to orange; preserve white, grey and every pixel's position. -->
+        <feColorMatrix type="matrix" values="1 0 0 0 0  0 0.25 0.75 0 0  0 0 1 0 0  0 0 0 1 0"/>
+      </filter>
+    </defs>
+  </svg>
+  <p class="diff-label">Detail: “Prices in euros.”</p>
+  <div class="diff-detail"><img class="diff-highlight" src="img/verify-limit-axes.png" width="720" height="1400" alt="Magnified diff of the words “Prices in euros.” Orange outlines show the changed pixels around the grey letters."></div>
+  <div class="legend"><span><i class="sw changed"></i>Changed pixels</span><span><i class="sw context"></i>Text for context</span></div>
+  <details class="diff-full">
+    <summary>Show the full diff</summary>
+    <a href="img/verify-limit-axes.png">Open the original PNG (720 × 1400)</a>
+    <img class="diff-highlight" src="img/verify-limit-axes.png" width="720" height="1400" loading="lazy" alt="Full menu diff with changed pixels shown in orange, around the heading, menu items and prices.">
+  </details>
+  <figcaption>Pixels that changed with <code>limit-axes</code>, shown in orange. Detail enlarged and contrast increased for readability. The original diff uses yellow, at 360 px wide and 2× density.</figcaption>
 </figure>
 
 <p>No lines rewrapped on this machine, but text moved by a few hundredths of a pixel and 15 shaping cases changed beyond the allowed rounding. Verification fails. You can keep the opt-in or run <code>revert</code>.</p>
