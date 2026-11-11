@@ -108,6 +108,28 @@ describe('build --write (css adapter, §9)', () => {
     expect(existsSync(join(root, MANIFEST_FILE))).toBe(false);
   }, 300_000);
 
+  it('an @font-face in an inline <style> next to its preload: the rule is split, the preload points at core', async () => {
+    const root = site('inline-style');
+    const css = readFileSync(join(root, 'styles.css'), 'utf8');
+    const decl = css.slice(css.indexOf("@font-face {\n  font-family: 'Deja'"), css.indexOf('}', css.indexOf("font-family: 'Deja'")) + 1);
+    writeFileSync(join(root, 'styles.css'), css.replace(decl + '\n', ''));
+    const html = readFileSync(join(root, 'index.html'), 'utf8').replace('<link rel="stylesheet"', `<link rel="preload" href="./fonts/DejaVuSans.ttf" as="font" type="font/ttf" crossorigin>\n<style>\n${decl}\n</style>\n<link rel="stylesheet"`);
+    writeFileSync(join(root, 'index.html'), html);
+    const u = structuredClone(usage);
+    u.faces['deja-400-normal']!.source = { ...u.faces['deja-400-normal']!.source, file: 'index.html', line: html.split('\n').findIndex((l) => l.startsWith('@font-face')) + 1 };
+    const before = snapshot(root);
+    const r = await buildProject(root, u, {}, { version: '1', write: true });
+    const out = readFileSync(join(root, 'index.html'), 'utf8');
+    const core = r.plan.faces.find((f) => f.id === 'deja-400-normal')!.files!.find((f) => f.role === 'core')!.name;
+    expect(out).toContain(`<link rel="preload" href="./fonts/${core}" as="font"`);
+    expect(out.match(/fontphobia:begin deja-400-normal/g)).toHaveLength(1);
+    expect(out).not.toContain("url('./fonts/DejaVuSans.ttf')");
+    revertProject(root, { write: true });
+    const after = snapshot(root);
+    for (const f of Object.keys(after)) if (/\.(core|ext|rest)\.[0-9a-f]{8}\.woff2$/.test(f)) delete after[f];
+    expect(after).toEqual(before);
+  }, 300_000);
+
   it('rebuilds after usage changes: new outputs, outdated ones deleted, revert still restores the original', async () => {
     const root = site('rebuild');
     const before = snapshot(root);
