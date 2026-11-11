@@ -1,7 +1,7 @@
 // Getting the site to crawl (§7.1), shared by audit and verify: --url, --dist, --start-cmd, or what
 // the framework profile finds, building first when there is no output or it is stale and the caller agrees.
 import { existsSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { join } from 'node:path';
 import { buildAge, buildCommand, detectProject, findSite, KEPT_OUTPUT, type BuildAge, type Project, type SiteSource } from '@fontphobia/core';
 import { isolatedCopy, keepOutput, type Copy } from './isolate.ts';
@@ -46,11 +46,20 @@ export function since(ms: number, now = Date.now()): string {
   return `${Math.round(s / 86400)} days ago`;
 }
 
+const isDir = (p: string) => existsSync(p) && statSync(p).isDirectory();
+
+/** The build output in `p`: `dist` (relative to the root) when given, else what the profile finds. */
+function outputIn(p: Project, dist: string | undefined): SiteSource | undefined {
+  if (dist === undefined) return findSite(p);
+  const dir = join(p.root, dist);
+  return isDir(dir) ? { mode: 'static', dir, spaFallback: p.profile.spaFallback, reason: '--dist' } : undefined;
+}
+
 /** The static output kept from fontphobia's last build in a copy, if nothing changed since. */
-function keptSite(project: Project): SiteSource | undefined {
+function keptSite(project: Project, dist: string | undefined): SiteSource | undefined {
   const root = join(project.root, KEPT_OUTPUT);
-  if (!existsSync(root)) return undefined;
-  const site = findSite({ ...project, root });
+  if (!existsSync(root) || dist === '') return undefined; // --dist . is the project itself
+  const site = outputIn({ ...project, root }, dist);
   if (site?.mode !== 'static') return undefined; // a server would run from the copy, which is gone
   const age = buildAge(project, site);
   return age && !age.newer ? { ...site, reason: `${KEPT_OUTPUT} (fontphobia's last build)` } : undefined;
@@ -63,13 +72,21 @@ export async function openSite(o: SiteOptions, project: Project, log: (m: string
   let age: BuildAge | undefined;
   let copy: Copy | undefined;
   if (o.url) return { mode: 'url', base: o.url.replace(/\/?$/, '/'), root, stop: async () => {} };
-  if (o.dist) site = { mode: 'static', dir: resolve(root, o.dist), spaFallback: project.profile.spaFallback, reason: '--dist' };
-  else if (o.startCmd) site = { mode: 'server', server: { cmd: o.startCmd, when: '', cwd: root }, reason: '--start-cmd' };
+  // --dist says where the output is; it's built like the profile's output when there's a build command.
+  // Outside the project, a build in a copy can't make it: it's served as it is.
+  const dist = o.dist ? relative(root, resolve(root, o.dist)).split(sep).join('/') : undefined;
+  const inside = dist !== undefined && !/^\.\.(\/|$)/.test(dist) && !isAbsolute(dist);
+  if (o.dist && !(inside && (o.buildCmd ?? buildCommand(project)))) {
+    site = { mode: 'static', dir: resolve(root, o.dist), spaFallback: project.profile.spaFallback, reason: '--dist' };
+    if (!isDir(site.dir!)) throw new Error(`${site.dir} (--dist) is not a directory${inside ? ', and there is no build command to make it. Pass --build-cmd.' : ''}`);
+    age = buildAge(project, site);
+    if (age?.newer) log(`warning: ${age.newer.file}${age.newer.count > 1 ? ` and ${age.newer.count - 1} other file(s)` : ''} changed after ${age.output} was built (${since(age.builtAt)})`);
+  } else if (o.startCmd && !o.dist) site = { mode: 'server', server: { cmd: o.startCmd, when: '', cwd: root }, reason: '--start-cmd' };
   else {
-    site = o.rebuild ? undefined : findSite(project);
+    site = o.rebuild ? undefined : outputIn(project, dist);
     // fontphobia's own last build (made in a copy, kept in .fontphobia/output) when it's newer than
     // every source and the project's output isn't: no rebuild on every run.
-    const kept = o.rebuild || o.inPlace ? undefined : keptSite(project);
+    const kept = o.rebuild || o.inPlace ? undefined : keptSite(project, dist);
     if (kept && (!site || buildAge(project, site)?.newer)) { site = kept; log(`using fontphobia's last build (${KEPT_OUTPUT}), newer than every source`); }
     if (site) {
       age = buildAge(project, site);
@@ -90,22 +107,19 @@ export async function openSite(o: SiteOptions, project: Project, log: (m: string
       const r = await runCommand(cmd, where.root);
       if (r.code !== 0) { await copy?.remove(); throw new Error(`\`${cmd}\` failed (exit ${r.code}):\n${r.output.trim().slice(-3000)}`); }
       built = cmd;
-      site = findSite(where);
-      if (!site) { await copy?.remove(); throw new Error(`\`${cmd}\` finished, but no output was found for ${project.profile.name} (looked in ${project.profile.output.join(', ')}). Pass --dist or --start-cmd.`); }
+      site = outputIn(where, dist);
+      if (!site) { await copy?.remove(); throw new Error(dist !== undefined ? `\`${cmd}\` finished, but ${o.dist} (--dist) is not a directory.` : `\`${cmd}\` finished, but no output was found for ${project.profile.name} (looked in ${project.profile.output.join(', ')}). Pass --dist or --start-cmd.`); }
     }
   }
-  if (o.dist) {
-    age = buildAge(project, site);
-    if (age?.newer) log(`warning: ${age.newer.file}${age.newer.count > 1 ? ` and ${age.newer.count - 1} other file(s)` : ''} changed after ${age.output} was built (${since(age.builtAt)})`);
-  }
+  // What a build in a copy leaves for later runs (.fontphobia/output/): the output it served.
+  const outputs = dist !== undefined ? [dist] : project.profile.output;
   if (site.mode === 'static') {
-    if (!existsSync(site.dir!) || !statSync(site.dir!).isDirectory()) { await copy?.remove(); throw new Error(`${site.dir} is not a directory`); }
     const s = await serveStatic(site.dir!, { spaFallback: site.spaFallback });
     log(`serving ${site.dir} (${site.reason})`);
-    return { mode: 'static', base: s.url, site, built, age, root: copy?.root ?? root, keepOutput: copy && (() => keepOutput(copy!.root, root, project.profile.output)), stop: async () => { await s.close(); await copy?.remove(); } };
+    return { mode: 'static', base: s.url, site, built, age, root: copy?.root ?? root, keepOutput: copy && (() => keepOutput(copy!.root, root, outputs)), stop: async () => { await s.close(); await copy?.remove(); } };
   }
   log(`starting: ${site.server!.cmd}`);
   const s = await startServer(site.server!.cmd, { cwd: site.server!.cwd, env: site.server!.env }).catch(async (e) => { await copy?.remove(); throw e; });
   log(`server at ${s.url}`);
-  return { mode: 'server', base: s.url.replace(/\/?$/, '/'), site, built, age, root: copy?.root ?? root, keepOutput: copy && (() => keepOutput(copy!.root, root, project.profile.output)), stop: async () => { await s.stop(); await copy?.remove(); } };
+  return { mode: 'server', base: s.url.replace(/\/?$/, '/'), site, built, age, root: copy?.root ?? root, keepOutput: copy && (() => keepOutput(copy!.root, root, outputs)), stop: async () => { await s.stop(); await copy?.remove(); } };
 }

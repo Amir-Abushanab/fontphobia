@@ -54,6 +54,7 @@ export async function startServer(command: string, opts: { cwd: string; env?: Re
   child.stderr!.on('data', onData);
   let exited: number | null = null;
   child.on('exit', (c) => { exited = c ?? 0; });
+  child.on('error', (e) => { out += `${e.message}\n`; exited ??= 127; });
   const deadline = Date.now() + (opts.timeoutMs ?? 90_000);
   const suffix = (opts.path ?? '/').replace(/^\/?/, '/');
   const candidates = () => [`http://localhost:${port}`, `http://127.0.0.1:${port}`, ...[...stripAnsi(out).matchAll(URL_RE)].map((m) => m[0].replace('0.0.0.0', '127.0.0.1').replace(/\/+$/, ''))];
@@ -77,5 +78,7 @@ export function runCommand(command: string, cwd: string, env: Record<string, str
     child.stdout.on('data', (d) => { out += d; });
     child.stderr.on('data', (d) => { out += d; });
     child.on('close', (code) => resolve({ code: code ?? 1, output: out }));
+    // It didn't start (no such cwd, no shell): a failed command, not an uncaught error.
+    child.on('error', (e) => resolve({ code: 127, output: `${out}${e.message}\n` }));
   });
 }

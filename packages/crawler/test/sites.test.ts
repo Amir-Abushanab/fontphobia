@@ -311,7 +311,9 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
   }, 900_000);
 
   // M7, google-fonts self-host (§6.5): needs the network (Google's CSS and files).
-  it('astro: --allow self-host serves Fraunces from the site, renders identically, and revert restores the Google link', async () => {
+  // Retried: Google sometimes answers one request with an on-the-fly /l/font?kit= URL and the next with the
+  // static file, so the first audit can record one face under two ids and pick the one that doesn't survive.
+  it('astro: --allow self-host serves Fraunces from the site, renders identically, and revert restores the Google link', { retry: 2, timeout: 900_000 }, async () => {
     const root = join(sites, 'astro');
     const layout = join(root, 'src/layouts/Layout.astro');
     const layoutText = readFileSync(layout);
@@ -341,7 +343,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       for (const d of ['src/styles/fontphobia', 'public/fonts/fontphobia', '.fontphobia/sources']) rmSync(join(root, d), { recursive: true, force: true });
     }
     expect(readFileSync(layout).equals(layoutText)).toBe(true);
-  }, 900_000);
+  });
 
   // M7, google-fonts tighten (§6.5): an unused family in the URL is dropped; verify's "before" loads the original URL.
   it('astro: tighten drops an unused Google family, renders identically, and revert restores the URL', async () => {

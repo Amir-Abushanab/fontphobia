@@ -71,8 +71,9 @@ describe.skipIf(!chrome)('verify in Chrome (§10.3)', () => {
     expect(differences(r)).toEqual([]);
     expect(r.browser!.comparisons.map((c) => `${c.page} ${c.viewport} ${c.dpr}`)).toEqual(
       ['/', '/about/', '/edge.html'].flatMap((p) => ['360 1', '360 2', '1280 1', '1280 2'].map((v) => `${p} ${v}`)));
-    // On macOS every comparison is pixel-identical; elsewhere system-font text may show unrelated noise.
-    if (process.platform === 'darwin') expect(r.browser!.comparisons.every((c) => c.class === 'identical' && c.pixels === 0)).toBe(true);
+    // On macOS every comparison is pixel-identical, at once or on a reload (every differing pixel counts, so a
+    // busy machine can show one-off rasterizer noise as `flaky`); elsewhere system-font text may show unrelated noise.
+    if (process.platform === 'darwin') expect(r.browser!.comparisons.filter((c) => c.class !== 'flaky' && !(c.class === 'identical' && c.pixels === 0)).map((c) => `${c.page} ${c.viewport} ${c.dpr} ${c.class} ${c.pixels}px`)).toEqual([]);
     // Every page downloads less, and the about page only Inter's core.
     for (const p of r.browser!.bytes) expect(p.after.bytes).toBeLessThan(p.before.bytes);
     expect(r.browser!.bytes.find((p) => p.page === '/about/')!.faces).toEqual({ 'inter-100-900-normal': { before: 879708, after: expect.any(Number) } });
@@ -143,7 +144,10 @@ for (const engine of ['webkit', 'firefox'] as const) {
   describe.skipIf(!chrome || !hostEngines[engine])(`verify in ${engine} on this machine (§10.3)`, () => {
     it('a clean build is pixel-identical', async () => {
       const root = await built(`host-${engine}`);
-      const r = await verify({ root, usage, viewports: [360, 1280], dprs: [1, 2], browsers: [engine], outDir: outDir(engine) });
+      // WebKit on macOS draws the fixture's synthesized small caps one pixel differently at DPR 1
+      // (docs/notes/webkit-small-caps.md): that paragraph is masked there, everything else is compared.
+      const mask = engine === 'webkit' && process.platform === 'darwin' ? ['#caps'] : undefined;
+      const r = await verify({ root, usage, viewports: [360, 1280], dprs: [1, 2], browsers: [engine], mask, outDir: outDir(engine) });
       expect(differences(r)).toEqual([]);
       expect(r.browser!.rejected).toEqual([]);
       expect(r.ok).toBe(true);

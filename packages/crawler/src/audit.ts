@@ -11,7 +11,7 @@ import {
 } from '@fontphobia/core';
 import { clearKeptOutput } from './isolate.ts';
 import { openSite, since, type SiteOptions } from './site.ts';
-import { pageKey, visitPage, type VisitOptions } from './visit.ts';
+import { matchesPage, pageKey, pageUrl, underBase, visitPage, type VisitOptions } from './visit.ts';
 import { VisitCache } from './visit-cache.ts';
 
 export interface AuditOptions extends SiteOptions {
@@ -35,8 +35,8 @@ export interface AuditOptions extends SiteOptions {
 }
 
 export interface CrawlInfo {
-  /** M3.5: visits reused from .fontphobia/cache/visits (nothing they loaded changed) and made fresh. */
-  cache?: { reused: number; visited: number };
+  /** M3.5: visits reused from .fontphobia/cache/visits (nothing they loaded changed), made fresh, and stored for the next run (a visit whose resources couldn't all be read isn't). */
+  cache?: { reused: number; visited: number; stored: number };
   framework: { id: string; name: string; tier: 1 | 2 };
   mode: 'static' | 'server' | 'url';
   source: string;
@@ -78,10 +78,10 @@ export async function launchChrome(args: string[] = []): Promise<Browser> {
 async function sitemapPaths(base: string, log: (m: string) => void): Promise<string[]> {
   const out = new Set<string>();
   const seen = new Set<string>();
-  const queue = [new URL('/sitemap.xml', base).href, new URL('/sitemap-index.xml', base).href];
+  const queue = [pageUrl('/sitemap.xml', base), pageUrl('/sitemap-index.xml', base)];
   try {
     const robots = await fetch(new URL('/robots.txt', base), { signal: AbortSignal.timeout(5000) });
-    if (robots.ok) for (const m of (await robots.text()).matchAll(/^\s*sitemap:\s*(\S+)/gim)) { try { queue.push(new URL(new URL(m[1]!).pathname, base).href); } catch { /* bad */ } }
+    if (robots.ok) for (const m of (await robots.text()).matchAll(/^\s*sitemap:\s*(\S+)/gim)) { try { queue.push(pageUrl(new URL(m[1]!).pathname, base)); } catch { /* bad */ } }
   } catch { /* none */ }
   while (queue.length && seen.size < 50) {
     const u = queue.shift()!;
@@ -95,7 +95,7 @@ async function sitemapPaths(base: string, log: (m: string) => void): Promise<str
       let p: URL;
       try { p = new URL(l, base); } catch { continue; }
       // Sitemaps carry the production origin: keep the path, crawl it here.
-      if (isIndex || p.pathname.endsWith('.xml')) queue.push(new URL(p.pathname, base).href);
+      if (isIndex || p.pathname.endsWith('.xml')) queue.push(pageUrl(p.pathname, base));
       else out.add(p.pathname + p.search);
     }
   }
@@ -118,7 +118,6 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
   const maxPages = o.maxPages ?? 500;
   const ignore = (o.ignore ?? []).map(globToRegExp);
   const include = (o.pages ?? []).filter(isGlob).map(globToRegExp);
-  const allowed = (p: string) => !ignore.some((r) => r.test(p)) && (!include.length || include.some((r) => r.test(p)) || (o.pages ?? []).includes(p));
   const privateRe = o.storageState ? (o.privatePages?.length ? o.privatePages : ['**']).map(globToRegExp) : [];
 
   // 1. The site: --url, --dist, --start-cmd, or what the profile finds (building first if needed).
@@ -134,15 +133,19 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
 
     // 2. Seeds (§7.2): output HTML, build route lists, sitemap, config pages, '/'.
     const fileRoutes = routesFromFiles(project);
-    const seeds = new Set<string>(['/']);
-    if (site?.mode === 'static') for (const p of htmlPages(site.dir!)) seeds.add(p);
-    for (const r of fileRoutes.routes) seeds.add(r);
-    for (const p of await sitemapPaths(base, log)) seeds.add(p);
-    for (const p of o.pages ?? []) if (!isGlob(p)) seeds.add(p.startsWith('/') ? p : '/' + p);
+    // Every seed and key is the origin-absolute `pathname + search` the browser shows; a seed without
+    // the base path is relative to the site's root (pageUrl).
+    const keyOf = (p: string) => pageKey(pageUrl(p, base));
+    const listed = new Set((o.pages ?? []).filter((p) => !isGlob(p)).map(keyOf));
+    const allowed = (p: string) => !matchesPage(ignore, p, base) && (!include.length || matchesPage(include, p, base) || listed.has(p));
+    const seeds = new Set<string>([keyOf('/'), ...listed]);
+    if (site?.mode === 'static') for (const p of htmlPages(site.dir!)) seeds.add(keyOf(p));
+    for (const r of fileRoutes.routes) seeds.add(keyOf(r));
+    for (const p of await sitemapPaths(base, log)) seeds.add(keyOf(p));
     // 404 pages render fonts too, but the server answers them for any path; crawl them by name only.
-    const toUrl = (p: string) => new URL(p.replace(/^\//, ''), base).href;
+    const toUrl = (p: string) => pageUrl(p, base);
 
-    const isPrivate = (p: string) => privateRe.some((r) => r.test(p));
+    const isPrivate = (p: string) => matchesPage(privateRe, p, base);
     const visitsOut: Visit[] = [];
     const bodies = new Map<string, Uint8Array>();
     const failed: Record<string, string> = {};
@@ -179,9 +182,10 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     const byPage = new Map<string, { emMq: boolean; textScale: boolean; url: string }>();
     while (frontier.length) {
       const next: string[] = [];
+      const missed: string[] = [];
       await pool(frontier, concurrency, async (p) => {
         const r = await doVisit(toUrl(p), { viewport: first, fontSize: 16, private: isPrivate(p) });
-        if (!r.visit) { failed[p] = r.error ?? `HTTP ${r.status}`; return; }
+        if (!r.visit) { failed[p] = r.error ?? `HTTP ${r.status}`; missed.push(p); return; }
         const key = r.visit.page;
         if (pages.has(key)) return; // a redirect landed on a page we already have
         pages.add(key);
@@ -190,13 +194,15 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
         for (const l of r.links) {
           const u = new URL(l);
           const lp = u.pathname + u.search;
-          if (NON_PAGE_EXT.test(u.pathname) || queued.has(lp) || !allowed(lp)) continue;
+          // Outside the base path: another site on the same origin.
+          if (NON_PAGE_EXT.test(u.pathname) || !underBase(u.pathname, base) || queued.has(lp) || !allowed(lp)) continue;
           if (queued.size >= maxPages) continue;
           queued.add(lp);
           next.push(lp);
         }
       });
-      log(`pages: ${pages.size} (${next.length} more found)`);
+      missed.sort();
+      log(`pages: ${pages.size} (${next.length} more found${missed.length ? `, ${missed.length} failed: ${missed.slice(0, 3).map((p) => `${p} ${failed[p]}`).join('; ')}${missed.length > 3 ? '; …' : ''}` : ''})`);
       frontier = next.sort();
     }
     if (!pages.size) throw new Error(`No page loaded from ${base}: ${Object.entries(failed).slice(0, 5).map(([p, e]) => `${p} ${e}`).join('; ')}`);
@@ -269,7 +275,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       mode, source: o.url ?? (site?.dir !== undefined ? relative(opened.root, site.dir).split(sep).join('/') || '.' : site?.server?.cmd ?? ''), built,
       build: age ? { at: new Date(age.builtAt).toISOString(), output: age.output, newer: age.newer && { file: age.newer.file, at: new Date(age.newer.mtime).toISOString(), count: age.newer.count } } : undefined,
       pages: [...pages].sort(), failed: Object.fromEntries(Object.entries(failed).sort()), dynamicRoutes, routeSources: fileRoutes.sources,
-      visits: visitsOut.length, cache: cache ? { reused: cache.stats.hits, visited: visitsOut.length - cache.stats.hits } : undefined, viewports, fontSizes: [...fontSizes].sort((a, b) => a - b), durationMs: Date.now() - t0,
+      visits: visitsOut.length, cache: cache ? { reused: cache.stats.hits, visited: visitsOut.length - cache.stats.hits, stored: cache.stats.stored } : undefined, viewports, fontSizes: [...fontSizes].sort((a, b) => a - b), durationMs: Date.now() - t0,
     };
     const json = usageToJson(usage, {
       fontphobia: o.fontphobiaVersion, harfbuzz: harfbuzzVersion(), chrome, framework: project.profile.id, mode,

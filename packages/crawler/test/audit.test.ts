@@ -170,9 +170,10 @@ describe.skipIf(!chrome)('incremental audit (M3.5)', () => {
     rmSync(join(root, '.fontphobia'), { recursive: true, force: true });
     const opts = { root, dist: '.', fontphobiaVersion: 'test', viewports: [360, 1280] };
     const a1 = await audit(opts);
-    expect(a1.crawl.cache).toEqual({ reused: 0, visited: a1.crawl.visits });
+    // `stored` first: a visit the first run couldn't store is one the second has to make again.
+    expect(a1.crawl.cache).toEqual({ reused: 0, visited: a1.crawl.visits, stored: a1.crawl.visits });
     const a2 = await audit(opts);
-    expect(a2.crawl.cache).toEqual({ reused: a1.crawl.visits, visited: 0 });
+    expect(a2.crawl.cache).toEqual({ reused: a1.crawl.visits, visited: 0, stored: 0 });
     expect(canonicalJson(a2.usage)).toBe(canonicalJson(a1.usage));
 
     // One page's content changes: only its visits run again.
@@ -180,7 +181,7 @@ describe.skipIf(!chrome)('incremental audit (M3.5)', () => {
     writeFileSync(about, readFileSync(about, 'utf8').replace('Only ASCII here', 'Only ASCII here, and ñ'));
     const a3 = await audit(opts);
     const aboutVisits = a1.usage.pages['/about/']!.visits.length;
-    expect(a3.crawl.cache).toEqual({ reused: a1.crawl.visits - aboutVisits, visited: aboutVisits });
+    expect(a3.crawl.cache).toEqual({ reused: a1.crawl.visits - aboutVisits, visited: aboutVisits, stored: aboutVisits });
     const full = await audit({ ...opts, cache: false });
     expect(full.crawl.cache).toBeUndefined();
     expect(canonicalJson(a3.usage)).toBe(canonicalJson(full.usage));
