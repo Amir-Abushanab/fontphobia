@@ -1,14 +1,11 @@
 // The audit report: terminal text and report.md, from usage.json plus crawl facts (§1.5, §7).
 import { parseUnicodeRange, codePointsOf, formatUnicodeRange } from '../css/unicode-range.ts';
-import { adobeFindings, isTypekitSheet, type AdobeFaceFacts, type AdobeUsage } from '../adapters/adobe.ts';
+import type { UsageFaceJson } from '../plan/planner.ts';
+import { adobeFindings, isTypekitSheet, type AdobeFaceFacts } from '../adapters/adobe.ts';
 
 type UsageJson = {
   meta: { fontphobia: string; chrome: string; framework: string; mode: string; viewports: number[]; fontSizes: number[] };
-  faces: Record<string, {
-    family: string; descriptors: Record<string, string>; source: { adapter: string; file?: string; line?: number; fontFile?: string; note?: string };
-    files: { url: string; bytes?: number }[]; chars: string; count: number; inserted: Record<string, string>; pages: string[];
-    features: string[]; rendered: { weight?: number[]; axes?: Record<string, number[]> }; editable?: boolean; wordsTruncated?: boolean; local?: boolean;
-  }>;
+  faces: Record<string, Pick<UsageFaceJson, 'family' | 'descriptors' | 'source' | 'sheet' | 'files' | 'chars' | 'count' | 'inserted' | 'pages' | 'features' | 'rendered' | 'editable' | 'wordsTruncated' | 'local'>>;
   pages: Record<string, {
     visits: string[]; bytes: number; fonts: { url: string; status: number; bytes: number; faces: string[] }[];
     preloads: { href: string; crossorigin: string | null; used: boolean }[]; fallback: Record<string, string>; disagreements: string[]; notes: string[];
@@ -28,7 +25,7 @@ export interface CrawlFacts {
   failed: Record<string, string>;
   dynamicRoutes: string[];
   visits: number;
-  cache?: { reused: number; visited: number };
+  cache?: { reused: number; visited: number; stored?: number };
   viewports: number[];
   fontSizes: number[];
   durationMs: number;
@@ -121,7 +118,7 @@ export function auditFindings(u: UsageJson, crawl: CrawlFacts): Finding[] {
   }
   for (const [id, f] of Object.entries(u.faces)) if (f.wordsTruncated) out.push({ kind: 'usage.json', text: `${id}: word list capped` });
   for (const [id, f] of Object.entries(u.faces)) if (f.source.adapter === 'unknown') out.push({ kind: 'source', text: `${id} (${f.files[0]?.url ?? f.family}): no declaration found in the repo` });
-  if ([...Object.values(u.faces), ...Object.values(u.unloaded)].some((f) => isTypekitSheet((f as { sheet?: string }).sheet))) out.push(...adobeFindings(u as unknown as AdobeUsage, crawl.adobe ?? []));
+  if ([...Object.values(u.faces), ...Object.values(u.unloaded)].some((f) => isTypekitSheet(f.sheet))) out.push(...adobeFindings(u, crawl.adobe ?? []));
   const notes = new Set<string>();
   for (const pg of Object.values(u.pages)) for (const n of pg.notes) notes.add(n);
   for (const n of notes) out.push({ kind: 'note', text: n });

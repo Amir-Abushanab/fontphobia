@@ -11,7 +11,7 @@ import { readSfnt } from '../font/sfnt.ts';
 import { glyfInstructionBytes, parseFvar, type Axis } from '../font/tables.ts';
 import { checkShaping, type ShapeCase } from '../shape/equivalence.ts';
 import { hbSubset, subsetFont, type AxisSetting, type SubsetOptions } from '../subset/subset.ts';
-import { deriveName, detectLicense, licenseRefusal, type License } from './license.ts';
+import { detectLicense, licenseRefusal, renameFor, type License } from './license.ts';
 import { localeChars } from './locale.ts';
 import { cmapAliases, hintRefs, macosReferenceGlyphs, reverseCmap } from './hintrefs.ts';
 
@@ -334,8 +334,8 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
   const refusal = licenseRefusal(sfnt, lic, allowedLicense);
   const license: FacePlan['license'] = { id: lic.id, from: lic.from, reserved: lic.reserved.length ? lic.reserved : undefined };
   if (refusal) return { ...base, status: 'refused', reason: refusal, source, license };
-  const renameTo = cfg.rename?.[face.family] ?? deriveName(face.family, lic.reserved);
-  if (renameTo) license.rename = { from: face.family, to: renameTo };
+  const rename = renameFor(sfnt, face.family, lic.reserved, cfg.rename);
+  if (rename) license.rename = rename;
 
   const { face: hbFace, font: hbFont } = loadFont(sfnt);
   const cmap = new Set(hbFace.collectUnicodes());
@@ -490,7 +490,12 @@ export async function planAll(usage: UsageFileJson, sources: Map<string, SourceF
   if (unknown.length) throw new Error(`Unknown opt-in ${unknown.join(', ')}; known: ${[...OPT_INS, 'self-host', 'tighten'].join(', ')}`);
   const faces: FacePlan[] = [];
   // Sequential: wawoff2 is serialized anyway, and the order keeps the output stable.
-  for (const id of Object.keys(usage.faces).sort(str)) faces.push(await planFace(id, usage.faces[id]!, usage, sources.get(id), cfg, outputs));
+  // One face that fails (a font the subsetter can't handle as planned) is left as it is, with the error; the others still plan.
+  for (const id of Object.keys(usage.faces).sort(str)) {
+    const face = usage.faces[id]!;
+    try { faces.push(await planFace(id, face, usage, sources.get(id), cfg, outputs)); }
+    catch (e) { faces.push({ id, family: face.family, adapter: face.source.adapter, status: 'skipped', reason: `planning it failed: ${(e as Error).message}` }); }
+  }
   const optIns = OPT_INS.map((oid) => {
     const hits = faces.flatMap((f) => f.optIns?.filter((o) => o.id === oid) ?? []);
     return { id: oid, saving: hits.reduce((n, o) => n + o.saving, 0), faces: hits.length, applied: hits.some((o) => o.applied) };

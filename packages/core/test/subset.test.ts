@@ -18,6 +18,14 @@ describe('subsetFont', () => {
     expect(String.fromCharCode(...r.woff2.subarray(0, 4))).toBe('wOF2');
   });
 
+  test('one half of a bidi-mirrored pair is accepted, and the output lists its mirror', async () => {
+    for (const [text, mirrored] of [['a>b', [0x3c, 0x3e]], ['(hello', [0x28, 0x29]]] as const) {
+      const r = await subsetFont(inter, { unicodes: [...text].map((c) => c.codePointAt(0)!) });
+      for (const c of mirrored) expect(r.unicodes).toContain(c);
+      expect(r.unicodes).toEqual([...loadFont(r.decoded).face.collectUnicodes()].sort((x, y) => x - y));
+    }
+  });
+
   test('vertical metrics, unitsPerEm, fsType, head dates and xAvgCharWidth are preserved', async () => {
     for (const src of [inter, dejavu, await toSfnt(fixture('Inter-Regular-hinted.woff2'))]) {
       const { decoded } = await subsetFont(src, { unicodes: ASCII });

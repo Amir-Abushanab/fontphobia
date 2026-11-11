@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { join } from 'node:path';
 import { canonicalJson } from '../usage/json.ts';
 import { parseStylesheet } from '../css/stylesheet.ts';
+import { syntaxOf } from './css.ts';
 import type { FacePlan, Role } from '../plan/planner.ts';
 
 /** Everything fontphobia writes for itself lives in this folder; only the manifest and sources/ are committed. */
@@ -158,7 +159,7 @@ export function generatedFaces(m: Manifest | undefined): Map<string, { id: strin
   const out = new Map<string, { id: string; descriptors?: Record<string, string> }>();
   for (const e of Object.values(m?.entries ?? {})) {
     // next/font/local entries have no rule of ours: the rule Next emits keeps its own descriptors.
-    const rule = e.declaration ? parseStylesheet(e.declaration).fontFaces[0] : undefined;
+    const rule = e.declaration ? parseStylesheet(e.declaration, { syntax: syntaxOf(e.stylesheet) }).fontFaces[0] : undefined;
     if (e.declaration && !rule) continue;
     for (const o of e.outputs) out.set(o.file.split('/').pop()!, { id: e.id, descriptors: rule?.descriptors });
   }

@@ -1,6 +1,6 @@
 // `build` (§9): plan, then write the subset files, the adapter edits and the manifest together.
 // Without `write` it returns the same result without touching anything, for the preview.
-import { existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join, posix } from 'node:path';
 import { detectCss, type CssSource } from '../adapters/css.ts';
@@ -8,9 +8,9 @@ import { harfbuzzVersion } from '../font/hb.ts';
 import { listFiles } from '../project/detect.ts';
 import { planAll, type FacePlan, type Plan, type PlanConfig, type UsageFileJson } from '../plan/planner.ts';
 import { resolveSources } from '../plan/sources.ts';
-import { cssBlock, findBlock } from './css.ts';
+import { cssBlock, findBlock, syntaxOf } from './css.ts';
 import { findSheetRefs, googleCssFromAudit, googleFileUrl, googleSources, hostedDir, isGoogleSheet, sheetSlug } from '../adapters/google.ts';
-import { parseStylesheet } from '../css/stylesheet.ts';
+import { parseStylesheet, type Syntax } from '../css/stylesheet.ts';
 import { familyKey } from '../css/values.ts';
 import { sameFaceDescriptors } from '../css/face-match.ts';
 import { findLocalFontCalls, localFontPath, nextFallbackMetrics } from '../adapters/next-font.ts';
@@ -20,7 +20,7 @@ import { tightenGoogle, type TightenSuggestion } from './google-tighten.ts';
 import { narrowOptions, type OptionsSuggestion } from './narrow-options.ts';
 import { EJECT_KINDS, ejectFramework, ejectSources, hasFrameworkEject, isEjectKind } from './framework-eject.ts';
 import { applyEdits, checkEdits, type Edit } from './edits.ts';
-import { MANIFEST_FILE, MANIFEST_VERSION, manifestJson, manifestPath, readManifest, writeManifest, type Manifest, type ManifestEntry } from './manifest.ts';
+import { FONTPHOBIA_DIR, LEGACY_MANIFEST_FILE, MANIFEST_FILE, MANIFEST_VERSION, manifestJson, manifestPath, readManifest, writeManifest, type Manifest, type ManifestEntry } from './manifest.ts';
 import { findFontCheckCalls, fontCheckFix } from '../project/font-checks.ts';
 
 export interface ProjectBuildOptions {
@@ -61,21 +61,28 @@ const SKIP = new Set(['node_modules', '.git', '.fontphobia', 'dist', 'build', 'o
 
 const lineStart = (text: string, at: number) => text.lastIndexOf('\n', at - 1) + 1;
 
-function locate(root: string, face: FacePlan, usage: UsageFileJson, prev: ManifestEntry | undefined, css: CssSource[]): { file: string; start: number; end: number; declaration: string; sourceUrl: string } | string {
+type Located = { file: string; start: number; end: number; declaration: string; sourceUrl: string; syntax: Syntax };
+
+function locate(root: string, face: FacePlan, usage: UsageFileJson, prev: ManifestEntry | undefined, css: CssSource[]): Located | string {
   if (prev) {
+    if (!existsSync(join(root, prev.stylesheet))) return `${prev.stylesheet}, which holds its marked block, is gone; if it was renamed or moved, put it back and run \`fontphobia revert\` before moving it`;
     const text = readFileSync(join(root, prev.stylesheet), 'utf8');
     const span = findBlock(text, prev.id);
     if (!span) return `the marked block for ${prev.id} is gone from ${prev.stylesheet}; run \`fontphobia revert\` or restore it`;
-    return { file: prev.stylesheet, start: span.start, end: span.end, declaration: prev.declaration, sourceUrl: srcUrlFor(prev.declaration, prev.source.file) ?? '' };
+    return { file: prev.stylesheet, start: span.start, end: span.end, declaration: prev.declaration, sourceUrl: srcUrlFor(prev.declaration, prev.source.file) ?? '', syntax: syntaxOf(prev.stylesheet, text, span.start) };
   }
   const f = usage.faces[face.id]!;
   const cands = css.filter((s) => s.file === f.source.file && !s.manual && s.files.some((x) => x.path === face.source!.file));
   if (!cands.length) return `couldn't find the @font-face in ${f.source.file ?? 'the repo'} that loads ${face.source!.file}`;
-  const best = [...cands].sort((a, b) => Math.abs(a.line - (f.source.line ?? 0)) - Math.abs(b.line - (f.source.line ?? 0)))[0]!;
+  // Rules loading one file (normal and italic) are told apart by family and descriptors; the audit's
+  // line only breaks ties, since the stylesheet may have changed since.
+  const same = cands.filter((c) => familyKey(c.rule.family) === familyKey(f.family) && sameFaceDescriptors(f.descriptors, c.rule.descriptors));
+  if (!same.length) return `no @font-face in ${f.source.file} that loads ${face.source!.file} has this face's descriptors: the stylesheet changed since the audit; rerun \`fontphobia audit\``;
+  const best = [...same].sort((a, b) => Math.abs(a.line - (f.source.line ?? 0)) - Math.abs(b.line - (f.source.line ?? 0)))[0]!;
   const text = readFileSync(join(root, best.file), 'utf8');
   const declaration = text.slice(best.rule.start, best.rule.end);
   if (/fontphobia:begin/.test(text.slice(Math.max(0, best.rule.start - 400), best.rule.start)) && findBlockAround(text, best.rule.start)) return `${best.file}:${best.line} is inside a fontphobia block but the manifest has no entry for it`;
-  return { file: best.file, start: best.rule.start, end: best.rule.end, declaration, sourceUrl: best.files.find((x) => x.path === face.source!.file)!.url };
+  return { file: best.file, start: best.rule.start, end: best.rule.end, declaration, sourceUrl: best.files.find((x) => x.path === face.source!.file)!.url, syntax: syntaxOf(best.file, text, best.rule.start) };
 }
 
 function findBlockAround(text: string, at: number): boolean {
@@ -179,9 +186,12 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
   const generated = new Map<string, string>();
   const ejects: NonNullable<Manifest['ejects']> = {};
   for (const [id, p] of googleProblems) notWritten.push({ id, reason: p });
+  // A face (or a stylesheet of them) that fails is reported with its id and leaves nothing behind; the rest still build.
+  const failed = (fs: FacePlan[], e: unknown) => { for (const f of fs) notWritten.push({ id: f.id, reason: `couldn't prepare its edits: ${(e as Error).message}` }); };
   const gFaces = plan.faces.filter((f) => f.status === 'planned' && f.adapter === 'google-fonts');
-  if (gFaces.length) {
-    const r = await selfHostGoogle(root, gFaces, usage, prev, outputs, sources, o.version);
+  const g = gFaces.length ? await selfHostGoogle(root, gFaces, usage, prev, outputs, sources, o.version).catch((e: unknown) => failed(gFaces, e)) : undefined;
+  if (g) {
+    const r = g;
     Object.assign(entries, r.entries);
     for (const [k, v] of r.fonts) fonts.set(k, v);
     edits.push(...r.edits);
@@ -197,7 +207,8 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
   for (const kind of EJECT_KINDS) {
     const fs = plan.faces.filter((f) => f.status === 'planned' && ejectKindOf(f) === kind);
     if (!fs.length) continue;
-    const r = ejectFramework(root, kind, fs, usage, prev, outputs, sources, o.version);
+    let r: ReturnType<typeof ejectFramework>;
+    try { r = ejectFramework(root, kind, fs, usage, prev, outputs, sources, o.version); } catch (e) { failed(fs, e); continue; }
     Object.assign(entries, r.entries);
     for (const [k, v] of r.fonts) fonts.set(k, v);
     edits.push(...r.edits);
@@ -222,8 +233,9 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
   edits.push(...ng.edits);
   const options = ng.records.length ? ng.records : undefined;
   const fsFaces = plan.faces.filter((f) => f.status === 'planned' && f.adapter === 'fontsource');
-  if (fsFaces.length) {
-    const r = ejectFontsource(root, fsFaces, prev, outputs, sources, o.version);
+  const fsr = fsFaces.length ? (() => { try { return ejectFontsource(root, fsFaces, prev, outputs, sources, o.version); } catch (e) { failed(fsFaces, e); } })() : undefined;
+  if (fsr) {
+    const r = fsr;
     Object.assign(entries, r.entries);
     for (const [k, v] of r.fonts) fonts.set(k, v);
     edits.push(...r.edits);
@@ -232,8 +244,18 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
     notWritten.push(...r.notWritten);
   }
 
+  // Each css face's rule, found before any is written: two faces on one rule means the stylesheet changed since the audit.
+  const located = new Map<string, Located | string>();
   for (const face of plan.faces) {
-    if (face.status !== 'planned' || face.adapter === 'fontsource' || face.adapter === 'google-fonts' || ejectKindOf(face)) continue;
+    if (face.status !== 'planned' || face.adapter !== 'css' || ejectKindOf(face)) continue;
+    try { located.set(face.id, locate(root, face, usage, prev?.entries[face.id], css)); } catch (e) { located.set(face.id, `couldn't find its @font-face: ${(e as Error).message}`); }
+  }
+  const byRule = new Map<string, { file: string; ids: string[] }>();
+  for (const [id, l] of located) if (typeof l !== 'string') { const k = `${l.file}\u0000${l.start}`; (byRule.get(k) ?? byRule.set(k, { file: l.file, ids: [] }).get(k)!).ids.push(id); }
+  for (const { file, ids } of byRule.values()) if (ids.length > 1) for (const id of ids) located.set(id, `${ids.join(' and ')} match the same @font-face in ${file}: the stylesheet changed since the audit; rerun \`fontphobia audit\``);
+
+  const prepare = (face: FacePlan): void => {
+    if (face.status !== 'planned' || face.adapter === 'fontsource' || face.adapter === 'google-fonts' || ejectKindOf(face)) return;
     if (face.adapter === 'manual') {
       // §6.7: measured, planned and subset like any face, but the edit is printed, never guessed.
       const u = usage.faces[face.id]!;
@@ -244,7 +266,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
       const declaration = `@font-face {\n  font-family: '${face.family.replace(/'/g, "\\'")}';\n  src: url('${posix.basename(face.source!.file)}');\n${desc ? desc + '\n' : ''}${u.descriptors['unicode-range'] ? `  unicode-range: ${u.descriptors['unicode-range']};\n` : ''}}`;
       const css = cssBlock({ id: face.id, version: o.version, declaration, sourceUrl: posix.basename(face.source!.file), indent: '', eol: '\n', descriptors: face.descriptors, files: [...placed].reverse().map((p) => ({ url: p.url, unicodeRange: p.f.role === 'core' ? undefined : p.f.unicodeRange })) });
       snippets.push({ id: face.id, file: u.source.file, line: u.source.line, css: `${css}\n/* The URLs are relative to ${dir}/; point them at where your site serves these files. */` });
-      continue;
+      return;
     }
     if (face.adapter === 'next-font-local') {
       // §6.3: the one subset file goes next to the source; the call's path string points at it.
@@ -253,13 +275,13 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
       const call = calls.find((c) => c.srcs.some((x) => x.file === face.source!.file || (p?.next && x.file === posix.join(posix.dirname(c.file), p.next.to))));
       const src = call?.srcs.find((x) => x.file === face.source!.file || (p?.next && x.path === p.next.to));
       const f = face.files!.find((x) => x.role === 'core');
-      if (!call || !src || !f) { notWritten.push({ id: face.id, reason: `couldn't find the localFont() call that loads ${face.source!.file}` }); continue; }
+      if (!call || !src || !f) { notWritten.push({ id: face.id, reason: `couldn't find the localFont() call that loads ${face.source!.file}` }); return; }
       const out = `${posix.dirname(face.source!.file)}/${f.name}`;
       const to = localFontPath(call, out);
       // Next derives the fallback face from the file; it must come out the same (§6.3).
       const before = nextFallbackMetrics(root, sources.get(face.id)!.bytes), after = nextFallbackMetrics(root, outputs.get(f.name)!);
-      if (!before || !after) { notWritten.push({ id: face.id, reason: "couldn't load the project's next to check the fallback face (install dependencies first)" }); continue; }
-      if (JSON.stringify(before) !== JSON.stringify(after)) { notWritten.push({ id: face.id, reason: `the fallback face would change (${JSON.stringify(before)} → ${JSON.stringify(after)})` }); continue; }
+      if (!before || !after) { notWritten.push({ id: face.id, reason: "couldn't load the project's next to check the fallback face (install dependencies first)" }); return; }
+      if (JSON.stringify(before) !== JSON.stringify(after)) { notWritten.push({ id: face.id, reason: `the fallback face would change (${JSON.stringify(before)} → ${JSON.stringify(after)})` }); return; }
       fonts.set(out, outputs.get(f.name)!);
       if (src.path !== to) edits.push({ file: call.file, start: src.start, end: src.end, text: to, why: `${face.id}: ${src.path} → ${to}` });
       entries[face.id] = {
@@ -269,21 +291,21 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
         plan: { features: face.features, axes: face.axes, descriptors: face.descriptors, hinting: face.hinting, optIns: (face.optIns ?? []).filter((x) => x.applied).map((x) => x.id), rename: face.license?.rename },
         next: { file: call.file, from: p?.next?.from ?? src.path, to },
       };
-      continue;
+      return;
     }
-    if (face.adapter !== 'css') { notWritten.push({ id: face.id, reason: `writing ${face.adapter} faces arrives later in M7` }); continue; }
+    if (face.adapter !== 'css') { notWritten.push({ id: face.id, reason: `writing ${face.adapter} faces arrives later in M7` }); return; }
     const p = prev?.entries[face.id];
-    const loc = locate(root, face, usage, p, css);
-    if (typeof loc === 'string') { notWritten.push({ id: face.id, reason: loc }); continue; }
+    const loc = located.get(face.id)!;
+    if (typeof loc === 'string') { notWritten.push({ id: face.id, reason: loc }); return; }
     const placed = face.files!.map((f) => ({ f, at: placeOutputs(face.source!.file, loc.sourceUrl, f.name) }));
     const bad = placed.find((x) => typeof x.at === 'string');
-    if (bad) { notWritten.push({ id: face.id, reason: bad.at as string }); continue; }
+    if (bad) { notWritten.push({ id: face.id, reason: bad.at as string }); return; }
     const text = readFileSync(join(root, loc.file), 'utf8');
     const ls = lineStart(text, loc.start);
     const indent = /^[ \t]*$/.test(text.slice(ls, loc.start)) ? text.slice(ls, loc.start) : '';
     const block = cssBlock({
       id: face.id, version: o.version, declaration: loc.declaration, sourceUrl: loc.sourceUrl, indent, eol: text.includes('\r\n') ? '\r\n' : '\n',
-      descriptors: face.descriptors,
+      descriptors: face.descriptors, syntax: loc.syntax,
       // Rest, extended, core: WebKit takes a segmented family's primary font (underline skip-ink,
       // emphasis marks) from the last rule; Chrome from the first rule covering U+0020 (M5 notes).
       files: [...placed].reverse().map(({ f, at }) => ({ url: (at as { url: string }).url, unicodeRange: f.role === 'core' ? undefined : f.unicodeRange, family: cfg.mutation?.kind === 'ext-family' && cfg.mutation.face === face.id && f.role === 'ext' ? cfg.mutation.family : undefined })),
@@ -313,6 +335,13 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
       plan: { features: face.features, axes: face.axes, descriptors: face.descriptors, hinting: face.hinting, optIns: (face.optIns ?? []).filter((x) => x.applied).map((x) => x.id), rename: face.license?.rename },
       preloads: preloads?.length ? preloads : undefined,
     };
+  };
+  for (const face of plan.faces) {
+    const kept = { edits: edits.length, snippets: snippets.length, fonts: new Map(fonts) };
+    try { prepare(face); } catch (e) {
+      edits.length = kept.edits; snippets.length = kept.snippets; fonts.clear(); for (const [k, v] of kept.fonts) fonts.set(k, v); delete entries[face.id];
+      failed([face], e);
+    }
   }
   // Entries this run didn't plan (face not in this usage.json) stay as they are.
   for (const [id, e] of Object.entries(prev?.entries ?? {})) if (!entries[id]) entries[id] = e;
@@ -350,19 +379,47 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
 
   const before = new Map([...new Set(edits.map((e) => e.file))].map((f) => [f, readFileSync(join(root, f), 'utf8')]));
   checkEdits(edits); // before anything is written, so a conflict leaves the project as it was
-  if (o.write && !unchanged) {
-    for (const [file, bytes] of fonts) {
+  if (o.write && !unchanged) writeAll(root, { fonts, generated, edits, before, stale, manifest: Object.keys(entries).length || google || options ? json : undefined });
+  return { plan, manifest, fonts: fontList, generated: generatedList, snippets, edits, stale, notWritten, unchanged, suggestions, before };
+}
+
+/**
+ * The write, all or nothing: fonts, generated stylesheets, edits, then the manifest. If one write
+ * fails, every file written so far gets its old bytes back (or goes, with the folders made for it)
+ * and the error says nothing changed. Outdated outputs are deleted only after all of that.
+ */
+function writeAll(root: string, w: { fonts: Map<string, Uint8Array>; generated: Map<string, string>; edits: Edit[]; before: Map<string, string>; stale: string[]; manifest?: string }): void {
+  const undo: (() => void)[] = [];
+  const mkdir = (dir: string) => { const made = mkdirSync(dir, { recursive: true }); if (made) undo.push(() => rmSync(made, { recursive: true, force: true })); };
+  const keep = (file: string) => {
+    const abs = join(root, file);
+    const old = existsSync(abs) ? readFileSync(abs) : undefined;
+    undo.push(() => { if (old === undefined) rmSync(abs, { force: true }); else if (!existsSync(abs) || !readFileSync(abs).equals(old)) writeFileSync(abs, old); });
+  };
+  try {
+    for (const [file, bytes] of w.fonts) {
       const abs = join(root, file);
       if (existsSync(abs) && sha(readFileSync(abs)) === sha(bytes)) continue;
-      mkdirSync(dirname(abs), { recursive: true });
+      mkdir(dirname(abs));
+      keep(file);
       writeFileSync(abs, bytes);
     }
-    for (const [file, text] of generated) { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), text); }
-    applyEdits(root, edits);
-    for (const f of stale) unlinkSync(join(root, f));
-    if (Object.keys(entries).length || google || options) writeManifest(root, JSON.parse(json) as Manifest, json);
+    for (const [file, text] of w.generated) { mkdir(dirname(join(root, file))); keep(file); writeFileSync(join(root, file), text); }
+    for (const [file, text] of w.before) undo.push(() => { const abs = join(root, file); if (readFileSync(abs, 'utf8') !== text) writeFileSync(abs, text); });
+    applyEdits(root, w.edits);
+    if (w.manifest !== undefined) {
+      mkdir(join(root, FONTPHOBIA_DIR));
+      for (const f of [`${FONTPHOBIA_DIR}/.gitignore`, MANIFEST_FILE, LEGACY_MANIFEST_FILE]) keep(f);
+      writeManifest(root, JSON.parse(w.manifest) as Manifest, w.manifest);
+    }
+  } catch (e) {
+    const left: string[] = [];
+    for (const u of undo.reverse()) { try { u(); } catch (x) { left.push((x as Error).message); } }
+    throw new Error(`Writing the build failed: ${(e as Error).message}. ${left.length ? `Undoing the files already written failed too, so the project is partly built: ${left.join('; ')}` : 'Nothing was changed: every file is as it was before.'}`, { cause: e });
   }
-  return { plan, manifest, fonts: fontList, generated: generatedList, snippets, edits, stale, notWritten, unchanged, suggestions, before };
+  // The manifest no longer lists these, so a failure here leaves a consistent build.
+  const left = w.stale.filter((f) => { try { unlinkSync(join(root, f)); return false; } catch { return true; } });
+  if (left.length) throw new Error(`The build was written, but these outdated outputs couldn't be deleted; delete them yourself: ${left.join(', ')}`);
 }
 
 /**

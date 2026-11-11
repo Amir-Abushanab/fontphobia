@@ -15,7 +15,7 @@ import { parseFvar } from '../font/tables.ts';
 import { wordsOf, type UsageFileJson } from '../plan/planner.ts';
 import { checkShaping, type OutputFile } from '../shape/equivalence.ts';
 import { checkMetrics, validateOutput } from '../subset/subset.ts';
-import { findBlock } from '../build/css.ts';
+import { findBlock, syntaxOf } from '../build/css.ts';
 import type { Manifest, ManifestEntry } from '../build/manifest.ts';
 
 export type VerifyFindingKind = 'output' | 'css' | 'coverage' | 'shaping' | 'source';
@@ -63,8 +63,9 @@ export function checkCss(root: string, e: ManifestEntry, add: (kind: VerifyFindi
   const text = readFileSync(file, 'utf8');
   const span = findBlock(text, e.id);
   if (!span) return add('css', 'regression', `the marked block is gone from ${e.stylesheet}; run \`fontphobia build --write\` or \`fontphobia revert\``);
-  const rules = parseStylesheet(text.slice(span.start, span.end)).fontFaces;
-  const orig = parseStylesheet(e.declaration).fontFaces[0];
+  const syntax = syntaxOf(e.stylesheet, text, span.start);
+  const rules = parseStylesheet(text.slice(span.start, span.end), { syntax }).fontFaces;
+  const orig = parseStylesheet(e.declaration, { syntax }).fontFaces[0];
   if (!orig) return add('css', 'regression', `the manifest's original declaration doesn't parse`);
   if (rules.length !== e.outputs.length) add('css', 'regression', `${e.stylesheet}: the block has ${rules.length} @font-face rule(s), the manifest lists ${e.outputs.length} output(s)`);
   const changed = new Set(['src', 'unicode-range', ...Object.keys(e.plan.descriptors ?? {})]);
