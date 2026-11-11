@@ -1,5 +1,6 @@
 const root = document.querySelector('#font-demo');
 const message = document.querySelector('#demo-message');
+const assetBase = new URL('.', document.currentScript.src);
 
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 const contains = (ranges, cp) => ranges.some(([start, end]) => cp >= start && cp <= end);
@@ -13,9 +14,7 @@ const presets = {
 };
 
 async function init() {
-  const response = await fetch(new URL('./demo-data.json', import.meta.url));
-  if (!response.ok) throw new Error('Could not load font data');
-  const { faces } = await response.json();
+  const { faces } = JSON.parse(document.querySelector('#font-data').textContent);
   const text = root.querySelector('#demo-text');
   const familyInputs = [...root.querySelectorAll('[name="demo-family"]')];
   const route = root.querySelector('#demo-route');
@@ -61,7 +60,7 @@ async function init() {
     compareStatus.textContent = `Loading the original ${face.family} (${kb(face.source.bytes)})…`;
     try {
       if (!loaded.has(face.family)) {
-        const font = new FontFace(`${face.family} Original`, `url("${new URL(face.source.url, import.meta.url)}")`, { weight: '100 900', style: 'normal', display: 'swap' });
+        const font = new FontFace(`${face.family} Original`, `url("${new URL(face.source.url, assetBase)}")`, { weight: '100 900', style: 'normal', display: 'swap' });
         const promise = font.load().then((font) => { document.fonts.add(font); return font; });
         loaded.set(face.family, promise);
         promise.catch(() => loaded.delete(face.family));
@@ -146,5 +145,6 @@ async function init() {
 }
 
 init().catch(() => {
-  message.textContent = 'The interactive example could not load. Reload to try again, or read the walkthrough below.';
+  message.textContent = 'The font playground could not start. Reload to try again.';
+  message.hidden = false;
 });

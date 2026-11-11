@@ -9,7 +9,7 @@ The walkthrough's own crawl excludes `/bakery/**`, which the bakery builder audi
 Its rendering check masks images, as the bakery check does, to compare font rendering without JPEG rasterization noise.
 `check.allowChars` covers `≤`, which appears only in the system-monospace verification transcript inside a collapsed disclosure.
 
-`demo.js` uses the character ranges and sizes in `demo-data.json` to show which of this page's font files a sentence needs. This is a calculation for the entered text, not a network measurement of the whole page. Original fonts are loaded with `FontFace` only when the comparison is opened.
+`demo.js` uses the character ranges and sizes embedded in `index.html` to show which of this page's font files a sentence needs. The same generated metadata is available in `demo-data.json`. A deferred classic script and embedded data let the playground work over HTTP and directly from a local file. This is a calculation for the entered text, not a network measurement of the whole page. Original fonts are loaded with `FontFace` only when the comparison is opened.
 
 After changing the page, check its existing font coverage before rebuilding:
 
