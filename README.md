@@ -5,7 +5,7 @@ Shrink your site's web fonts without changing how anything renders.
 fontphobia crawls your built site in Chrome, records exactly which characters, weights, features and axis values each font draws on each page, and splits every font into a small **core** file, an **extended** file and a lazy **rest** file. Text renders with the same glyphs, hinting, kerning and metrics as before, and `verify` proves it pixel for pixel.
 
 ```sh
-pnpm dlx fontphobia@0.1.1
+pnpm dlx fontphobia@0.2.0
 ```
 
 - **Nothing is written until you confirm.** The default command audits, shows the plan and the diff, and asks.
@@ -36,34 +36,34 @@ pnpm dlx fontphobia@0.1.1
 
 ## Quick start
 
-Run everything from the project root (or pass `--cwd`).
+Run everything from the project root (or pass `--cwd`). (If pnpm refuses a release younger than your `minimumReleaseAge`, run it from outside the project with `--cwd`.)
 
 1. **Audit and plan.**
    ```sh
-   pnpm dlx fontphobia@0.1.1
+   pnpm dlx fontphobia@0.2.0
    ```
-   fontphobia detects the framework, builds the site if there's no build (or asks if it's stale), and crawls every page it can find at 4 viewport widths, plus a browser font-size sweep. It then prints each face's size now and after, the saving per page, the opt-ins with their savings, and the exact edits.
+   fontphobia detects the framework, builds the site if there's no build (or asks if it's stale) in a throwaway copy of the project, so the build can't touch your files, and crawls every page it can find at 4 viewport widths, plus a browser font-size sweep. It then prints each face's size now and after, the saving per page, the opt-ins with their savings, and the exact edits.
 
-2. **Confirm.** fontphobia then does three things:
-   - it writes the subset files next to the original fonts;
-   - it replaces each `@font-face` with a marked block of three rules;
-   - it writes `fontphobia.manifest.json`.
+2. **Confirm.** fontphobia then:
+   - writes the subset files next to the original fonts;
+   - replaces each `@font-face` with a marked block of three rules;
+   - makes `document.fonts.load(font)` and `document.fonts.check(font)` calls in your code also wait for the browser's own font loads (`document.fonts.ready`, `document.fonts.status`). Code that waits for fonts then still waits for every file the page's text needs, not the core file alone, and nothing extra downloads. It reads TypeScript, JSX/TSX and JavaScript, including `<script>` blocks in `.astro`, `.vue`, `.svelte` and `.html` files, and the change type-checks under strict TypeScript;
+   - records what it changed in `.fontphobia/manifest.json`.
 
    Then it runs `verify`, which rebuilds the site and compares every page before and after. Use `--write` (or `-u`) to skip the question.
 
 3. **Review and commit:**
    - the subset files;
    - the edited CSS;
-   - `fontphobia.manifest.json`;
-   - `.fontphobia/usage.json` and `.fontphobia/report.md`.
+   - `.fontphobia/manifest.json` (and `.fontphobia/sources/`, if fontphobia copied fonts from Google or a framework).
 
-   `.fontphobia/.gitignore` keeps the cache and the diff images out of git.
+   Everything else fontphobia writes (the usage data, the report, the cache, the diff images) stays in `.fontphobia/`, which ignores it for you.
 
 4. **Keep it current.** Add `fontphobia check` after your build: as one of the [framework integrations](#keeping-the-subsets-up-to-date), a `postbuild` script, or [in CI](#ci). When content needs a character or weight the subsets don't have, the check fails and prints the command to rerun.
 
 5. **Undo any time:**
    ```sh
-   pnpm dlx fontphobia@0.1.1 revert
+   pnpm dlx fontphobia@0.2.0 revert
    ```
 
 ## How it works
@@ -86,7 +86,7 @@ Run everything from the project root (or pass `--cwd`).
    - every recorded word is shaped with HarfBuzz from the original and from the split files, and the results must be identical;
    - every page is loaded before and after in the browser, and the layout and pixels are compared.
 
-   Each difference is classified, and a real one fails the run. Diff images go to `.fontphobia/verify/`.
+   Each difference is classified, and a real one fails the run, naming the element where it happened. Diff images go to `.fontphobia/verify/`. Content that changes on its own between loads (script-driven animations, canvases, embeds) can't be compared: hide it with `--mask <selector>`, or skip a page with `--ignore <glob>`.
 
 ## Font sources
 
@@ -131,7 +131,7 @@ Every command takes `--cwd <dir>`, and most take `--json`.
 | `fontphobia` | Audit, plan, ask, write, verify | `--write`/`-u`, `--allow`, `--ci` |
 | `audit` | Crawl and write `.fontphobia/usage.json` and `report.md` | `--dist`, `--build-cmd`, `--start-cmd` (SSR routes), `--url`, `--pages`, `--ignore`, `--viewports`, `--locales`, `--rebuild`, `--no-cache` |
 | `build` | Plan from `usage.json` (no browser). Shows the plan and diff; `--write` applies | `--write`, `--allow`, `--no-remainder` |
-| `verify` | Check the files and shaping, then compare every page before and after | `--browsers`, `--dpr`, `--viewports`, `--baseline overlay\|worktree`, `--hinting`, `--no-browser` |
+| `verify` | Check the files and shaping, then compare every page before and after | `--browsers`, `--dpr`, `--viewports`, `--mask`, `--ignore`, `--timeout`, `--baseline overlay\|worktree`, `--hinting`, `--no-browser` |
 | `check` | Are the subsets still up to date? Exits 1 when the site would render differently | `--url` (crawl production), `--mode warn`, `--strict`, `--allow-chars` |
 | `revert` | Put everything back from the manifest | `--dry-run`, `--keep-kits` |
 | `apply-kit` | Adobe Fonts: remove kit styles nothing uses, through the Typekit API (`TYPEKIT_TOKEN` from fonts.adobe.com/account/tokens) | `--yes`, `--check` |
@@ -172,7 +172,7 @@ Run it after your build with your framework's hook:
 | Anything else (SvelteKit, TanStack Start, Angular, Hugo…) | `"postbuild": "fontphobia check"` in `package.json` |
 
 **Setting these up:**
-- **Install:** the integrations need fontphobia in the project: `pnpm add -D fontphobia@0.1.1`.
+- **Install:** the integrations need fontphobia in the project: `pnpm add -D fontphobia@0.2.0`.
 - **Options:** each one takes `{ mode: 'warn' | 'error', strict, allowChars }`. The Next adapter reads them from the config's `check` key instead.
 - **What they skip:** none of them subsets anything, opens a browser or touches the network.
 
@@ -180,13 +180,13 @@ Run it after your build with your framework's hook:
 
 Three recipes; full workflow files are in [docs/ci.md](https://github.com/Amir-Abushanab/fontphobia/blob/main/docs/ci.md).
 
-- **On every pull request:** build the site, then run `pnpm dlx fontphobia@0.1.1 check`.
+- **On every pull request:** build the site, then run `pnpm dlx fontphobia@0.2.0 check`.
 - **On a schedule, against production:**
   ```sh
-  pnpm dlx fontphobia@0.1.1 check --url https://example.com
+  pnpm dlx fontphobia@0.2.0 check --url https://example.com
   ```
   This crawls the live site and compares what it draws with the files. It catches content from a CMS that the repo never sees.
-- **Verify on Windows and Linux** when you change fonts. Hinting and rasterization differ by OS, so run `pnpm dlx fontphobia@0.1.1 verify` on `windows-latest`, and add `--hinting` on `ubuntu-latest`.
+- **Verify on Windows and Linux** when you change fonts. Hinting and rasterization differ by OS, so run `pnpm dlx fontphobia@0.2.0 verify` on `windows-latest`, and add `--hinting` on `ubuntu-latest`.
 
 ## Configuration
 

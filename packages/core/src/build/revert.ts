@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { findBlock } from './css.ts';
-import { MANIFEST_FILE, readManifest } from './manifest.ts';
+import { MANIFEST_FILE, readManifest, removeManifest } from './manifest.ts';
 
 export interface RevertResult { files: string[]; fonts: string[]; problems: string[]; /** Generated stylesheets removed. */ removed: string[] }
 
@@ -16,6 +16,15 @@ export function revertProject(root: string, o: { write?: boolean } = {}): Revert
   const problems: string[] = [];
   const touched = new Set<string>();
   const deleted: string[] = [];
+  // Font readiness checks given the page's text: each call back as it was.
+  for (const fc of m.fontChecks ?? []) {
+    if (!existsSync(join(root, fc.file))) { problems.push(`${fc.file} is gone (a document.fonts call fontphobia changed)`); continue; }
+    const t = read(fc.file);
+    const at = t.indexOf(fc.to);
+    if (at < 0) { problems.push(`the document.fonts call fontphobia changed in ${fc.file} changed since; put the original back yourself:\n${fc.from}`); continue; }
+    texts.set(fc.file, t.slice(0, at) + fc.from + t.slice(at + fc.to.length));
+    touched.add(fc.file);
+  }
   // fontsource ejects (§6.2): imports back to the package; the generated copy goes if unchanged.
   for (const [file, ej] of Object.entries(m.ejects ?? {}).sort(([a], [b]) => (a < b ? -1 : 1))) {
     // next/font/google and Astro ejects: each rewritten snippet back.
@@ -96,7 +105,7 @@ export function revertProject(root: string, o: { write?: boolean } = {}): Revert
   if (o.write) {
     for (const f of touched) writeFileSync(join(root, f), texts.get(f)!);
     for (const f of deleted) unlinkSync(join(root, f));
-    if (!problems.length) unlinkSync(join(root, MANIFEST_FILE));
+    if (!problems.length) removeManifest(root);
   }
   const fonts = [...new Set([...Object.values(m.entries).flatMap((e) => e.outputs.map((x) => x.file)), ...Object.values(m.ejects ?? {}).flatMap((e) => e.files ?? [])])].filter((f) => existsSync(join(root, f))).sort();
   return { files: [...touched].sort(), fonts, problems, removed: deleted.sort() };

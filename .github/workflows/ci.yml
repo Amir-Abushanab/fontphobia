@@ -70,7 +70,7 @@ jobs:
           npx fontphobia build --cwd site | tee plan.txt
           grep -q 'Font bytes per page' plan.txt
           npx fontphobia build --cwd site --write
-          test -s site/fontphobia.manifest.json
+          test -s site/.fontphobia/manifest.json
           npx fontphobia build --cwd site | grep -q 'Nothing to change'
           # M5: same pixels as the original fonts on this OS's Chrome; exits 1 on any difference.
           npx fontphobia verify --cwd site --viewports 360,1280 | tee verify.txt

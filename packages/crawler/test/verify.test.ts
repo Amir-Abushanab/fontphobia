@@ -83,6 +83,22 @@ describe.skipIf(!chrome)('verify in Chrome (§10.3)', () => {
     expect(verifyMarkdown(md, r, root)).toBe(md); // replaces its own section
   }, 300_000);
 
+  it('--mask hides content that differs by itself between loads; --ignore skips pages', async () => {
+    const root = await built('mask');
+    // A canvas painted from crypto randomness (verify seeds Math.random, not this) and hidden text that moves.
+    const page = readFileSync(join(root, 'about/index.html'), 'utf8').replace('</body>', `<canvas id="noise" width="200" height="60"></canvas><p class="ghost" style="visibility:hidden">hidden</p>
+<script>const c=document.getElementById('noise').getContext('2d');const v=crypto.getRandomValues(new Uint8Array(3));c.fillStyle='rgb('+v.join(',')+')';c.fillRect(0,0,200,60);
+document.querySelector('.ghost').style.marginLeft=v[0]+'px';</script></body>`);
+    writeFileSync(join(root, 'about/index.html'), page);
+    const o = { root, usage, viewports: [1280], dprs: [1], pages: ['/about/'], maxPages: 1 };
+    const noisy = await verify(o);
+    expect(noisy.browser!.comparisons.find((c) => c.page === '/about/')!.class).not.toBe('identical');
+    const masked = await verify({ ...o, mask: ['#noise'] });
+    expect(masked.browser!.comparisons.find((c) => c.page === '/about/')!.class).toBe('identical');
+    const skipped = await verify({ ...o, ignore: ['/about/'] });
+    expect(skipped.browser!.comparisons.map((c) => c.page)).not.toContain('/about/');
+  }, 300_000);
+
   it('notices a site that was not rebuilt after build --write', async () => {
     const root = await built('stale');
     const old = copy('stale-dist'); // the original site, as an old build would serve it
@@ -107,6 +123,8 @@ describe.skipIf(!chrome)('verify in Chrome (§10.3)', () => {
       const bad = r.browser!.comparisons.filter((c) => c.class === 'regression');
       expect(bad.length).toBeGreaterThan(0);
       expect(bad.flatMap((c) => c.causes)).toContainEqual(expect.stringMatching(cause));
+      // Each example says where the text is.
+      expect(bad.flatMap((c) => c.examples).filter((e) => e.text).every((e) => typeof e.where === 'string' && e.where.length > 0)).toBe(true);
       expect(r.static.ok).toBe(false);
     }, 300_000);
   }

@@ -22,10 +22,10 @@ export interface Config {
   allow?: string[];
   rename?: Record<string, string>;
   licenses?: { allow?: string[] };
-  /** `verify` (§10.3): engines, page cap (default 200), viewports and device pixel ratios. */
+  /** `verify` (§10.3): engines, page cap (default 200), viewports, device pixel ratios, masks and the load timeout. */
   /** `check` (§12): characters never reported (strings that never render), and whether a stale build fails. */
   check?: { allowChars?: string; mode?: 'warn' | 'error'; /** Fail on warnings too (characters that would load the rest file). */ strict?: boolean };
-  verify?: { browsers?: ('chromium' | 'firefox' | 'webkit' | 'linux-chromium' | 'linux-firefox' | 'linux-webkit')[]; hinting?: boolean; maxPages?: number; viewports?: number[]; dprs?: number[] };
+  verify?: { browsers?: ('chromium' | 'firefox' | 'webkit' | 'linux-chromium' | 'linux-firefox' | 'linux-webkit')[]; hinting?: boolean; maxPages?: number; viewports?: number[]; dprs?: number[]; /** Selectors hidden in both loads. */ mask?: string[]; /** Seconds a page may take to load. */ timeout?: number };
 }
 
 export const defineConfig = (c: Config): Config => c;

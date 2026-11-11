@@ -88,7 +88,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
         expect(v.ok).toBe(true);
 
         // An updated fontsource package makes the ejected copy out of date.
-        const mf = join(root, 'fontphobia.manifest.json');
+        const mf = join(root, '.fontphobia', 'manifest.json');
         const mText = readFileSync(mf, 'utf8');
         writeFileSync(mf, mText.replace(/("specifier": "@fontsource-variable\/inter",\s*\n\s*)?"version": "5\.3\.0"/, (m) => m.replace('5.3.0', '5.0.0')));
         expect((await checkProject({ root, usage: u1 })).issues.map((i) => i.message)).toContainEqual(expect.stringMatching(/^@fontsource-variable\/inter is 5\.3\.0 now; src\/styles\/fontphobia\/fontsource-variable-inter\.css was ejected from 5\.0\.0$/));
@@ -132,14 +132,14 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
           if (name === 'astro') writeFileSync(config, configText);
         }
       } finally {
-        if (existsSync(join(root, 'fontphobia.manifest.json'))) fonts = revertProject(root, { write: true }).fonts;
+        if (existsSync(join(root, '.fontphobia', 'manifest.json'))) fonts = revertProject(root, { write: true }).fonts;
         for (const f of fonts) rmSync(join(root, f), { force: true });
         rmSync(join(root, 'src/styles/fontphobia'), { recursive: true, force: true });
       }
       expect(readFileSync(cssFile).equals(original)).toBe(true);
       expect(readFileSync(importerFile).equals(importerOriginal)).toBe(true);
       expect(existsSync(join(root, 'src/styles/fontphobia/fontsource-variable-inter.css'))).toBe(false);
-      expect(existsSync(join(root, 'fontphobia.manifest.json'))).toBe(false);
+      expect(existsSync(join(root, '.fontphobia', 'manifest.json'))).toBe(false);
     }, 600_000);
   }
 
@@ -171,7 +171,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       expect(v.ok).toBe(true);
       expect((await checkProject({ root, usage: u1 })).issues).toEqual([]);
     } finally {
-      if (existsSync(join(root, 'fontphobia.manifest.json'))) fonts = revertProject(root, { write: true }).fonts;
+      if (existsSync(join(root, '.fontphobia', 'manifest.json'))) fonts = revertProject(root, { write: true }).fonts;
       for (const x of fonts) rmSync(join(root, x), { force: true });
     }
     expect(readFileSync(fontsJs).equals(original)).toBe(true);
@@ -336,7 +336,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated' && c.class !== 'flaky').map((c) => `${c.browser} ${c.page} DPR ${c.dpr}: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`)).toEqual([]);
       expect(v.ok).toBe(true);
     } finally {
-      if (existsSync(join(root, 'fontphobia.manifest.json'))) fonts = revertProject(root, { write: true }).fonts;
+      if (existsSync(join(root, '.fontphobia', 'manifest.json'))) fonts = revertProject(root, { write: true }).fonts;
       for (const f of fonts) rmSync(join(root, f), { force: true });
       for (const d of ['src/styles/fontphobia', 'public/fonts/fontphobia', '.fontphobia/sources']) rmSync(join(root, d), { recursive: true, force: true });
     }
@@ -367,7 +367,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
       expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated' && c.class !== 'flaky').map((c) => `${c.browser} ${c.page} DPR ${c.dpr}: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`)).toEqual([]);
       expect(v.ok).toBe(true);
     } finally {
-      if (existsSync(join(root, 'fontphobia.manifest.json'))) fonts = revertProject(root, { write: true }).fonts;
+      if (existsSync(join(root, '.fontphobia', 'manifest.json'))) fonts = revertProject(root, { write: true }).fonts;
       for (const f of fonts) rmSync(join(root, f), { force: true });
       rmSync(join(root, 'src/styles/fontphobia'), { recursive: true, force: true });
       reverted = readFileSync(layout, 'utf8');

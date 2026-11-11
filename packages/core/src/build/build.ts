@@ -20,7 +20,8 @@ import { tightenGoogle, type TightenSuggestion } from './google-tighten.ts';
 import { narrowOptions, type OptionsSuggestion } from './narrow-options.ts';
 import { EJECT_KINDS, ejectFramework, ejectSources, hasFrameworkEject, isEjectKind } from './framework-eject.ts';
 import { applyEdits, checkEdits, type Edit } from './edits.ts';
-import { MANIFEST_FILE, MANIFEST_VERSION, manifestJson, readManifest, type Manifest, type ManifestEntry } from './manifest.ts';
+import { MANIFEST_FILE, MANIFEST_VERSION, manifestJson, manifestPath, readManifest, writeManifest, type Manifest, type ManifestEntry } from './manifest.ts';
+import { findFontCheckCalls, fontCheckFix } from '../project/font-checks.ts';
 
 export interface ProjectBuildOptions {
   version: string;
@@ -316,9 +317,21 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
 
   // Ejects this run didn't touch stay (their entries were kept above).
   for (const [k, v] of Object.entries(prev?.ejects ?? {})) if (!ejects[k] && Object.values(entries).some((e) => e.stylesheet === k)) ejects[k] = v;
+  // Font readiness checks in the site's code (§6): once a face is split, `document.fonts.load(font)`
+  // and `.check(font)` wait for its core file only. Each also waits for the browser's own font loads
+  // (project/font-checks.ts). Earlier fixes are kept for revert; fixed calls are recognized.
+  const fontChecks = [...(prev?.fontChecks ?? [])];
+  if (Object.keys(entries).length) {
+    for (const c of findFontCheckCalls(root)) {
+      if (!c.fixable) continue;
+      const fix = fontCheckFix(c);
+      edits.push({ file: c.file, start: fix.start, end: fix.end, text: fix.text, why: `document.fonts.${c.method}() waits for every font file the page's text needs, not the core file alone` });
+      fontChecks.push({ file: c.file, from: c.call, to: fix.text });
+    }
+  }
   const manifest: Manifest = {
     version: MANIFEST_VERSION, fontphobia: o.version, harfbuzz: harfbuzzVersion(), chrome: usage.meta.chrome, entries,
-    ejects: Object.keys(ejects).length ? ejects : undefined, google, options,
+    ejects: Object.keys(ejects).length ? ejects : undefined, google, options, fontChecks: fontChecks.length ? fontChecks : undefined,
     others: otherFaces(root, css.filter((c) => !generated.has(c.file) && !ejects[c.file]), edits), demands: demandKeys(cssDemands(root)),
   };
   const generatedList = [...generated].sort(([a], [b]) => (a < b ? -1 : 1)).map(([file, text]) => ({ file, bytes: Buffer.byteLength(text), exists: existsSync(join(root, file)) && readFileSync(join(root, file), 'utf8') === text }));
@@ -330,7 +343,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
   const stale = Object.values(prev?.entries ?? {}).flatMap((e) => e.outputs).filter((x) => !keep.has(x.file) && !Object.values(entries).some((e) => e.outputs.some((y) => y.file === x.file)))
     .filter((x) => existsSync(join(root, x.file)) && sha(readFileSync(join(root, x.file))) === x.sha256).map((x) => x.file);
   const json = manifestJson(manifest);
-  const manifestSame = existsSync(join(root, MANIFEST_FILE)) && readFileSync(join(root, MANIFEST_FILE), 'utf8') === json;
+  const manifestSame = manifestPath(root) === join(root, MANIFEST_FILE) && existsSync(join(root, MANIFEST_FILE)) && readFileSync(join(root, MANIFEST_FILE), 'utf8') === json;
   const unchanged = !edits.length && fontList.every((f) => f.exists) && generatedList.every((g) => g.exists) && !stale.length && (manifestSame || (!Object.keys(entries).length && !google && !options));
 
   const before = new Map([...new Set(edits.map((e) => e.file))].map((f) => [f, readFileSync(join(root, f), 'utf8')]));
@@ -345,7 +358,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
     for (const [file, text] of generated) { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), text); }
     applyEdits(root, edits);
     for (const f of stale) unlinkSync(join(root, f));
-    if (Object.keys(entries).length || google || options) writeFileSync(join(root, MANIFEST_FILE), json);
+    if (Object.keys(entries).length || google || options) writeManifest(root, JSON.parse(json) as Manifest, json);
   }
   return { plan, manifest, fonts: fontList, generated: generatedList, snippets, edits, stale, notWritten, unchanged, suggestions, before };
 }

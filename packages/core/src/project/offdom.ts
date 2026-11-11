@@ -8,7 +8,7 @@ export interface OffDomHit { file: string; line: number; kind: string; text: str
 
 const PATTERNS: [string, RegExp][] = [
   ['canvas text', /\b(?:fillText|strokeText)\s*\(|\bctx\.font\s*=|\.font\s*=\s*[`'"][^`'"]*\d+px/],
-  ['FontFace', /\bnew\s+FontFace\s*\(|document\.fonts\.(?:load|add)\s*\(/],
+  ['FontFace', /\bnew\s+FontFace\s*\(|document\.fonts\.add\s*\(/], // document.fonts.load/check: font-checks.ts
   ['OG image', /@vercel\/og|\bsatori\b|\bImageResponse\b|next\/og/],
   ['PDF', /\bpdfkit\b|\bjspdf\b|@react-pdf\/renderer|\bpdf-lib\b|\bpdfmake\b/],
 ];

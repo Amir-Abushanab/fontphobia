@@ -8,6 +8,7 @@
 //  - built text (HTML, inline styles, JS/JSON string literals) has characters a face's core and
 //    extended files don't cover. Approximate: unrendered strings cause false alarms; `allowChars`
 //    silences them.
+import { findFontCheckCalls } from '../project/font-checks.ts';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
@@ -106,16 +107,24 @@ const pageOf = (rel: string) => {
 
 interface EntryFacts { e: ManifestEntry; source?: FontFacts; outputs: FontFacts[]; kept: Set<number>; rest: Set<number>; families: string }
 
-export async function checkProject(o: CheckOptions): Promise<CheckResult> {
+export async function checkProject(opts: CheckOptions): Promise<CheckResult> {
+  let o = opts;
   const root = o.root;
   const manifest: Manifest | undefined = readManifest(root);
   const notes: string[] = [];
   if (!manifest || (!Object.keys(manifest.entries).length && !manifest.google?.length && !manifest.options?.length && !manifest.kits?.length)) {
-    return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: ['no fontphobia.manifest.json: nothing has been built to check'] };
+    return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: ['no .fontphobia/manifest.json: nothing has been built to check'] };
   }
   const issues: CheckIssue[] = [];
   const add = (i: Omit<CheckIssue, 'severity'> & { severity?: CheckIssue['severity'] }) => issues.push({ severity: 'error', ...i });
   const allow = new Set([...(o.allowChars ?? '')].map((c) => c.codePointAt(0)!));
+  // A usage.json from another audit (none of its faces is in the manifest) would say no page draws
+  // any built face, and silence the character check: ignored, every face counts on every page.
+  const ids = Object.keys(manifest.entries);
+  if (o.usage && ids.length && !ids.some((id) => o.usage!.faces[id])) {
+    notes.push("usage.json is from a different audit (none of its faces is in the manifest), so it isn't used; rerun audit");
+    o = { ...o, usage: undefined };
+  }
 
   // 1. Sources, outputs and blocks, as built.
   const facts: EntryFacts[] = [];
@@ -145,6 +154,10 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
     facts.push(f);
   }
 
+  // Font readiness checks (§6): a call added since the build waits for the core file only.
+  for (const call of findFontCheckCalls(root)) {
+    if (call.fixable) add({ kind: 'block', severity: 'warning', file: call.file, message: `${call.file}:${call.line} \`${call.call.length > 60 ? call.call.slice(0, 57) + '…' : call.call}\` waits for the core file only now that the font is split; rerun build to make it wait for every file the page needs` });
+  }
   // fontsource ejects (§6.2): the installed package must be the version the copy was made from.
   for (const [file, ej] of Object.entries(manifest.ejects ?? {})) {
     for (const sn of ej.snippets ?? []) {
@@ -245,7 +258,7 @@ export async function checkProject(o: CheckOptions): Promise<CheckResult> {
   if (!outDir) notes.push('no built static output found: the character check needs prerendered HTML (pass --dist)');
   else {
     // Not fontphobia's own files when the site is served from the project root (usage.json, the manifest).
-    const files = listFiles(outDir, (r) => /\.(html?|m?js|json)$/i.test(r) && !r.endsWith('fontphobia.manifest.json'), { skip: (_rel, n) => n === 'node_modules' || n.startsWith('.'), max: 20_000 });
+    const files = listFiles(outDir, (r) => /\.(html?|m?js|json)$/i.test(r) && !r.endsWith('fontphobia.manifest.json') && !r.endsWith('.fontphobia/manifest.json'), { skip: (_rel, n) => n === 'node_modules' || n.startsWith('.'), max: 20_000 });
     const missing = new Map<string, { cps: Set<number>; files: Set<string> }>();
     // From JS/JSON only: bundles escape non-ASCII, so UI text and Unicode tables (React's, regexes)
     // look the same. Reported as a note; prerendered HTML is what fails the check.
@@ -325,7 +338,7 @@ export function formatCheck(r: CheckResult): string {
  */
 export async function checkUsage(root: string, usage: UsageFileJson, o: { strict?: boolean } = {}): Promise<CheckResult> {
   const manifest = readManifest(root);
-  if (!manifest || !Object.keys(manifest.entries).length) return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: ['no fontphobia.manifest.json: nothing has been built to check'] };
+  if (!manifest || !Object.keys(manifest.entries).length) return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: ['no .fontphobia/manifest.json: nothing has been built to check'] };
   const issues: CheckIssue[] = [];
   let outputs = 0;
   for (const e of Object.values(manifest.entries).sort((a, b) => (a.id < b.id ? -1 : 1))) {
