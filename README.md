@@ -1,6 +1,8 @@
-# fontphobia
+<h1><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Amir-Abushanab/fontphobia/main/site/assets/logo-dark.svg"><img src="https://raw.githubusercontent.com/Amir-Abushanab/fontphobia/main/site/assets/logo-light.svg" alt="fontphobia" width="340"></picture></h1>
 
 Shrink your site's web fonts without changing how anything renders.
+
+**[Read the walkthrough](https://amir-abushanab.github.io/fontphobia/)**: fontphobia on a real site, step by step, with its actual output.
 
 fontphobia crawls your built site in Chrome, records exactly which characters, weights, features and axis values each font draws on each page, and splits every font into a small **core** file, an **extended** file and a lazy **rest** file. Text renders with the same glyphs, hinting, kerning and metrics as before, and `verify` proves it pixel for pixel.
 

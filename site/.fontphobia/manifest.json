@@ -1,0 +1,123 @@
+{
+  "chrome": "157.0.8103.39",
+  "demands": [
+    "*|axis|wght=400",
+    "*|axis|wght=500",
+    "*|axis|wght=600",
+    "*|axis|wght=650",
+    "*|feature|tnum",
+    "var(--sans)|axis|wght=500",
+    "var(--sans)|axis|wght=600",
+    "var(--sans)|axis|wght=650",
+    "var(--serif)|axis|opsz=36",
+    "var(--serif)|axis|opsz=72",
+    "var(--serif)|axis|wght=500",
+    "var(--serif)|axis|wght=600"
+  ],
+  "entries": {
+    "fraunces-100-900-normal": {
+      "adapter": "css",
+      "declaration": "@font-face { font-family: 'Fraunces'; src: url('fonts/Fraunces.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }",
+      "family": "Fraunces",
+      "id": "fraunces-100-900-normal",
+      "outputs": [
+        {
+          "bytes": 44812,
+          "file": "fonts/Fraunces.core.8a4d7836.woff2",
+          "role": "core",
+          "sha256": "8a4d7836c3d9f768172cf00bc1e57ee6c0611bbb58af08a6a26b0c9584e87001",
+          "unicodeRange": "U+20-7E, U+A0, U+B7, U+E8, U+2013-2014, U+2018-2019, U+201C-201D, U+2026",
+          "url": "fonts/Fraunces.core.8a4d7836.woff2"
+        },
+        {
+          "bytes": 42464,
+          "file": "fonts/Fraunces.ext.273b9267.woff2",
+          "hintRefs": "U+30, U+43, U+45, U+48, U+4C, U+4F, U+51, U+53-55, U+58, U+5A, U+62-6B, U+6E-73, U+75-76, U+78-7A",
+          "role": "ext",
+          "sha256": "273b92678e53e285e669a5431c46d2d28b60fe2572643705508324558ea57465",
+          "unicodeRange": "U+A1-B6, U+B8-E7, U+E9-FF, U+131, U+152-153, U+300-301, U+303-304, U+308, U+2032-2033, U+2212",
+          "url": "fonts/Fraunces.ext.273b9267.woff2"
+        },
+        {
+          "bytes": 22496,
+          "file": "fonts/Fraunces.rest.f2f69b4a.woff2",
+          "hintRefs": "U+30, U+43, U+45, U+48, U+4C, U+4F, U+51, U+53-55, U+58, U+5A, U+62-6B, U+6E-73, U+75-76, U+78-7A",
+          "role": "rest",
+          "sha256": "f2f69b4a850917eb3ee9f57097d7255933e0182ec1b2f2a33d8347d64ff9be8c",
+          "unicodeRange": "U+2BC, U+2C6, U+2DA, U+2DC, U+201A, U+201E, U+2022, U+2039-203A, U+2044, U+20AC, U+2122, U+2215",
+          "url": "fonts/Fraunces.rest.f2f69b4a.woff2"
+        }
+      ],
+      "plan": {
+        "features": [],
+        "hinting": true,
+        "optIns": []
+      },
+      "source": {
+        "bytes": 67304,
+        "file": "fonts/Fraunces.woff2",
+        "sha256": "7234ed860a9cc83045413c4faee63c960a8f2d1917adcf728119307d56e0d783"
+      },
+      "stylesheet": "index.html"
+    },
+    "inter-100-900-normal": {
+      "adapter": "css",
+      "declaration": "@font-face { font-family: 'Inter'; src: url('fonts/InterVariable.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }",
+      "family": "Inter",
+      "id": "inter-100-900-normal",
+      "outputs": [
+        {
+          "bytes": 49732,
+          "file": "fonts/InterVariable.core.f41e076e.woff2",
+          "hintRefs": "U+2BC, U+2EE",
+          "role": "core",
+          "sha256": "f41e076ec85c625eea4933dc618c49c86e04d1712bf005655a8519ff9612697d",
+          "unicodeRange": "U+20-7E, U+A0, U+B7, U+BD, U+D7, U+E8-E9, U+EF, U+F8, U+FB, U+10D, U+3AF, U+3BC, U+3C8-3C9, U+2010, U+2013-2014, U+2018-2019, U+201C-201D, U+2022, U+2026, U+20AC, U+2192, U+2212",
+          "url": "fonts/InterVariable.core.f41e076e.woff2"
+        },
+        {
+          "bytes": 49656,
+          "file": "fonts/InterVariable.ext.1de68865.woff2",
+          "hintRefs": "U+30, U+43, U+45, U+48, U+4C, U+4F, U+51, U+53-55, U+58, U+5A, U+62-6B, U+6E-73, U+75-76, U+78-7A",
+          "role": "ext",
+          "sha256": "1de68865957eecc7de103700c32c6144388ee3a7e1440e9f84240e2d770ad3f7",
+          "unicodeRange": "U+A1-AC, U+AE-B6, U+B8-BC, U+BE-D6, U+D8-E7, U+EA-EE, U+F0-F7, U+F9-FA, U+FC-10C, U+10E-148, U+14A-17F, U+300-304, U+306, U+308, U+30A, U+327, U+2011, U+2020-2021, U+2030, U+2032-2033",
+          "url": "fonts/InterVariable.ext.1de68865.woff2"
+        },
+        {
+          "bytes": 316104,
+          "file": "fonts/InterVariable.rest.4ba9ba64.woff2",
+          "hintRefs": "U+30, U+43, U+45, U+48, U+4C, U+4F, U+51, U+53-55, U+58, U+5A, U+62-6B, U+6E-73, U+75-76, U+78-7A, U+3BC, U+3C8-3C9, U+2019, U+201D",
+          "role": "rest",
+          "sha256": "4ba9ba64b47901d11f8d2f5cfb97a2c2c3f4a09d0f9c46c7e138d3f905b0d71c",
+          "unicodeRange": "U+180-1C3, U+1C5-254, U+256-27B, U+27E-284, U+286-290, U+292-2A4, U+2A6-2FF, U+307, U+309, U+30C, U+30F, U+313, U+315, U+31B, U+323, U+326, U+328, U+32C, U+337-338, U+342-343, U+346-36F, U+374-376, U+37A-37F, U+384-38A, U+38C, U+38E-3A1, U+3A3-3AE, U+3B0-3BB, U+3BD-3C7, U+3CA-3D7, U+3DC-3DD, U+3F0-3F6, U+3F9-3FA, U+3FC-479, U+480-49D, U+4A0-4FF, U+52F, U+E3F, U+1D00, U+1D0D, U+1D1B, U+1D43, U+1D47-1D49, U+1D4D, U+1D4F-1D50, U+1D52, U+1D56-1D58, U+1D5B, U+1D62-1D65, U+1D9C, U+1DA0, U+1DBB, U+1DBF-1DF5, U+1DFC-1E9B, U+1E9D-1F15, U+1F18-1F1D, U+1F20-1F45, U+1F48-1F4D, U+1F50-1F57, U+1F59, U+1F5B, U+1F5D, U+1F5F-1F7D, U+1F80-1FB4, U+1FB6-1FC4, U+1FC6-1FD3, U+1FD6-1FDB, U+1FDD-1FEF, U+1FF2-1FF4, U+1FF6-1FFE, U+2000-200B, U+2012, U+2015-2017, U+201A-201B, U+201E-201F, U+2023-2025, U+2027, U+202F, U+2031, U+2034-2055, U+2057, U+205F, U+2070-2071, U+2074-208E, U+2090-209C, U+20A0-20AB, U+20AD-20AF, U+20B1-20B5, U+20B8-20BA, U+20BC-20C0, U+20DB-20DE, U+20E8, U+20F0, U+2100-2101, U+2103, U+2105-2106, U+2109, U+2113, U+2116-2117, U+211E-2122, U+2126, U+212A-212B, U+212E, U+2132, U+213B, U+214D, U+2150-217F, U+2183-2186, U+2189, U+2190-2191, U+2193-2199, U+21A9-21AA, U+21B0-21B1, U+21B3-21B5, U+21BA-21BB, U+21D0, U+21D2, U+21D4, U+21DE-21DF, U+21E4-21E5, U+21E7, U+21EA, U+2202, U+2205-2206, U+220F, U+2211, U+221A, U+221E, U+222B, U+2236, U+2248, U+2260, U+2264-2265, U+2295-2298, U+2303-2305, U+2318, U+2325-2327, U+232B, U+2380, U+2387, U+238B, U+23CE-23CF, U+2423, U+2460-2468, U+24B6-24CF, U+24EA, U+25A0-25A2, U+25AA, U+25B2-25B3, U+25B6-25B7, U+25BA-25BD, U+25C0-25C1, U+25C4-25C7, U+25CA-25CB, U+25CF, U+25E6, U+25EF, U+2600, U+2605-2606, U+263C, U+2661, U+2665, U+266A-266B, U+26A0, U+2713, U+2717, U+2756, U+2764, U+2780-2788, U+27EF, U+27F5-27FA, U+2913, U+2A38, U+2B06, U+2B12-2B13, U+2B1C, U+2B24, U+2C7C, U+2C7F, U+2DFF, U+2E18, U+A69F, U+A7FF, U+A92E, U+E000, U+E002-E05E, U+E06A-E0BD, U+E0C8-E0CC, U+E0DC-E0E6, U+E0F3-E0F5, U+E106, U+E109-E10A, U+E10C-E10F, U+E111-E113, U+E117-E118, U+E121-E122, U+E124, U+E12A-E15E, U+E163, U+E1C3, U+E1D2-E1DF, U+E1E1-E2DC, U+EE01-EE07, U+EE09-EE0A, U+EE0C-EE12, U+EE14, U+EE17, U+EE1D-EE45, U+EE47-EE84, U+EE87-EED6, U+EED8-EEE1, U+F6C3, U+FEFF, U+1F12F-1F149, U+1F16A-1F16B, U+1F850, U+1F852",
+          "url": "fonts/InterVariable.rest.4ba9ba64.woff2"
+        }
+      ],
+      "plan": {
+        "features": [
+          "tnum"
+        ],
+        "hinting": true,
+        "optIns": []
+      },
+      "preloads": [
+        {
+          "file": "index.html",
+          "from": "fonts/InterVariable.woff2",
+          "to": "fonts/InterVariable.core.f41e076e.woff2"
+        }
+      ],
+      "source": {
+        "bytes": 349532,
+        "file": "fonts/InterVariable.woff2",
+        "sha256": "d590e66989b57cc4adb0948e387c5c54a36b225657778a00862195e81f2776b1"
+      },
+      "stylesheet": "index.html"
+    }
+  },
+  "fontphobia": "0.2.0",
+  "harfbuzz": "15.0.0",
+  "others": [],
+  "version": 1
+}
