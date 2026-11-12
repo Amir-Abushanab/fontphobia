@@ -20,7 +20,7 @@ jobs:
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: pnpm dlx fontphobia@0.2.0 check
+      - run: pnpm dlx fontphobia@0.3.0 check
 ```
 
 Skip this if a [framework integration](../README.md#keeping-the-subsets-up-to-date) already runs `check` in your build.
@@ -43,7 +43,7 @@ jobs:
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with: { node-version: 24 }
-      - run: pnpm dlx fontphobia@0.2.0 check --url https://example.com
+      - run: pnpm dlx fontphobia@0.3.0 check --url https://example.com
 ```
 
 ## 3. Verify on Windows and Linux
@@ -70,7 +70,7 @@ jobs:
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       # Linux also runs the worst case for rounding: Chrome in the pinned Playwright image (Docker) at DPR 1, hinting on.
-      - run: pnpm dlx fontphobia@0.2.0 verify ${{ runner.os == 'Linux' && '--hinting' || '' }}
+      - run: pnpm dlx fontphobia@0.3.0 verify ${{ runner.os == 'Linux' && '--hinting' || '' }}
         shell: bash
       - if: failure()
         uses: actions/upload-artifact@v7
