@@ -3,7 +3,14 @@
 // cross-file shaping (§8.3) and to measure sizes; `build --write` (M4) writes what it planned.
 import { createHash } from 'node:crypto';
 import { basename, extname } from 'node:path';
-import { codePointsOf, formatUnicodeRange, inRanges, parseUnicodeRange, rangesFromCodePoints, type Range } from '../css/unicode-range.ts';
+import {
+  codePointsOf,
+  formatUnicodeRange,
+  inRanges,
+  parseUnicodeRange,
+  rangesFromCodePoints,
+  type Range,
+} from '../css/unicode-range.ts';
 import { parseStretchDescriptor, parseWeightDescriptor, relativeWeight } from '../css/values.ts';
 import { loadFont } from '../font/hb.ts';
 import { toSfnt } from '../font/io.ts';
@@ -17,7 +24,13 @@ import { cmapAliases, hintRefs, macosReferenceGlyphs, reverseCmap } from './hint
 
 // ─── Input: usage.json as written by `audit` (§7.6) ─────────────────────────────────────────────
 
-export interface AxesJson { weight?: number[]; stretch?: number[]; style?: string[]; size?: number[]; axes?: Record<string, number[]> }
+export interface AxesJson {
+  weight?: number[];
+  stretch?: number[];
+  style?: string[];
+  size?: number[];
+  axes?: Record<string, number[]>;
+}
 export interface UsageFaceJson {
   family: string;
   descriptors: Record<string, string>;
@@ -40,9 +53,25 @@ export interface UsageFaceJson {
 }
 export interface UsageFileJson {
   version: number;
-  meta: { fontphobia: string; harfbuzz: string; chrome: string; framework: string; mode: string; viewports: number[]; fontSizes: number[] };
+  meta: {
+    fontphobia: string;
+    harfbuzz: string;
+    chrome: string;
+    framework: string;
+    mode: string;
+    viewports: number[];
+    fontSizes: number[];
+  };
   faces: Record<string, UsageFaceJson>;
-  pages: Record<string, { private?: boolean; faces: Record<string, string>; bytes: number; fonts: { url: string; status: number; bytes: number; sha256?: string; faces: string[] }[] }>;
+  pages: Record<
+    string,
+    {
+      private?: boolean;
+      faces: Record<string, string>;
+      bytes: number;
+      fonts: { url: string; status: number; bytes: number; sha256?: string; faces: string[] }[];
+    }
+  >;
 }
 
 export interface PlanConfig {
@@ -141,7 +170,12 @@ export interface Plan {
 
 // ─── Capabilities (§6, capability matrix) ───────────────────────────────────────────────────────
 
-interface Caps { subset: boolean; split: 'full' | 'single'; /** A rest file can be declared (false: next/font/local, one file per face). */ rest?: boolean; why?: string }
+interface Caps {
+  subset: boolean;
+  split: 'full' | 'single';
+  /** A rest file can be declared (false: next/font/local, one file per face). */ rest?: boolean;
+  why?: string;
+}
 const CAPS: Record<string, Caps> = {
   css: { subset: true, split: 'full' },
   manual: { subset: true, split: 'full' },
@@ -149,11 +183,31 @@ const CAPS: Record<string, Caps> = {
   'next-font-local': { subset: true, split: 'single', rest: false },
   // Each slice is subset on its own; fontsource's slices are the split (§6.2).
   fontsource: { subset: true, split: 'single' },
-  'next-font-google': { subset: false, split: 'single', why: 'Google serves this font through next/font/google; --allow eject serves it from your site, split' },
-  'google-fonts': { subset: false, split: 'single', why: 'Google serves this font; --allow self-host serves it from your site, split' },
-  'adobe-fonts': { subset: false, split: 'single', why: "Adobe Fonts serves this kit; Adobe's license allows no changes to the files (see the report, and fontphobia apply-kit)" },
-  'nuxt-fonts': { subset: false, split: 'single', why: '@nuxt/fonts serves this font; --allow eject serves it from your site, split' },
-  'astro-fonts': { subset: false, split: 'single', why: "Astro's Fonts API serves this font; --allow eject serves it from your site, split" },
+  'next-font-google': {
+    subset: false,
+    split: 'single',
+    why: 'Google serves this font through next/font/google; --allow eject serves it from your site, split',
+  },
+  'google-fonts': {
+    subset: false,
+    split: 'single',
+    why: 'Google serves this font; --allow self-host serves it from your site, split',
+  },
+  'adobe-fonts': {
+    subset: false,
+    split: 'single',
+    why: "Adobe Fonts serves this kit; Adobe's license allows no changes to the files (see the report, and fontphobia apply-kit)",
+  },
+  'nuxt-fonts': {
+    subset: false,
+    split: 'single',
+    why: '@nuxt/fonts serves this font; --allow eject serves it from your site, split',
+  },
+  'astro-fonts': {
+    subset: false,
+    split: 'single',
+    why: "Astro's Fonts API serves this font; --allow eject serves it from your site, split",
+  },
   unknown: { subset: false, split: 'single', why: "fontphobia couldn't find where this face is declared" },
 };
 
@@ -172,7 +226,11 @@ const isControl = (cp: number) => cp < 0x20 || (cp >= 0x7f && cp < 0xa0);
 export const CORE_BASE = [...span(0x20, 0x7e), 0xa0, 0x2010, 0x2018, 0x2019, 0x201c, 0x201d, 0x2013, 0x2014, 0x2026];
 const isMark = (cp: number) => /\p{M}/u.test(String.fromCodePoint(cp));
 /** Faces in inputs: every Latin character, plus the punctuation and marks Latin text uses. */
-const isLatinish = (cp: number) => /[\p{Script=Latin}\p{M}]/u.test(String.fromCodePoint(cp)) || cp <= 0x24f || (cp >= 0x2000 && cp <= 0x206f) || (cp >= 0x20a0 && cp <= 0x20cf);
+const isLatinish = (cp: number) =>
+  /[\p{Script=Latin}\p{M}]/u.test(String.fromCodePoint(cp)) ||
+  cp <= 0x24f ||
+  (cp >= 0x2000 && cp <= 0x206f) ||
+  (cp >= 0x20a0 && cp <= 0x20cf);
 
 const setOf = (ranges: string | undefined) => new Set(ranges ? codePointsOf(parseUnicodeRange(ranges)) : []);
 const fmt = (s: Iterable<number>) => formatUnicodeRange(rangesFromCodePoints(s));
@@ -191,16 +249,19 @@ export function limitAxes(face: UsageFaceJson, axes: Axis[]): Record<string, Axi
     const vals = new Set<number>([...(face.rendered.axes?.[a.tag] ?? []), ...(face.declared.axes?.[a.tag] ?? [])]);
     if (a.tag === 'wght') {
       // Browser defaults: b/strong are `bolder`, h1–h6 and th are bold (§7.5).
-      for (const w of [...vals, ...(face.rendered.weight ?? []), ...(face.declared.weight ?? [])]) vals.add(relativeWeight('bolder', w));
+      for (const w of [...vals, ...(face.rendered.weight ?? []), ...(face.declared.weight ?? [])])
+        vals.add(relativeWeight('bolder', w));
       vals.add(700);
     }
-    const clampD = (v: number) => (a.tag === 'wght' ? Math.min(wMax, Math.max(wMin, v)) : a.tag === 'wdth' ? Math.min(sMax, Math.max(sMin, v)) : v);
+    const clampD = (v: number) =>
+      a.tag === 'wght' ? Math.min(wMax, Math.max(wMin, v)) : a.tag === 'wdth' ? Math.min(sMax, Math.max(sMin, v)) : v;
     const clamped = new Set([...vals].map((v) => Math.min(a.max, Math.max(a.min, clampD(v)))));
     let s: AxisSetting;
     if (clamped.size === 0) s = a.default;
     else if (clamped.size === 1) s = [...clamped][0]!;
     else {
-      const lo = Math.min(a.default, ...clamped), hi = Math.max(a.default, ...clamped);
+      const lo = Math.min(a.default, ...clamped),
+        hi = Math.max(a.default, ...clamped);
       s = { min: lo, max: hi };
     }
     if (typeof s === 'number' ? a.min !== a.max : s.min > a.min || s.max < a.max) narrows = true;
@@ -211,7 +272,8 @@ export function limitAxes(face: UsageFaceJson, axes: Axis[]): Record<string, Axi
 
 function axisDescriptors(face: UsageFaceJson, axes: Record<string, AxisSetting>): Record<string, string> {
   const d: Record<string, string> = {};
-  const fmtA = (s: AxisSetting, unit = '') => (typeof s === 'number' ? `${s}${unit}` : `${s.min}${unit} ${s.max}${unit}`);
+  const fmtA = (s: AxisSetting, unit = '') =>
+    typeof s === 'number' ? `${s}${unit}` : `${s.min}${unit} ${s.max}${unit}`;
   if (axes.wght !== undefined && face.descriptors['font-weight']) d['font-weight'] = fmtA(axes.wght);
   if (axes.wdth !== undefined && face.descriptors['font-stretch']) d['font-stretch'] = fmtA(axes.wdth, '%');
   return d;
@@ -219,32 +281,62 @@ function axisDescriptors(face: UsageFaceJson, axes: Record<string, AxisSetting>)
 
 // ─── Shaping repair (§8.3) ──────────────────────────────────────────────────────────────────────
 
-export interface Word { text: string; cps: number[]; cases: ShapeCase[] }
+export interface Word {
+  text: string;
+  cps: number[];
+  cases: ShapeCase[];
+}
 
 /** Every stored word in every style context, as shaping cases at each corner of the context's axis ranges (§7.6). */
 export function wordsOf(face: UsageFaceJson, keep: Set<number>, axes: Pick<Axis, 'tag'>[]): Word[] {
   const tags = new Set(axes.map((a) => a.tag));
   const out: Word[] = [];
   for (const ctx of face.contexts) {
-    const features = ctx.features ? ctx.features.split(',').map((f) => f.trim()).filter(Boolean) : [];
+    const features = ctx.features
+      ? ctx.features
+          .split(',')
+          .map((f) => f.trim())
+          .filter(Boolean)
+      : [];
     // Shape at the ends of every axis range (§7.6): every corner.
     let corners: Record<string, number>[] = [{}];
     for (const [t, [lo, hi]] of Object.entries(ctx.axes).toSorted(([a], [b]) => str(a, b))) {
       if (!tags.has(t)) continue;
-      corners = corners.flatMap((c) => (lo === hi ? [{ ...c, [t]: lo }] : [{ ...c, [t]: lo }, { ...c, [t]: hi }]));
+      corners = corners.flatMap((c) =>
+        lo === hi
+          ? [{ ...c, [t]: lo }]
+          : [
+              { ...c, [t]: lo },
+              { ...c, [t]: hi },
+            ],
+      );
     }
     for (const w of ctx.words) {
       // Neighbors another face drew (a space outside this face's unicode-range) aren't shaped here.
       const text = [...w].filter((ch) => keep.has(ch.codePointAt(0)!)).join('');
       if (!text) continue;
       const cps = [...new Set([...text].map((ch) => ch.codePointAt(0)!))];
-      out.push({ text, cps, cases: corners.map((variations) => ({ text, features, variations: Object.keys(variations).length ? variations : undefined })) });
+      out.push({
+        text,
+        cps,
+        cases: corners.map((variations) => ({
+          text,
+          features,
+          variations: Object.keys(variations).length ? variations : undefined,
+        })),
+      });
     }
   }
   return out;
 }
 
-function shapesSplit(sfnt: Uint8Array, K: Set<number>, C: Set<number>, words: Word[], opts: Omit<SubsetOptions, 'unicodes'>): { broken: Word[] } {
+function shapesSplit(
+  sfnt: Uint8Array,
+  K: Set<number>,
+  C: Set<number>,
+  words: Word[],
+  opts: Omit<SubsetOptions, 'unicodes'>,
+): { broken: Word[] } {
   const E = new Set([...K].filter((c) => !C.has(c)));
   const mixed = words.filter((w) => w.cps.some((c) => C.has(c)) && w.cps.some((c) => E.has(c)));
   if (!mixed.length) return { broken: [] };
@@ -256,7 +348,9 @@ function shapesSplit(sfnt: Uint8Array, K: Set<number>, C: Set<number>, words: Wo
   const cases = mixed.flatMap((w) => w.cases);
   const results = checkShaping(whole, files, cases);
   const bad = new Set<string>();
-  results.forEach((r, i) => { if (r.verdict.kind !== 'identical') bad.add(cases[i]!.text); });
+  results.forEach((r, i) => {
+    if (r.verdict.kind !== 'identical') bad.add(cases[i]!.text);
+  });
   return { broken: mixed.filter((w) => bad.has(w.text)) };
 }
 
@@ -267,13 +361,21 @@ function shapesSplit(sfnt: Uint8Array, K: Set<number>, C: Set<number>, words: Wo
  */
 export function closure(sfnt: Uint8Array, set: Set<number>): Set<number> {
   if (!set.size) return set;
-  const got = new Set(loadFont(hbSubset(sfnt, { unicodes: set, features: { only: [] }, hinting: false })).face.collectUnicodes());
+  const got = new Set(
+    loadFont(hbSubset(sfnt, { unicodes: set, features: { only: [] }, hinting: false })).face.collectUnicodes(),
+  );
   for (const c of set) got.add(c);
   return got;
 }
 
 /** Grow core until every stored word shapes the same split as whole. Core only grows, so it ends. */
-export function repairCore(sfnt: Uint8Array, K: Set<number>, C0: Set<number>, words: Word[], opts: Omit<SubsetOptions, 'unicodes'>) {
+export function repairCore(
+  sfnt: Uint8Array,
+  K: Set<number>,
+  C0: Set<number>,
+  words: Word[],
+  opts: Omit<SubsetOptions, 'unicodes'>,
+) {
   let C = new Set(C0);
   const moved = new Set<number>();
   const fixed = new Set<string>();
@@ -296,14 +398,15 @@ export function repairCore(sfnt: Uint8Array, K: Set<number>, C0: Set<number>, wo
 export function composedInUse(face: Pick<UsageFaceJson, 'contexts'>): Set<number> {
   const out = new Set<number>();
   const seg = new Intl.Segmenter('und', { granularity: 'grapheme' });
-  for (const ctx of face.contexts) for (const w of ctx.words) {
-    if (!/\p{M}/u.test(w)) continue;
-    for (const { segment } of seg.segment(w)) {
-      if (!/\p{M}/u.test(segment)) continue;
-      const nfc = segment.normalize('NFC');
-      if ([...nfc].length === 1 && nfc !== segment) out.add(nfc.codePointAt(0)!);
+  for (const ctx of face.contexts)
+    for (const w of ctx.words) {
+      if (!/\p{M}/u.test(w)) continue;
+      for (const { segment } of seg.segment(w)) {
+        if (!/\p{M}/u.test(segment)) continue;
+        const nfc = segment.normalize('NFC');
+        if ([...nfc].length === 1 && nfc !== segment) out.add(nfc.codePointAt(0)!);
+      }
     }
-  }
   return out;
 }
 
@@ -314,25 +417,50 @@ const hasHinting = (sfnt: Uint8Array) => {
   return t.has('fpgm') || t.has('prep') || t.has('cvt ') || glyfInstructionBytes(sfnt) > 0;
 };
 
-interface Built { files: PlannedFile[]; bytes: Record<Role, number> }
+interface Built {
+  files: PlannedFile[];
+  bytes: Record<Role, number>;
+}
 
 /** `outputs`, when given, receives the planned files' WOFF2 bytes by file name (what `build --write` writes). */
-export async function planFace(id: string, face: UsageFaceJson, usage: UsageFileJson, src: SourceFont | undefined, cfg: PlanConfig = {}, outputs?: Map<string, Uint8Array>): Promise<FacePlan> {
+export async function planFace(
+  id: string,
+  face: UsageFaceJson,
+  usage: UsageFileJson,
+  src: SourceFont | undefined,
+  cfg: PlanConfig = {},
+  outputs?: Map<string, Uint8Array>,
+): Promise<FacePlan> {
   const adapter = face.source.adapter;
   // self-host (§6.5): Google's served file becomes the source, with the full split.
-  const caps = (adapter === 'google-fonts' && cfg.allow?.includes('self-host')) || ((adapter === 'next-font-google' || adapter === 'astro-fonts' || adapter === 'nuxt-fonts') && cfg.allow?.includes('eject')) ? { subset: true, split: 'full' as const } : CAPS[adapter] ?? CAPS.unknown!;
+  const caps =
+    (adapter === 'google-fonts' && cfg.allow?.includes('self-host')) ||
+    ((adapter === 'next-font-google' || adapter === 'astro-fonts' || adapter === 'nuxt-fonts') &&
+      cfg.allow?.includes('eject'))
+      ? { subset: true, split: 'full' as const }
+      : (CAPS[adapter] ?? CAPS.unknown!);
   const base: FacePlan = { id, family: face.family, adapter, status: 'skipped' };
   const now = face.files.reduce((n, f) => Math.max(n, f.bytes ?? 0), 0);
   if (face.local) return { ...base, reason: 'drawn from an installed font (local())' };
   if (!caps.subset) return { ...base, reason: caps.why };
-  if (!src) return { ...base, reason: `source font not found in the repo${face.source.fontFile ? ` (${face.source.fontFile})` : ''}` };
+  if (!src)
+    return {
+      ...base,
+      reason: `source font not found in the repo${face.source.fontFile ? ` (${face.source.fontFile})` : ''}`,
+    };
 
   const sfnt = await toSfnt(src.bytes);
   const source = { file: src.file, sha256: sha256(src.bytes), bytes: src.bytes.byteLength };
   const lic = src.license ?? detectLicense(sfnt);
-  const allowedLicense = (cfg.licenses?.allow ?? []).some((a) => a.toLowerCase() === face.family.toLowerCase() || a === src.file);
+  const allowedLicense = (cfg.licenses?.allow ?? []).some(
+    (a) => a.toLowerCase() === face.family.toLowerCase() || a === src.file,
+  );
   const refusal = licenseRefusal(sfnt, lic, allowedLicense);
-  const license: FacePlan['license'] = { id: lic.id, from: lic.from, reserved: lic.reserved.length ? lic.reserved : undefined };
+  const license: FacePlan['license'] = {
+    id: lic.id,
+    from: lic.from,
+    reserved: lic.reserved.length ? lic.reserved : undefined,
+  };
   if (refusal) return { ...base, status: 'refused', reason: refusal, source, license };
   const rename = renameFor(sfnt, face.family, lic.reserved, cfg.rename);
   if (rename) license.rename = rename;
@@ -349,14 +477,23 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
   const safety = new Set<number>(SAFETY_LATIN);
   const locales = [...new Set([...(cfg.locales ?? []), ...face.locales])].toSorted(str);
   const unknownLocales: string[] = [];
-  for (const l of locales) { const cs = localeChars(l); if (cs) for (const c of cs) safety.add(c); else unknownLocales.push(l); }
+  for (const l of locales) {
+    const cs = localeChars(l);
+    if (cs) for (const c of cs) safety.add(c);
+    else unknownLocales.push(l);
+  }
   if (face.editable) for (const c of cmap) if (isLatinish(c)) safety.add(c);
   for (const c of composedInUse(face)) safety.add(c);
   const mut = cfg.mutation?.face === id ? cfg.mutation : undefined;
   if (mut?.kind === 'drop-char') servable.delete(mut.cp);
   const K = closure(sfnt, new Set([...used, ...safety].filter((c) => servable.has(c))));
   if (mut?.kind === 'drop-char') K.delete(mut.cp);
-  const kept = { count: K.size, used: [...used].filter((c) => K.has(c)).length, safety: [...K].filter((c) => !used.has(c)).length, locales };
+  const kept = {
+    count: K.size,
+    used: [...used].filter((c) => K.has(c)).length,
+    safety: [...K].filter((c) => !used.has(c)).length,
+    locales,
+  };
 
   // 2. Core: base ∪ characters on ≥ coreThreshold of pages ∪ marks in use, ∩ K.
   let C0: Set<number>;
@@ -365,7 +502,8 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
     const threshold = cfg.coreThreshold ?? 0.5;
     const n = face.pages.length;
     const counts = new Map<number, number>();
-    for (const p of face.pages) for (const c of setOf(usage.pages[p]?.faces[id])) counts.set(c, (counts.get(c) ?? 0) + 1);
+    for (const p of face.pages)
+      for (const c of setOf(usage.pages[p]?.faces[id])) counts.set(c, (counts.get(c) ?? 0) + 1);
     C0 = new Set(CORE_BASE);
     for (const [c, k] of counts) if (n && k / n >= threshold) C0.add(c);
     for (const c of used) if (isMark(c)) C0.add(c);
@@ -381,11 +519,15 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
   // Options: features (§8.7), axes (§8.6), hinting (§8.8).
   const allow = new Set(cfg.allow ?? []);
   const fvar = parseFvar(sfnt)?.axes ?? [];
-  const features = [...new Set(face.features)].filter((t) => !(mut?.kind === 'drop-feature' && t === mut.tag)).toSorted(str);
+  const features = [...new Set(face.features)]
+    .filter((t) => !(mut?.kind === 'drop-feature' && t === mut.tag))
+    .toSorted(str);
   const axesLimit = fvar.length ? limitAxes(face, fvar) : undefined;
   const hinted = hasHinting(sfnt);
   const optsFor = (o: { limit: boolean; dropHinting: boolean }): Omit<SubsetOptions, 'unicodes'> => ({
-    features: { add: features }, hinting: !o.dropHinting, ...(o.limit && axesLimit ? { axes: axesLimit } : {}),
+    features: { add: features },
+    hinting: !o.dropHinting,
+    ...(o.limit && axesLimit ? { axes: axesLimit } : {}),
     ...(mut?.kind === 'pin-axis' ? { axes: { ...(o.limit ? axesLimit : {}), [mut.tag]: mut.value } } : {}),
     ...(license.rename ? { rename: license.rename } : {}),
   });
@@ -395,21 +537,32 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
   // 3. Cross-file shaping repair.
   const words = caps.split === 'full' ? wordsOf(face, K, fvar) : [];
   const splitShaping = allow.has('split-shaping');
-  const rep = caps.split === 'full' && C0.size < K.size ? repairCore(sfnt, K, C0, words, opts) : { C: C0, moved: new Set<number>(), words: [], firstBroken: [] };
+  const rep =
+    caps.split === 'full' && C0.size < K.size
+      ? repairCore(sfnt, K, C0, words, opts)
+      : { C: C0, moved: new Set<number>(), words: [], firstBroken: [] };
   let C = splitShaping ? C0 : rep.C;
   if (mut?.kind === 'mark-out-of-core') C = new Set([...C].filter((c) => !isMark(c)));
 
   // 4–5. Extended and rest.
   const setsFor = (core: Set<number>) => {
     const E = new Set([...K].filter((c) => !core.has(c)));
-    const R = cfg.remainder === false || caps.rest === false ? new Set<number>() : new Set([...servable].filter((c) => !K.has(c)));
+    const R =
+      cfg.remainder === false || caps.rest === false
+        ? new Set<number>()
+        : new Set([...servable].filter((c) => !K.has(c)));
     return { core, ext: E, rest: R };
   };
   const stem = basename(src.file, extname(src.file));
   const cache = new Map<string, PlannedFile>();
   const bytesOf = new Map<string, Uint8Array>();
   const refsOn = !allow.has('drop-hint-refs');
-  const build = async (role: Role, set: Set<number>, o: Omit<SubsetOptions, 'unicodes'>, withRefs = refsOn): Promise<PlannedFile | undefined> => {
+  const build = async (
+    role: Role,
+    set: Set<number>,
+    o: Omit<SubsetOptions, 'unicodes'>,
+    withRefs = refsOn,
+  ): Promise<PlannedFile | undefined> => {
     if (!set.size) return undefined;
     // Core never carries references, so it's the same file either way.
     const key = `${role}|${fmt(set)}|${JSON.stringify(o)}|${withRefs && role !== 'core'}`;
@@ -420,22 +573,40 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
     const hintBase = role === 'core' || !withRefs ? [] : hintRefs(set, cmap);
     // macOS's reference glyphs come with their code points when the source maps them (outside the unicode-range too).
     const macRefs = refGlyphs.flatMap((g) => byGlyph.get(g) ?? []).filter((c) => !set.has(c));
-    const refs = [...new Set([...hintBase, ...macRefs, ...cmapAliases([...set, ...hintBase, ...macRefs], hbFont, byGlyph)])].toSorted((a, b) => a - b);
+    const refs = [
+      ...new Set([...hintBase, ...macRefs, ...cmapAliases([...set, ...hintBase, ...macRefs], hbFont, byGlyph)]),
+    ].toSorted((a, b) => a - b);
     const r = await subsetFont(sfnt, { ...o, unicodes: [...set, ...refs], glyphs: refGlyphs });
     const h = sha256(r.woff2);
     const refSet = new Set(refs);
     const served = r.unicodes.filter((c) => !refSet.has(c));
     const f: PlannedFile = {
-      role, unicodeRange: fmt(served), count: served.length, bytes: r.woff2.byteLength, sha256: h, name: `${stem}.${role}.${h.slice(0, 8)}.woff2`,
+      role,
+      unicodeRange: fmt(served),
+      count: served.length,
+      bytes: r.woff2.byteLength,
+      sha256: h,
+      name: `${stem}.${role}.${h.slice(0, 8)}.woff2`,
       ...(refs.length ? { hintRefs: fmt(refs) } : {}),
     };
     cache.set(key, f);
     bytesOf.set(f.name, r.woff2);
     return f;
   };
-  const buildAll = async (core: Set<number>, o: Omit<SubsetOptions, 'unicodes'>, withRest: boolean, withRefs = refsOn): Promise<Built> => {
+  const buildAll = async (
+    core: Set<number>,
+    o: Omit<SubsetOptions, 'unicodes'>,
+    withRest: boolean,
+    withRefs = refsOn,
+  ): Promise<Built> => {
     const s = setsFor(core);
-    const files = (await Promise.all([build('core', s.core, o, withRefs), build('ext', s.ext, o, withRefs), withRest ? build('rest', s.rest, o, withRefs) : undefined])).filter((f): f is PlannedFile => !!f);
+    const files = (
+      await Promise.all([
+        build('core', s.core, o, withRefs),
+        build('ext', s.ext, o, withRefs),
+        withRest ? build('rest', s.rest, o, withRefs) : undefined,
+      ])
+    ).filter((f): f is PlannedFile => !!f);
     const bytes = { core: 0, ext: 0, rest: 0 };
     for (const f of files) bytes[f.role] = f.bytes;
     return { files, bytes };
@@ -448,34 +619,78 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
   const optIns: OptIn[] = [];
   if (axesLimit) {
     const other = await buildAll(C, optsFor({ ...final, limit: !final.limit }), false);
-    const desc = Object.entries(axesLimit).map(([t, s]) => `${t} ${typeof s === 'number' ? `pinned at ${s}` : `${s.min}–${s.max}`}`).join(', ');
-    optIns.push({ id: 'limit-axes', applied: final.limit, saving: final.limit ? paid(other) - paid(out) : paid(out) - paid(other), change: `${desc}; text widths shift up to ~0.02% (whole pixels on Linux at 1×)` });
+    const desc = Object.entries(axesLimit)
+      .map(([t, s]) => `${t} ${typeof s === 'number' ? `pinned at ${s}` : `${s.min}–${s.max}`}`)
+      .join(', ');
+    optIns.push({
+      id: 'limit-axes',
+      applied: final.limit,
+      saving: final.limit ? paid(other) - paid(out) : paid(out) - paid(other),
+      change: `${desc}; text widths shift up to ~0.02% (whole pixels on Linux at 1×)`,
+    });
   }
   if (hinted) {
     const other = await buildAll(C, optsFor({ ...final, dropHinting: !final.dropHinting }), false);
-    optIns.push({ id: 'drop-hinting', applied: final.dropHinting, saving: final.dropHinting ? paid(other) - paid(out) : paid(out) - paid(other), change: 'changes text layout on Linux at 1× and rasterization on Windows' });
+    optIns.push({
+      id: 'drop-hinting',
+      applied: final.dropHinting,
+      saving: final.dropHinting ? paid(other) - paid(out) : paid(out) - paid(other),
+      change: 'changes text layout on Linux at 1× and rasterization on Windows',
+    });
   }
   if (out.files.some((f) => f.role !== 'core')) {
     const other = await buildAll(C, opts, false, !refsOn);
     const saving = refsOn ? paid(out) - paid(other) : paid(other) - paid(out);
-    if (saving > 0) optIns.push({ id: 'drop-hint-refs', applied: !refsOn, saving, change: 'characters from the extended file hint differently on Linux and ChromeOS (FreeType\'s auto-hinter)' });
+    if (saving > 0)
+      optIns.push({
+        id: 'drop-hint-refs',
+        applied: !refsOn,
+        saving,
+        change: "characters from the extended file hint differently on Linux and ChromeOS (FreeType's auto-hinter)",
+      });
   }
   if (rep.moved.size) {
     const other = await buildAll(splitShaping ? rep.C : C0, opts, false);
     const n = rep.firstBroken.length;
     // What the repair costs: the extra core bytes every page using the face downloads (§8.3).
-    optIns.push({ id: 'split-shaping', applied: splitShaping, saving: splitShaping ? other.bytes.core - out.bytes.core : out.bytes.core - other.bytes.core, change: `loses kerning or contextual forms in ${n} word${n === 1 ? '' : 's'} where core and extended characters meet` });
+    optIns.push({
+      id: 'split-shaping',
+      applied: splitShaping,
+      saving: splitShaping ? other.bytes.core - out.bytes.core : out.bytes.core - other.bytes.core,
+      change: `loses kerning or contextual forms in ${n} word${n === 1 ? '' : 's'} where core and extended characters meet`,
+    });
   }
 
   const notes: string[] = [];
   if (unknownLocales.length) notes.push(`CLDR has no characters for ${unknownLocales.join(', ')}`);
   if (face.wordsTruncated) notes.push('word list was capped: the shaping repair saw only part of the text');
   if (!hinted && !readSfnt(sfnt).tables.has('CFF ')) notes.push('no TrueType hinting to drop');
-  if (caps.split === 'single') notes.push(adapter === 'next-font-local' ? 'next/font/local: one file per face (Turbopack can\'t split a localFont() call); characters outside it fall back to the next font' : `${adapter}: one file per slice, no core/extended split`);
+  if (caps.split === 'single')
+    notes.push(
+      adapter === 'next-font-local'
+        ? "next/font/local: one file per face (Turbopack can't split a localFont() call); characters outside it fall back to the next font"
+        : `${adapter}: one file per slice, no core/extended split`,
+    );
   const plan: FacePlan = {
-    ...base, status: 'planned', source, license, kept, files: out.files, features, hinting: !final.dropHinting,
-    axes: final.limit ? axesLimit : undefined, descriptors: final.limit && axesLimit ? axisDescriptors(face, axesLimit) : undefined,
-    repair: rep.moved.size && !splitShaping ? { moved: fmt(rep.moved), count: rep.moved.size, words: rep.words.slice(0, 50), truncated: rep.words.length > 50 || undefined } : undefined,
+    ...base,
+    status: 'planned',
+    source,
+    license,
+    kept,
+    files: out.files,
+    features,
+    hinting: !final.dropHinting,
+    axes: final.limit ? axesLimit : undefined,
+    descriptors: final.limit && axesLimit ? axisDescriptors(face, axesLimit) : undefined,
+    repair:
+      rep.moved.size && !splitShaping
+        ? {
+            moved: fmt(rep.moved),
+            count: rep.moved.size,
+            words: rep.words.slice(0, 50),
+            truncated: rep.words.length > 50 || undefined,
+          }
+        : undefined,
     splitWords: splitShaping && rep.firstBroken.length ? rep.firstBroken.slice(0, 50) : undefined,
     optIns: optIns.toSorted((a, b) => str(a.id, b.id)),
     bytes: { now, ...out.bytes },
@@ -484,22 +699,46 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
   return plan;
 }
 
-export async function planAll(usage: UsageFileJson, sources: Map<string, SourceFont>, cfg: PlanConfig = {}, outputs?: Map<string, Uint8Array>): Promise<Plan> {
-  if (usage.version !== 1) throw new Error(`usage.json version ${usage.version} isn't supported by this fontphobia; rerun audit`);
-  const unknown = (cfg.allow ?? []).filter((a) => !(OPT_INS as readonly string[]).includes(a) && !['self-host', 'tighten', 'to-local', 'eject', 'add-preloads'].includes(a));
-  if (unknown.length) throw new Error(`Unknown opt-in ${unknown.join(', ')}; known: ${[...OPT_INS, 'self-host', 'tighten'].join(', ')}`);
+export async function planAll(
+  usage: UsageFileJson,
+  sources: Map<string, SourceFont>,
+  cfg: PlanConfig = {},
+  outputs?: Map<string, Uint8Array>,
+): Promise<Plan> {
+  if (usage.version !== 1)
+    throw new Error(`usage.json version ${usage.version} isn't supported by this fontphobia; rerun audit`);
+  const unknown = (cfg.allow ?? []).filter(
+    (a) =>
+      !(OPT_INS as readonly string[]).includes(a) &&
+      !['self-host', 'tighten', 'to-local', 'eject', 'add-preloads'].includes(a),
+  );
+  if (unknown.length)
+    throw new Error(`Unknown opt-in ${unknown.join(', ')}; known: ${[...OPT_INS, 'self-host', 'tighten'].join(', ')}`);
   const faces: FacePlan[] = [];
   // Sequential: wawoff2 is serialized anyway, and the order keeps the output stable.
   // One face that fails (a font the subsetter can't handle as planned) is left as it is, with the error; the others still plan.
   for (const id of Object.keys(usage.faces).toSorted(str)) {
     const face = usage.faces[id]!;
-    try { faces.push(await planFace(id, face, usage, sources.get(id), cfg, outputs)); }
-    catch (e) { faces.push({ id, family: face.family, adapter: face.source.adapter, status: 'skipped', reason: `planning it failed: ${(e as Error).message}` }); }
+    try {
+      faces.push(await planFace(id, face, usage, sources.get(id), cfg, outputs));
+    } catch (e) {
+      faces.push({
+        id,
+        family: face.family,
+        adapter: face.source.adapter,
+        status: 'skipped',
+        reason: `planning it failed: ${(e as Error).message}`,
+      });
+    }
   }
   const optIns = OPT_INS.map((oid) => {
     const hits = faces.flatMap((f) => f.optIns?.filter((o) => o.id === oid) ?? []);
-    return { id: oid, saving: hits.reduce((n, o) => n + o.saving, 0), faces: hits.length, applied: hits.some((o) => o.applied) };
+    return {
+      id: oid,
+      saving: hits.reduce((n, o) => n + o.saving, 0),
+      faces: hits.length,
+      applied: hits.some((o) => o.applied),
+    };
   }).filter((o) => o.faces);
   return { version: 1, faces, optIns };
 }
-

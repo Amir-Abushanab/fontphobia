@@ -145,17 +145,17 @@ Run `revert` before deleting subset files: the CSS still points at them.
 
 Most commands take `--json`. `inspect` and `subset` take a file path and no `--cwd`.
 
-| Command | What it does | Key options |
-| --- | --- | --- |
-| `fontphobia` | Audit, plan, ask, write, verify | `--write`/`-u`, `--allow`, `--ci`, plus the `audit`, `build` and `verify` options |
-| `audit` | Crawl; write `.fontphobia/usage.json` and `report.md` | `--dist`, `--build-cmd`, `--start-cmd`, `--url`, `--pages`, `--ignore`, `--viewports`, `--locales`, `--max-pages`, `--rebuild`, `--no-cache`, `--no-font-size-sweep`, `--ci` |
-| `build` | Plan from `usage.json` (no browser); `--write` applies | `--write`/`-u`, `--allow`, `--no-remainder`, `--usage` |
-| `verify` | Check files and shaping, then compare pages before and after | `--browsers`, `--dpr`, `--viewports`, `--mask`, `--ignore`, `--pages`, `--timeout`, `--baseline`, `--hinting`, `--runtime`, `--no-browser` |
-| `check` | Are the subsets still up to date? Static by default | `--dist`, `--url`, `--mode`, `--strict`, `--allow-chars` |
-| `revert` | Restore the originals from the manifest | `--dry-run`, `--keep-kits` |
-| `apply-kit` | Adobe Fonts: remove unused kit styles through the Typekit API | `--yes`, `--check` |
-| `inspect <font>` | A font's tables, axes, features, hinting and sizes | `--json` |
-| `subset <font>` | Subset one font to WOFF2; no crawl, no CSS edits | `-o` (required, `.woff2`), `--unicodes`, `--text`, `--features`, `--axis`, `--name-ids`, `--no-hinting` |
+| Command          | What it does                                                  | Key options                                                                                                                                                                  |
+| ---------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fontphobia`     | Audit, plan, ask, write, verify                               | `--write`/`-u`, `--allow`, `--ci`, plus the `audit`, `build` and `verify` options                                                                                            |
+| `audit`          | Crawl; write `.fontphobia/usage.json` and `report.md`         | `--dist`, `--build-cmd`, `--start-cmd`, `--url`, `--pages`, `--ignore`, `--viewports`, `--locales`, `--max-pages`, `--rebuild`, `--no-cache`, `--no-font-size-sweep`, `--ci` |
+| `build`          | Plan from `usage.json` (no browser); `--write` applies        | `--write`/`-u`, `--allow`, `--no-remainder`, `--usage`                                                                                                                       |
+| `verify`         | Check files and shaping, then compare pages before and after  | `--browsers`, `--dpr`, `--viewports`, `--mask`, `--ignore`, `--pages`, `--timeout`, `--baseline`, `--hinting`, `--runtime`, `--no-browser`                                   |
+| `check`          | Are the subsets still up to date? Static by default           | `--dist`, `--url`, `--mode`, `--strict`, `--allow-chars`                                                                                                                     |
+| `revert`         | Restore the originals from the manifest                       | `--dry-run`, `--keep-kits`                                                                                                                                                   |
+| `apply-kit`      | Adobe Fonts: remove unused kit styles through the Typekit API | `--yes`, `--check`                                                                                                                                                           |
+| `inspect <font>` | A font's tables, axes, features, hinting and sizes            | `--json`                                                                                                                                                                     |
+| `subset <font>`  | Subset one font to WOFF2; no crawl, no CSS edits              | `-o` (required, `.woff2`), `--unicodes`, `--text`, `--features`, `--axis`, `--name-ids`, `--no-hinting`                                                                      |
 
 Pages: `--pages` adds paths, or restricts to globs; `--ignore` skips globs. Both repeat. Both also
 come from the config's `pages` and `ignore`. `audit` revisits only pages whose HTML, CSS or fonts
@@ -167,15 +167,15 @@ Nothing that could change rendering or where fonts load from happens by default.
 `--allow <name>` (repeatable) or `allow: [...]` in the config. The plan lists each with its
 measured saving even when it is off.
 
-| Opt-in | What it does | Cost |
-| --- | --- | --- |
-| `self-host` | Serves Google Fonts from the site, split | Changes where fonts load from |
-| `eject` | Serves `next/font/google`, Astro Fonts API and `@nuxt/fonts` families from the site, split | Replaces the framework's font loading in the code |
-| `tighten` | Drops families and weights nothing asks for from Google URLs and `next/font`, Astro and Nuxt font options | A page the audit never saw, or CMS text, could ask for one |
-| `limit-axes` | Limits variable axes to the ranges in use; drops axes left at the default | Text widths shift up to about 0.02% |
-| `drop-hinting` | Removes TrueType hinting | Rasterization changes on Windows, layout on Linux at 1x |
-| `split-shaping` | Lets words mixing core and extended characters split across files | Kerning is lost where they meet |
-| `drop-hint-refs` | Drops the reference characters FreeType's auto-hinter needs | Extended characters hint differently on Linux and ChromeOS |
+| Opt-in           | What it does                                                                                              | Cost                                                       |
+| ---------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `self-host`      | Serves Google Fonts from the site, split                                                                  | Changes where fonts load from                              |
+| `eject`          | Serves `next/font/google`, Astro Fonts API and `@nuxt/fonts` families from the site, split                | Replaces the framework's font loading in the code          |
+| `tighten`        | Drops families and weights nothing asks for from Google URLs and `next/font`, Astro and Nuxt font options | A page the audit never saw, or CMS text, could ask for one |
+| `limit-axes`     | Limits variable axes to the ranges in use; drops axes left at the default                                 | Text widths shift up to about 0.02%                        |
+| `drop-hinting`   | Removes TrueType hinting                                                                                  | Rasterization changes on Windows, layout on Linux at 1x    |
+| `split-shaping`  | Lets words mixing core and extended characters split across files                                         | Kerning is lost where they meet                            |
+| `drop-hint-refs` | Drops the reference characters FreeType's auto-hinter needs                                               | Extended characters hint differently on Linux and ChromeOS |
 
 Only pass an opt-in the user chose. Italic styles are never dropped. `--no-remainder` (config
 `remainder: false`) drops the rest file: characters no crawled page used then render in the next
@@ -183,17 +183,17 @@ font in the stack.
 
 ## Font sources
 
-| Source | Default | With opt-ins |
-| --- | --- | --- |
-| Own `@font-face` (CSS, Sass, Less, `<style>` in Vue, Svelte, Astro) | Split in place | All file opt-ins |
-| Fontsource (`@fontsource/*`, `@fontsource-variable/*`) | Package CSS copied into the project, each slice a page uses subset, imports pointed at the copy | |
-| `next/font/local` | One subset file per face | |
-| Google Fonts `<link>` or `@import` | Reports what `tighten` would drop | `self-host`, `tighten` |
-| `next/font/google` | Reports unused weights | `eject`, `tighten`, `limit-axes` |
-| Astro Fonts API | `<Font preload>` preloads only faces pages use | `eject`, `tighten` |
-| `@nuxt/fonts` | Reports unused weights and families loaded twice | `eject`, `tighten` |
-| Adobe Fonts | Report only; files are never written to disk | `fontphobia apply-kit` |
-| CSS-in-JS, `new FontFace()`, CMS CSS, computed URLs | Subsets, plus the block to paste and where | |
+| Source                                                              | Default                                                                                         | With opt-ins                     |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------- |
+| Own `@font-face` (CSS, Sass, Less, `<style>` in Vue, Svelte, Astro) | Split in place                                                                                  | All file opt-ins                 |
+| Fontsource (`@fontsource/*`, `@fontsource-variable/*`)              | Package CSS copied into the project, each slice a page uses subset, imports pointed at the copy |                                  |
+| `next/font/local`                                                   | One subset file per face                                                                        |                                  |
+| Google Fonts `<link>` or `@import`                                  | Reports what `tighten` would drop                                                               | `self-host`, `tighten`           |
+| `next/font/google`                                                  | Reports unused weights                                                                          | `eject`, `tighten`, `limit-axes` |
+| Astro Fonts API                                                     | `<Font preload>` preloads only faces pages use                                                  | `eject`, `tighten`               |
+| `@nuxt/fonts`                                                       | Reports unused weights and families loaded twice                                                | `eject`, `tighten`               |
+| Adobe Fonts                                                         | Report only; files are never written to disk                                                    | `fontphobia apply-kit`           |
+| CSS-in-JS, `new FontFace()`, CMS CSS, computed URLs                 | Subsets, plus the block to paste and where                                                      |                                  |
 
 For the last row, `build` prints "Paste these yourself" blocks, with the file and line they replace
 when known. fontphobia does not make those edits.
@@ -205,7 +205,7 @@ optional. An unknown key or a wrong type is an error naming the file and the key
 did-you-mean suggestion for near misses.
 
 ```ts
-import { defineConfig } from 'fontphobia'
+import { defineConfig } from 'fontphobia';
 
 export default defineConfig({
   dist: 'dist', // built site to crawl
@@ -224,8 +224,16 @@ export default defineConfig({
   rename: { 'Source Serif 4': 'SrcSerif Subset' }, // internal name for OFL Reserved Font Names
   licenses: { allow: [] }, // families the user has the rights to modify
   check: { mode: 'error', strict: false, allowChars: '' },
-  verify: { browsers: ['chromium'], hinting: false, maxPages: 200, viewports: [360, 1280], dprs: [1, 2], mask: [], timeout: 30 },
-})
+  verify: {
+    browsers: ['chromium'],
+    hinting: false,
+    maxPages: 200,
+    viewports: [360, 1280],
+    dprs: [1, 2],
+    mask: [],
+    timeout: 30,
+  },
+});
 ```
 
 Command-line flags win over the config; `pages`, `ignore` and `verify.mask` are combined with them.
@@ -242,13 +250,13 @@ no browser, no network.
 
 Exit codes in the default `--mode error`:
 
-| Situation | Exit |
-| --- | --- |
-| No errors (warnings allowed) | 0 |
-| An error | 1 |
-| A warning with `--strict` | 1 |
-| No `.fontphobia/manifest.json` (nothing was checked) | 1 |
-| `check --url` could not load a page | 1 |
+| Situation                                            | Exit |
+| ---------------------------------------------------- | ---- |
+| No errors (warnings allowed)                         | 0    |
+| An error                                             | 1    |
+| A warning with `--strict`                            | 1    |
+| No `.fontphobia/manifest.json` (nothing was checked) | 1    |
+| `check --url` could not load a page                  | 1    |
 
 `--mode warn` (or `check: { mode: 'warn' }`) reports all of these and exits 0. A config that fails
 to load still exits 1. When `check` fails, it prints the command to rerun, pinned to the version
@@ -266,27 +274,27 @@ They run `check` when the framework has written its HTML. None of them subsets, 
 uses the network. Each takes `{ mode: 'warn' | 'error', strict, allowChars }`; options not given
 come from the config's `check` key. With no manifest they log a warning and let the build finish.
 
-| Framework | Setup |
-| --- | --- |
-| Vite (guards only) | `plugins: [fontphobia()]` from `fontphobia/vite` |
-| Astro, Starlight | `integrations: [fontphobia()]` from `fontphobia/astro` |
-| Nuxt | `modules: ['fontphobia/nuxt']`, or `[['fontphobia/nuxt', { mode: 'warn' }]]` |
-| Next.js | `adapterPath: fileURLToPath(import.meta.resolve('fontphobia/next'))` in `next.config.mjs` |
-| React Router | `buildEnd: fontphobia()` from `fontphobia/react-router` in `react-router.config.ts` |
-| VitePress | `buildEnd: fontphobia()` from `fontphobia/vitepress` |
-| Docusaurus | `plugins: ['fontphobia/docusaurus']` |
-| Eleventy | `eleventyConfig.addPlugin(fontphobia)` from `fontphobia/eleventy` |
-| Rsbuild | `plugins: [fontphobia()]` from `fontphobia/rsbuild` |
-| Rspack, webpack | `plugins: [new FontphobiaPlugin()]` from `fontphobia/rspack` or `fontphobia/webpack` |
-| Anything else (SvelteKit, TanStack Start, Angular, Hugo) | `"postbuild": "fontphobia check"` in `package.json` |
+| Framework                                                | Setup                                                                                     |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Vite (guards only)                                       | `plugins: [fontphobia()]` from `fontphobia/vite`                                          |
+| Astro, Starlight                                         | `integrations: [fontphobia()]` from `fontphobia/astro`                                    |
+| Nuxt                                                     | `modules: ['fontphobia/nuxt']`, or `[['fontphobia/nuxt', { mode: 'warn' }]]`              |
+| Next.js                                                  | `adapterPath: fileURLToPath(import.meta.resolve('fontphobia/next'))` in `next.config.mjs` |
+| React Router                                             | `buildEnd: fontphobia()` from `fontphobia/react-router` in `react-router.config.ts`       |
+| VitePress                                                | `buildEnd: fontphobia()` from `fontphobia/vitepress`                                      |
+| Docusaurus                                               | `plugins: ['fontphobia/docusaurus']`                                                      |
+| Eleventy                                                 | `eleventyConfig.addPlugin(fontphobia)` from `fontphobia/eleventy`                         |
+| Rsbuild                                                  | `plugins: [fontphobia()]` from `fontphobia/rsbuild`                                       |
+| Rspack, webpack                                          | `plugins: [new FontphobiaPlugin()]` from `fontphobia/rspack` or `fontphobia/webpack`      |
+| Anything else (SvelteKit, TanStack Start, Angular, Hugo) | `"postbuild": "fontphobia check"` in `package.json`                                       |
 
 ```js
 // next.config.mjs
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath } from 'node:url';
 
 export default {
   adapterPath: fileURLToPath(import.meta.resolve('fontphobia/next')),
-}
+};
 ```
 
 Notes from the source:
@@ -332,15 +340,15 @@ the framework builds.
 
 Each page comparison gets a class:
 
-| Class | Meaning | Fails the run |
-| --- | --- | --- |
-| `identical` | No difference | No |
-| `sub-pixel rounding` | Difference explained by rounding that shaping reported | No |
-| `unrelated` | Pixels differ only in text drawn with fonts fontphobia did not change | No |
-| `flaky` | A difference that did not reproduce on reload, or that the same fonts also show between their own loads | No |
-| `content changed` | Page text differs between two loads; left out | No |
-| `regression` | A real difference, reported with the element's CSS selector | Yes |
-| `failed` | The page did not load | Yes |
+| Class                | Meaning                                                                                                 | Fails the run |
+| -------------------- | ------------------------------------------------------------------------------------------------------- | ------------- |
+| `identical`          | No difference                                                                                           | No            |
+| `sub-pixel rounding` | Difference explained by rounding that shaping reported                                                  | No            |
+| `unrelated`          | Pixels differ only in text drawn with fonts fontphobia did not change                                   | No            |
+| `flaky`              | A difference that did not reproduce on reload, or that the same fonts also show between their own loads | No            |
+| `content changed`    | Page text differs between two loads; left out                                                           | No            |
+| `regression`         | A real difference, reported with the element's CSS selector                                             | Yes           |
+| `failed`             | The page did not load                                                                                   | Yes           |
 
 `verify` exits 1 on a regression or a failed page. Diff images go to `.fontphobia/verify/` and the
 summary to `.fontphobia/report.md`. For content that changes between loads (script-driven
@@ -348,8 +356,7 @@ animations, canvases, embeds), hide it with `--mask <selector>` or skip the page
 `--ignore <glob>`; raise `--timeout` (seconds, default 30) for slow pages. `--browsers` adds
 `firefox`, `webkit` (Playwright builds on the host; when one is not installed, fontphobia prints
 the install command with the matching Playwright version) and `linux-chromium`, `linux-firefox`,
-`linux-webkit` (the pinned Playwright Linux image in a container). Above `--max-pages` (default
-200) a set cover picks representative pages.
+`linux-webkit` (the pinned Playwright Linux image in a container). Above `--max-pages` (default 200) a set cover picks representative pages.
 
 ## Licenses
 

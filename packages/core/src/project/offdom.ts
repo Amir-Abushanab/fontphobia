@@ -4,7 +4,12 @@ import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { listFiles } from './detect.ts';
 
-export interface OffDomHit { file: string; line: number; kind: string; text: string }
+export interface OffDomHit {
+  file: string;
+  line: number;
+  kind: string;
+  text: string;
+}
 
 const PATTERNS: [string, RegExp][] = [
   ['canvas text', /\b(?:fillText|strokeText)\s*\(|\bctx\.font\s*=|\.font\s*=\s*[`'"][^`'"]*\d+px/],
@@ -13,13 +18,35 @@ const PATTERNS: [string, RegExp][] = [
   ['PDF', /\bpdfkit\b|\bjspdf\b|@react-pdf\/renderer|\bpdf-lib\b|\bpdfmake\b/],
 ];
 const SRC = /\.(m?[jt]sx?|vue|svelte|astro)$/i;
-const SKIP = new Set(['node_modules', '.git', 'dist', 'build', 'out', '.output', '.next', '.nuxt', '.svelte-kit', '.astro', '_site', '.fontphobia', 'coverage']);
+const SKIP = new Set([
+  'node_modules',
+  '.git',
+  'dist',
+  'build',
+  'out',
+  '.output',
+  '.next',
+  '.nuxt',
+  '.svelte-kit',
+  '.astro',
+  '_site',
+  '.fontphobia',
+  'coverage',
+]);
 
 export function scanOffDom(root: string): OffDomHit[] {
   const hits: OffDomHit[] = [];
-  for (const file of listFiles(root, (r) => SRC.test(r) && !/\.(test|spec|d)\.[mc]?[jt]sx?$/.test(r), { skip: (_r, n) => SKIP.has(n) || n.startsWith('.'), max: 20_000 })) {
+  for (const file of listFiles(root, (r) => SRC.test(r) && !/\.(test|spec|d)\.[mc]?[jt]sx?$/.test(r), {
+    skip: (_r, n) => SKIP.has(n) || n.startsWith('.'),
+    max: 20_000,
+  })) {
     let text: string;
-    try { if (statSync(join(root, file)).size > 1_000_000) continue; text = readFileSync(join(root, file), 'utf8'); } catch { continue; }
+    try {
+      if (statSync(join(root, file)).size > 1_000_000) continue;
+      text = readFileSync(join(root, file), 'utf8');
+    } catch {
+      continue;
+    }
     const lines = text.split('\n');
     for (const [kind, re] of PATTERNS) {
       const i = lines.findIndex((l) => re.test(l));

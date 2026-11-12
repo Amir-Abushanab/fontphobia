@@ -1,12 +1,33 @@
 // build when things go wrong: a write failing part-way, Sass and Less comments in @font-face, a
 // stylesheet edited since the audit, and one face failing among several.
-import { chmodSync, closeSync, cpSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  closeSync,
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import { buildProject, checkCss, createOverlay, findBlock, readManifest, revertProject, type UsageFileJson, type VerifyFinding } from '../src/index.ts';
+import {
+  buildProject,
+  checkCss,
+  createOverlay,
+  findBlock,
+  readManifest,
+  revertProject,
+  type UsageFileJson,
+  type VerifyFinding,
+} from '../src/index.ts';
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const tmp = mkdtempSync(join(tmpdir(), 'fontphobia-robust-'));
@@ -17,22 +38,36 @@ const OUTPUT = /\.(core|ext|rest)\.[0-9a-f]{8}\.woff2$/;
 /** Every file's sha256 and every folder, so a folder left behind shows too. */
 function snapshot(dir: string): Record<string, string> {
   const out: Record<string, string> = {};
-  const walk = (d: string) => { for (const e of readdirSync(d, { withFileTypes: true })) { const p = join(d, e.name), r = relative(dir, p).split(sep).join('/'); if (e.isDirectory()) { out[r + '/'] = 'dir'; walk(p); } else out[r] = sha(p); } };
+  const walk = (d: string) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name),
+        r = relative(dir, p).split(sep).join('/');
+      if (e.isDirectory()) {
+        out[r + '/'] = 'dir';
+        walk(p);
+      } else out[r] = sha(p);
+    }
+  };
   walk(dir);
   return out;
 }
-const withoutOutputs = (s: Record<string, string>) => Object.fromEntries(Object.entries(s).filter(([f]) => !OUTPUT.test(f)));
+const withoutOutputs = (s: Record<string, string>) =>
+  Object.fromEntries(Object.entries(s).filter(([f]) => !OUTPUT.test(f)));
 
 function site(name: string) {
   const root = join(tmp, name);
   cpSync(join(repo, 'fixtures/sites/static-css'), root, { recursive: true });
   mkdirSync(join(root, 'fonts'));
-  for (const f of ['InterVariable.ttf', 'DejaVuSans.ttf', 'Inter-Regular-hinted.woff2']) cpSync(join(repo, 'fixtures/fonts', f), join(root, 'fonts', f));
+  for (const f of ['InterVariable.ttf', 'DejaVuSans.ttf', 'Inter-Regular-hinted.woff2'])
+    cpSync(join(repo, 'fixtures/fonts', f), join(root, 'fonts', f));
   return root;
 }
 const usage = JSON.parse(readFileSync(join(repo, 'fixtures/plans/static-css/usage.json'), 'utf8')) as UsageFileJson;
 /** The usage with only these faces (planning fewer faces keeps the tests quick). */
-const only = (ids: string[], u = usage): UsageFileJson => ({ ...structuredClone(u), faces: Object.fromEntries(ids.map((id) => [id, structuredClone(u.faces[id]!)])) });
+const only = (ids: string[], u = usage): UsageFileJson => ({
+  ...structuredClone(u),
+  faces: Object.fromEntries(ids.map((id) => [id, structuredClone(u.faces[id]!)])),
+});
 
 describe('build --write is all or nothing', () => {
   it('a write failing part-way changes nothing; the retry, then revert, gets back every file', async (ctx) => {
@@ -43,10 +78,20 @@ describe('build --write is all or nothing', () => {
     // styles.css is the last file edited: fonts, index.html (the preload) and src/fonts.ts come first.
     chmodSync(join(root, 'styles.css'), 0o444);
     let writable = true;
-    try { closeSync(openSync(join(root, 'styles.css'), 'r+')); } catch { writable = false; }
-    if (writable) { chmodSync(join(root, 'styles.css'), 0o644); ctx.skip(); return; } // root, or a file system without modes
+    try {
+      closeSync(openSync(join(root, 'styles.css'), 'r+'));
+    } catch {
+      writable = false;
+    }
+    if (writable) {
+      chmodSync(join(root, 'styles.css'), 0o644);
+      ctx.skip();
+      return;
+    } // root, or a file system without modes
     const u = only(['deja-400-normal', 'inter-100-900-normal']);
-    await expect(buildProject(root, u, {}, { version: '1', write: true })).rejects.toThrow(/styles\.css.*Nothing was changed/s);
+    await expect(buildProject(root, u, {}, { version: '1', write: true })).rejects.toThrow(
+      /styles\.css.*Nothing was changed/s,
+    );
     chmodSync(join(root, 'styles.css'), 0o644);
     expect(snapshot(root)).toEqual(before);
 
@@ -60,10 +105,16 @@ describe('build --write is all or nothing', () => {
 });
 
 describe('Sass and Less stylesheets', () => {
-  for (const [ext, comment] of [['scss', '// code font'], ['less', '// code font']] as const) {
+  for (const [ext, comment] of [
+    ['scss', '// code font'],
+    ['less', '// code font'],
+  ] as const) {
     it(`a .${ext} @font-face with a \`//\` comment builds, checks and reverts byte for byte`, async () => {
       const root = site(`syntax-${ext}`);
-      const css = readFileSync(join(root, 'styles.css'), 'utf8').replace("font-family: 'Deja';\n", `font-family: 'Deja'; ${comment}\n`);
+      const css = readFileSync(join(root, 'styles.css'), 'utf8').replace(
+        "font-family: 'Deja';\n",
+        `font-family: 'Deja'; ${comment}\n`,
+      );
       rmSync(join(root, 'styles.css'));
       writeFileSync(join(root, `styles.${ext}`), css);
       const u = only(['deja-400-normal']);
@@ -92,7 +143,15 @@ describe('Sass and Less stylesheets', () => {
 
 describe('the stylesheet changed since the audit', () => {
   const inter = only(['inter-100-900-italic', 'inter-100-900-normal']);
-  const ruleOf = (root: string, r: Awaited<ReturnType<typeof buildProject>>) => Object.fromEntries(r.edits.filter((e) => e.file === 'styles.css').map((e) => [e.why.split(':')[0], /font-style: (\w+)/.exec(readFileSync(join(root, 'styles.css'), 'utf8').slice(e.start, e.end))?.[1]]));
+  const ruleOf = (root: string, r: Awaited<ReturnType<typeof buildProject>>) =>
+    Object.fromEntries(
+      r.edits
+        .filter((e) => e.file === 'styles.css')
+        .map((e) => [
+          e.why.split(':')[0],
+          /font-style: (\w+)/.exec(readFileSync(join(root, 'styles.css'), 'utf8').slice(e.start, e.end))?.[1],
+        ]),
+    );
 
   it('lines added at the top: each face still gets its own rule', async () => {
     const root = site('lines-added');
@@ -136,7 +195,9 @@ describe('one face failing', () => {
     renameSync(join(root, 'styles.css'), join(root, 'main.css'));
     u.faces['deja-400-normal']!.source.file = 'main.css';
     const r = await buildProject(root, u, {}, { version: '1' });
-    expect(r.notWritten).toEqual([{ id: 'deja-400-normal', reason: expect.stringMatching(/^styles\.css, which holds its marked block, is gone/) }]);
+    expect(r.notWritten).toEqual([
+      { id: 'deja-400-normal', reason: expect.stringMatching(/^styles\.css, which holds its marked block, is gone/) },
+    ]);
     expect(r.manifest.entries['deja-400-normal']!.stylesheet).toBe('styles.css'); // the earlier entry stays for revert
   }, 300_000);
 

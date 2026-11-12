@@ -66,7 +66,10 @@ function isPublished(name, version) {
   try {
     // --prefer-online revalidates npm's HTTP cache instead of trusting a possibly stale local
     // packument, so a version published moments ago is still seen.
-    const raw = execFileSync('npm', ['view', name, 'versions', '--json', '--prefer-online'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    const raw = execFileSync('npm', ['view', name, 'versions', '--json', '--prefer-online'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
     let versions = JSON.parse(raw);
     if (!Array.isArray(versions)) versions = [versions]; // a package with one version comes back as a bare string
     return versions.includes(version);
@@ -115,8 +118,17 @@ function restoreMissingTags(onNpm, dryRun) {
   if (onNpm.length === 0) return;
   let remote;
   try {
-    const raw = execFileSync('git', ['ls-remote', '--tags', 'origin'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-    remote = new Set(raw.split('\n').map((line) => line.split('\t')[1]).filter(Boolean).map((ref) => ref.replace('refs/tags/', '').replace(/\^\{\}$/, '')));
+    const raw = execFileSync('git', ['ls-remote', '--tags', 'origin'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    remote = new Set(
+      raw
+        .split('\n')
+        .map((line) => line.split('\t')[1])
+        .filter(Boolean)
+        .map((ref) => ref.replace('refs/tags/', '').replace(/\^\{\}$/, '')),
+    );
   } catch (err) {
     console.error(`warning: could not list origin tags, skipping tag restore: ${String(err?.stderr ?? err)}`);
     return;
@@ -144,7 +156,10 @@ function main(argv) {
   const pkgs = publishablePackages();
   const pending = pkgs.filter((p) => !isPublished(p.name, p.version));
 
-  restoreMissingTags(pkgs.filter((p) => !pending.includes(p)), dryRun);
+  restoreMissingTags(
+    pkgs.filter((p) => !pending.includes(p)),
+    dryRun,
+  );
 
   if (pending.length === 0) {
     console.log(`Nothing to publish. Already on npm: ${label(pkgs)}`);

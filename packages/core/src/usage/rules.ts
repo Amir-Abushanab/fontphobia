@@ -6,7 +6,8 @@ import { cldrFallback } from '../plan/locale.ts';
 import { splitTop, unquote } from '../css/values.ts';
 import delimiters from '../data/cldr-delimiters.json' with { type: 'json' };
 
-const range = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => String.fromCodePoint(a + i)).join('');
+const range = (a: number, b: number) =>
+  Array.from({ length: b - a + 1 }, (_, i) => String.fromCodePoint(a + i)).join('');
 
 /** `hyphens: auto` (and soft hyphens): U+2010, U+002D (Chrome uses either, depending on the font), plus hyphenate-character. */
 export function hyphenChars(hyphens: string, hyphenateCharacter: string, text: string): string {
@@ -44,18 +45,79 @@ export function maskChars(kind: string, textSecurity: string): string {
 export function synthesizedCapsChars(caps: string, faceFeatures: Set<string>, text: string, locale: string): string {
   const c = caps.trim();
   if (c === 'normal' || !c) return '';
-  const needs = c === 'all-small-caps' || c === 'all-petite-caps' ? ['c2sc', 'smcp'] : c === 'unicase' ? ['unic'] : c === 'titling-caps' ? [] : ['smcp'];
-  if (!needs.length || needs.every((t) => faceFeatures.has(t)) || (c.includes('petite') && faceFeatures.has(c === 'all-petite-caps' ? 'c2pc' : 'pcap'))) return '';
+  const needs =
+    c === 'all-small-caps' || c === 'all-petite-caps'
+      ? ['c2sc', 'smcp']
+      : c === 'unicase'
+        ? ['unic']
+        : c === 'titling-caps'
+          ? []
+          : ['smcp'];
+  if (
+    !needs.length ||
+    needs.every((t) => faceFeatures.has(t)) ||
+    (c.includes('petite') && faceFeatures.has(c === 'all-petite-caps' ? 'c2pc' : 'pcap'))
+  )
+    return '';
   let up: string;
-  try { up = text.toLocaleUpperCase(locale || undefined); } catch { up = text.toUpperCase(); }
+  try {
+    up = text.toLocaleUpperCase(locale || undefined);
+  } catch {
+    up = text.toUpperCase();
+  }
   return [...new Set(up)].filter((ch) => !text.includes(ch)).join('');
 }
 
 const SMALL_KANA: Record<string, string> = {
-  'ぁ': 'あ', 'ぃ': 'い', 'ぅ': 'う', 'ぇ': 'え', 'ぉ': 'お', 'っ': 'つ', 'ゃ': 'や', 'ゅ': 'ゆ', 'ょ': 'よ', 'ゎ': 'わ', 'ゕ': 'か', 'ゖ': 'け',
-  'ァ': 'ア', 'ィ': 'イ', 'ゥ': 'ウ', 'ェ': 'エ', 'ォ': 'オ', 'ッ': 'ツ', 'ャ': 'ヤ', 'ュ': 'ユ', 'ョ': 'ヨ', 'ヮ': 'ワ', 'ヵ': 'カ', 'ヶ': 'ケ',
-  'ㇰ': 'ク', 'ㇱ': 'シ', 'ㇲ': 'ス', 'ㇳ': 'ト', 'ㇴ': 'ヌ', 'ㇵ': 'ハ', 'ㇶ': 'ヒ', 'ㇷ': 'フ', 'ㇸ': 'ヘ', 'ㇹ': 'ホ', 'ㇺ': 'ム', 'ㇻ': 'ラ', 'ㇼ': 'リ', 'ㇽ': 'ル', 'ㇾ': 'レ', 'ㇿ': 'ロ',
-  'ｧ': 'ｱ', 'ｨ': 'ｲ', 'ｩ': 'ｳ', 'ｪ': 'ｴ', 'ｫ': 'ｵ', 'ｯ': 'ﾂ', 'ｬ': 'ﾔ', 'ｭ': 'ﾕ', 'ｮ': 'ﾖ',
+  ぁ: 'あ',
+  ぃ: 'い',
+  ぅ: 'う',
+  ぇ: 'え',
+  ぉ: 'お',
+  っ: 'つ',
+  ゃ: 'や',
+  ゅ: 'ゆ',
+  ょ: 'よ',
+  ゎ: 'わ',
+  ゕ: 'か',
+  ゖ: 'け',
+  ァ: 'ア',
+  ィ: 'イ',
+  ゥ: 'ウ',
+  ェ: 'エ',
+  ォ: 'オ',
+  ッ: 'ツ',
+  ャ: 'ヤ',
+  ュ: 'ユ',
+  ョ: 'ヨ',
+  ヮ: 'ワ',
+  ヵ: 'カ',
+  ヶ: 'ケ',
+  ㇰ: 'ク',
+  ㇱ: 'シ',
+  ㇲ: 'ス',
+  ㇳ: 'ト',
+  ㇴ: 'ヌ',
+  ㇵ: 'ハ',
+  ㇶ: 'ヒ',
+  ㇷ: 'フ',
+  ㇸ: 'ヘ',
+  ㇹ: 'ホ',
+  ㇺ: 'ム',
+  ㇻ: 'ラ',
+  ㇼ: 'リ',
+  ㇽ: 'ル',
+  ㇾ: 'レ',
+  ㇿ: 'ロ',
+  ｧ: 'ｱ',
+  ｨ: 'ｲ',
+  ｩ: 'ｳ',
+  ｪ: 'ｴ',
+  ｫ: 'ｵ',
+  ｯ: 'ﾂ',
+  ｬ: 'ﾔ',
+  ｭ: 'ﾕ',
+  ｮ: 'ﾖ',
 };
 
 /** `text-transform: full-width` (Firefox and Safari apply it; Chrome computes `none`). */
@@ -70,7 +132,11 @@ export function fullWidth(text: string): string {
 export const fullSizeKana = (text: string): string => [...text].map((ch) => SMALL_KANA[ch] ?? ch).join('');
 
 const EMPHASIS: Record<string, [string, string]> = {
-  dot: ['•', '◦'], circle: ['●', '○'], 'double-circle': ['◉', '◎'], triangle: ['▲', '△'], sesame: ['﹅', '﹆'],
+  dot: ['•', '◦'],
+  circle: ['●', '○'],
+  'double-circle': ['◉', '◎'],
+  triangle: ['▲', '△'],
+  sesame: ['﹅', '﹆'],
 };
 /** `text-emphasis-style`: computed as "none", "filled circle", "open sesame", or a string. */
 export function emphasisChars(v: string, writingMode: string): string {
@@ -85,26 +151,49 @@ export function emphasisChars(v: string, writingMode: string): string {
 
 /** Every character a counter style can produce (§7.4 "List markers, counter()"). */
 const COUNTERS: Record<string, { chars: string; suffix?: string }> = {
-  decimal: { chars: '0123456789-' }, 'decimal-leading-zero': { chars: '0123456789-' },
-  'lower-roman': { chars: 'ivxlcdm-' }, 'upper-roman': { chars: 'IVXLCDM-' },
-  'lower-alpha': { chars: range(0x61, 0x7a) }, 'lower-latin': { chars: range(0x61, 0x7a) },
-  'upper-alpha': { chars: range(0x41, 0x5a) }, 'upper-latin': { chars: range(0x41, 0x5a) },
+  decimal: { chars: '0123456789-' },
+  'decimal-leading-zero': { chars: '0123456789-' },
+  'lower-roman': { chars: 'ivxlcdm-' },
+  'upper-roman': { chars: 'IVXLCDM-' },
+  'lower-alpha': { chars: range(0x61, 0x7a) },
+  'lower-latin': { chars: range(0x61, 0x7a) },
+  'upper-alpha': { chars: range(0x41, 0x5a) },
+  'upper-latin': { chars: range(0x41, 0x5a) },
   'lower-greek': { chars: 'αβγδεζηθικλμνξοπρστυφχψω' },
-  'lower-armenian': { chars: range(0x561, 0x586) }, 'upper-armenian': { chars: range(0x531, 0x556) }, armenian: { chars: range(0x531, 0x556) },
+  'lower-armenian': { chars: range(0x561, 0x586) },
+  'upper-armenian': { chars: range(0x531, 0x556) },
+  armenian: { chars: range(0x531, 0x556) },
   georgian: { chars: range(0x10d0, 0x10f6) },
   hebrew: { chars: range(0x5d0, 0x5ea) + '׳״' },
-  'arabic-indic': { chars: range(0x660, 0x669) }, persian: { chars: range(0x6f0, 0x6f9) },
-  devanagari: { chars: range(0x966, 0x96f) }, bengali: { chars: range(0x9e6, 0x9ef) }, gujarati: { chars: range(0xae6, 0xaef) },
-  gurmukhi: { chars: range(0xa66, 0xa6f) }, kannada: { chars: range(0xce6, 0xcef) }, malayalam: { chars: range(0xd66, 0xd6f) },
-  oriya: { chars: range(0xb66, 0xb6f) }, tamil: { chars: range(0xbe6, 0xbef) }, telugu: { chars: range(0xc66, 0xc6f) },
-  thai: { chars: range(0xe50, 0xe59) }, lao: { chars: range(0xed0, 0xed9) }, khmer: { chars: range(0x17e0, 0x17e9) },
-  myanmar: { chars: range(0x1040, 0x1049) }, mongolian: { chars: range(0x1810, 0x1819) }, tibetan: { chars: range(0xf20, 0xf29) },
+  'arabic-indic': { chars: range(0x660, 0x669) },
+  persian: { chars: range(0x6f0, 0x6f9) },
+  devanagari: { chars: range(0x966, 0x96f) },
+  bengali: { chars: range(0x9e6, 0x9ef) },
+  gujarati: { chars: range(0xae6, 0xaef) },
+  gurmukhi: { chars: range(0xa66, 0xa6f) },
+  kannada: { chars: range(0xce6, 0xcef) },
+  malayalam: { chars: range(0xd66, 0xd6f) },
+  oriya: { chars: range(0xb66, 0xb6f) },
+  tamil: { chars: range(0xbe6, 0xbef) },
+  telugu: { chars: range(0xc66, 0xc6f) },
+  thai: { chars: range(0xe50, 0xe59) },
+  lao: { chars: range(0xed0, 0xed9) },
+  khmer: { chars: range(0x17e0, 0x17e9) },
+  myanmar: { chars: range(0x1040, 0x1049) },
+  mongolian: { chars: range(0x1810, 0x1819) },
+  tibetan: { chars: range(0xf20, 0xf29) },
   'cjk-decimal': { chars: '〇一二三四五六七八九', suffix: '、' },
-  'cjk-earthly-branch': { chars: '子丑寅卯辰巳午未申酉戌亥', suffix: '、' }, 'cjk-heavenly-stem': { chars: '甲乙丙丁戊己庚辛壬癸', suffix: '、' },
-  'japanese-informal': { chars: '〇一二三四五六七八九十百千万億兆', suffix: '、' }, 'japanese-formal': { chars: '零壱弐参四伍六七八九拾百阡萬億兆', suffix: '、' },
-  hiragana: { chars: range(0x3041, 0x3093), suffix: '、' }, katakana: { chars: range(0x30a1, 0x30f3), suffix: '、' },
-  disc: { chars: '•', suffix: ' ' }, circle: { chars: '◦', suffix: ' ' }, square: { chars: '▪', suffix: ' ' },
-  'disclosure-open': { chars: '▾', suffix: ' ' }, 'disclosure-closed': { chars: '▸◂', suffix: ' ' },
+  'cjk-earthly-branch': { chars: '子丑寅卯辰巳午未申酉戌亥', suffix: '、' },
+  'cjk-heavenly-stem': { chars: '甲乙丙丁戊己庚辛壬癸', suffix: '、' },
+  'japanese-informal': { chars: '〇一二三四五六七八九十百千万億兆', suffix: '、' },
+  'japanese-formal': { chars: '零壱弐参四伍六七八九拾百阡萬億兆', suffix: '、' },
+  hiragana: { chars: range(0x3041, 0x3093), suffix: '、' },
+  katakana: { chars: range(0x30a1, 0x30f3), suffix: '、' },
+  disc: { chars: '•', suffix: ' ' },
+  circle: { chars: '◦', suffix: ' ' },
+  square: { chars: '▪', suffix: ' ' },
+  'disclosure-open': { chars: '▾', suffix: ' ' },
+  'disclosure-closed': { chars: '▸◂', suffix: ' ' },
 };
 
 export function counterChars(type: string, custom: CounterStyle[] = [], seen = new Set<string>()): string {
@@ -116,7 +205,16 @@ export function counterChars(type: string, custom: CounterStyle[] = [], seen = n
   const c = custom.find((x) => x.name === t);
   if (c) {
     const base = c.extends ? counterChars(c.extends, custom, seen) : '';
-    return base + c.symbols.join('') + c.additive.join('') + (c.prefix ?? '') + (c.suffix ?? '. ') + (c.pad ?? '') + (c.negative ?? '-') + counterChars(c.fallback ?? 'decimal', custom, seen);
+    return (
+      base +
+      c.symbols.join('') +
+      c.additive.join('') +
+      (c.prefix ?? '') +
+      (c.suffix ?? '. ') +
+      (c.pad ?? '') +
+      (c.negative ?? '-') +
+      counterChars(c.fallback ?? 'decimal', custom, seen)
+    );
   }
   const b = COUNTERS[t] ?? COUNTERS.decimal!;
   return b.chars + (b.suffix ?? '. ');

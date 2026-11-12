@@ -2,8 +2,6 @@
   "name": "fontphobia-monorepo",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@12.9.1",
-  "engines": { "node": ">=22" },
   "scripts": {
     "bakery:build": "node scripts/build-bakery.mjs",
     "build": "pnpm -r build",
@@ -18,12 +16,15 @@
     "depcruise": "depcruise packages/core/src packages/crawler/src packages/cli/src packages/core/scripts packages/cli/scripts scripts",
     "skill:validate": "intent validate packages/cli/skills",
     "skill:stale": "intent stale packages/cli",
-    "check": "pnpm lint && pnpm typecheck && pnpm knip && pnpm depcruise && pnpm skill:validate && pnpm skill:stale",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm knip && pnpm depcruise && pnpm skill:validate && pnpm skill:stale",
     "publint": "publint --strict packages/cli",
     "attw": "attw --pack packages/cli --profile esm-only",
     "package:check": "pnpm publint && pnpm attw",
     "version": "changeset version && node scripts/sync-version-pins.mjs",
-    "release": "pnpm build && pnpm package:check && node scripts/publish-if-needed.mjs"
+    "release": "pnpm build && pnpm package:check && node scripts/publish-if-needed.mjs",
+    "format": "oxfmt packages scripts docs .github .changeset/config.json README.md package.json tsconfig.json vitest.config.ts pnpm-workspace.yaml knip.jsonc .oxlintrc.json .oxfmtrc.json .dependency-cruiser.cjs",
+    "format:check": "oxfmt packages scripts docs .github .changeset/config.json README.md package.json tsconfig.json vitest.config.ts pnpm-workspace.yaml knip.jsonc .oxlintrc.json .oxfmtrc.json .dependency-cruiser.cjs --check",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
@@ -33,9 +34,14 @@
     "@types/node": "26.6.6",
     "dependency-cruiser": "18.7.2",
     "knip": "6.44.1",
+    "oxfmt": "0.76.0",
     "oxlint": "1.91.0",
     "publint": "0.3.25",
     "typescript": "6.0.3",
     "vitest": "5.1.0"
-  }
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@12.9.1"
 }

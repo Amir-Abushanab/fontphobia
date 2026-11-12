@@ -3,7 +3,8 @@ import { join } from 'node:path';
 
 const kb = (value) => `${(value / 1024).toFixed(1)} KB`;
 const percent = (before, after) => Math.round((1 - after / before) * 100);
-const escape = (value) => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+const escape = (value) =>
+  String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 
 export function refreshWalkthrough(repo, results, report) {
   const path = join(repo, 'site/index.html');
@@ -11,28 +12,55 @@ export function refreshWalkthrough(repo, results, report) {
   const mobile = results.pages.filter((page) => page.viewport === 390 && page.dpr === 2);
   const before = mobile[0].before.fontBytes;
   const savings = mobile.map((page) => percent(before, page.after.fontBytes));
-  html = html.replace(/(<h1 id="content"[^>]*>[\s\S]*?<\/h1>\s*)<p>[\s\S]*?<\/p>/, '$1<p>Split fonts around the text on your site. Check the result in Chrome.</p>');
-  html = html.replace(/<meta property="og:description"[^>]*>/, '<meta property="og:description" content="Browse the bakery before and after, see the measured savings, and try the live font playground.">');
+  html = html.replace(
+    /(<h1 id="content"[^>]*>[\s\S]*?<\/h1>\s*)<p>[\s\S]*?<\/p>/,
+    '$1<p>Split fonts around the text on your site. Check the result in Chrome.</p>',
+  );
+  html = html.replace(
+    /<meta property="og:description"[^>]*>/,
+    '<meta property="og:description" content="Browse the bakery before and after, see the measured savings, and try the live font playground.">',
+  );
 
   const titles = { '/': 'Home', '/menu.html': 'Menu', '/about.html': 'Visit us', '/journal/levain.html': 'Journal' };
-  const rows = mobile.map((p) => {
-    const file = p.page === '/' ? '' : p.page.slice(1);
-    return `<tr><th scope="row"><a href="bakery/after/${file}">${titles[p.page]}</a></th><td class="n"><span class="was">${kb(p.before.fontBytes)} →</span><strong>${kb(p.after.fontBytes)}</strong><small>${percent(p.before.fontBytes, p.after.fontBytes)}% less</small></td><td class="n"><span class="was">${kb(p.before.totalBytes)} →</span><strong>${kb(p.after.totalBytes)}</strong><small>${percent(p.before.totalBytes, p.after.totalBytes)}% less</small></td></tr>`;
-  }).join('\n');
+  const rows = mobile
+    .map((p) => {
+      const file = p.page === '/' ? '' : p.page.slice(1);
+      return `<tr><th scope="row"><a href="bakery/after/${file}">${titles[p.page]}</a></th><td class="n"><span class="was">${kb(p.before.fontBytes)} →</span><strong>${kb(p.after.fontBytes)}</strong><small>${percent(p.before.fontBytes, p.after.fontBytes)}% less</small></td><td class="n"><span class="was">${kb(p.before.totalBytes)} →</span><strong>${kb(p.after.totalBytes)}</strong><small>${percent(p.before.totalBytes, p.after.totalBytes)}% less</small></td></tr>`;
+    })
+    .join('\n');
 
   // Both families use one byte scale; total split size can exceed the original.
-  const scale = Math.max(...results.faces.map((face) => Math.max(face.source.bytes, face.outputs.reduce((sum, output) => sum + output.bytes, 0))));
-  const bars = [...results.faces].toSorted((a, b) => b.family.localeCompare(a.family)).map((face) => {
-    const original = face.source.bytes / scale * 100;
-    const total = face.outputs.reduce((sum, output) => sum + output.bytes, 0);
-    const parts = face.outputs.map((output) => `<div class="${output.role}" style="width:${output.bytes / total * 100}%"></div>`).join('');
-    return `<div class="font-bars"><div class="bar-row"><div class="lbl">${escape(face.family)}<small>Original · ${kb(face.source.bytes)}</small></div><div class="track" role="img" aria-label="Original ${escape(face.family)}: ${kb(face.source.bytes)}"><div class="orig" style="width:${original}%"></div></div></div>
-<div class="bar-row"><div class="lbl">Subsetted<small>Loaded as needed</small></div><div class="track" role="img" aria-label="Subsetted ${escape(face.family)}: ${face.outputs.map((output) => `${output.role === 'ext' ? 'extended' : output.role} ${kb(output.bytes)}`).join(', ')}"><div class="split-files" style="width:${total / scale * 100}%">${parts}</div></div></div></div>`;
-  }).join('\n');
-  const fileRows = results.faces.flatMap((face) => face.outputs.map((output) => `<tr><th scope="row">${escape(face.family)} ${output.role === 'ext' ? 'extended' : output.role}</th><td class="n">${kb(output.bytes)}</td></tr>`)).join('\n');
+  const scale = Math.max(
+    ...results.faces.map((face) =>
+      Math.max(
+        face.source.bytes,
+        face.outputs.reduce((sum, output) => sum + output.bytes, 0),
+      ),
+    ),
+  );
+  const bars = [...results.faces]
+    .toSorted((a, b) => b.family.localeCompare(a.family))
+    .map((face) => {
+      const original = (face.source.bytes / scale) * 100;
+      const total = face.outputs.reduce((sum, output) => sum + output.bytes, 0);
+      const parts = face.outputs
+        .map((output) => `<div class="${output.role}" style="width:${(output.bytes / total) * 100}%"></div>`)
+        .join('');
+      return `<div class="font-bars"><div class="bar-row"><div class="lbl">${escape(face.family)}<small>Original · ${kb(face.source.bytes)}</small></div><div class="track" role="img" aria-label="Original ${escape(face.family)}: ${kb(face.source.bytes)}"><div class="orig" style="width:${original}%"></div></div></div>
+<div class="bar-row"><div class="lbl">Subsetted<small>Loaded as needed</small></div><div class="track" role="img" aria-label="Subsetted ${escape(face.family)}: ${face.outputs.map((output) => `${output.role === 'ext' ? 'extended' : output.role} ${kb(output.bytes)}`).join(', ')}"><div class="split-files" style="width:${(total / scale) * 100}%">${parts}</div></div></div></div>`;
+    })
+    .join('\n');
+  const fileRows = results.faces
+    .flatMap((face) =>
+      face.outputs.map(
+        (output) =>
+          `<tr><th scope="row">${escape(face.family)} ${output.role === 'ext' ? 'extended' : output.role}</th><td class="n">${kb(output.bytes)}</td></tr>`,
+      ),
+    )
+    .join('\n');
   const image = results.limitAxes.image;
   const crop = { ...image.crop, x: image.crop.x + 8, width: image.crop.width - 16 };
-  const cropStyle = `--diff-ratio:${crop.width} / ${crop.height};--diff-image-width:${image.width / crop.width * 100}%;--diff-image-left:${-crop.x / crop.width * 100}%;--diff-image-top:${-crop.y / crop.width * 100}%`;
+  const cropStyle = `--diff-ratio:${crop.width} / ${crop.height};--diff-image-width:${(image.width / crop.width) * 100}%;--diff-image-left:${(-crop.x / crop.width) * 100}%;--diff-image-top:${(-crop.y / crop.width) * 100}%`;
 
   const section = `<h2 id="walkthrough">Browse the bakery</h2>
 <p>Four pages, photos, a searchable menu. Switch between original and optimized fonts as you browse.</p>

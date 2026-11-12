@@ -6,6 +6,9 @@ export function writeGoldenUsage(name: string, usage: unknown) {
   const dir = new URL(`../../../fixtures/plans/${name}/`, import.meta.url);
   mkdirSync(dir, { recursive: true });
   // Versions vary by machine; the planner doesn't read them.
-  const u = { ...(usage as Record<string, unknown>), meta: { ...(usage as { meta: object }).meta, chrome: 'golden', fontphobia: 'golden' } };
+  const u = {
+    ...(usage as Record<string, unknown>),
+    meta: { ...(usage as { meta: object }).meta, chrome: 'golden', fontphobia: 'golden' },
+  };
   writeFileSync(new URL('usage.json', dir), canonicalJson(u));
 }

@@ -11,7 +11,10 @@ const cases: Record<string, [Parameters<typeof fixture>[0], SubsetOptions]> = {
   'inter latin1': ['InterVariable.ttf', { unicodes: LATIN1 }],
   'inter ascii +tnum,ss01': ['InterVariable.ttf', { unicodes: ASCII, features: { add: ['tnum', 'ss01'] } }],
   'inter all features': ['InterVariable.ttf', { unicodes: LATIN1, features: '*' }],
-  'inter wght 400..700 opsz 14..24': ['InterVariable.ttf', { unicodes: LATIN1, axes: { wght: { min: 400, max: 700 }, opsz: { min: 14, max: 24 } } }],
+  'inter wght 400..700 opsz 14..24': [
+    'InterVariable.ttf',
+    { unicodes: LATIN1, axes: { wght: { min: 400, max: 700 }, opsz: { min: 14, max: 24 } } },
+  ],
   'inter pinned 550/20': ['InterVariable.ttf', { unicodes: LATIN1, axes: { wght: 550, opsz: 20 } }],
   'inter everything': ['InterVariable.ttf', { unicodes: '*' }],
   'dejavu latin1': ['DejaVuSans.ttf', { unicodes: LATIN1 }],
@@ -28,7 +31,8 @@ test('outputs match the committed golden hashes', async () => {
   got['decoded hinted fixture'] = sha256(await toSfnt(fixture('Inter-Regular-hinted.woff2')));
   if (process.env.UPDATE_GOLDEN || !existsSync(file)) {
     writeFileSync(file, JSON.stringify(got, null, 2) + '\n');
-    if (!process.env.UPDATE_GOLDEN) throw new Error('No golden file existed; wrote one. Review and commit it, then rerun.');
+    if (!process.env.UPDATE_GOLDEN)
+      throw new Error('No golden file existed; wrote one. Review and commit it, then rerun.');
     return;
   }
   expect(got).toEqual(JSON.parse(readFileSync(file, 'utf8')));

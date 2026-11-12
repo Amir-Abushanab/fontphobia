@@ -33,7 +33,7 @@ Exact mode: crawls the live site in Chrome (every runner image has it) and compa
 # .github/workflows/fonts-production.yml
 name: Fonts (production)
 on:
-  schedule: [{ cron: '0 6 * * 1' }]   # Mondays, 06:00 UTC
+  schedule: [{ cron: '0 6 * * 1' }] # Mondays, 06:00 UTC
   workflow_dispatch:
 jobs:
   check:

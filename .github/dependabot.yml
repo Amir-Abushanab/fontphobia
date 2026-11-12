@@ -11,9 +11,9 @@ updates:
     schedule:
       interval: monthly
     commit-message:
-      prefix: "chore"
+      prefix: 'chore'
     groups:
       # One PR a month for the lot. These move together and are reviewed the same way; separate
       # PRs per action would be noise on a repo with four workflows.
       actions:
-        patterns: ["*"]
+        patterns: ['*']

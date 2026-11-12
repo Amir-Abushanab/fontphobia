@@ -19,7 +19,10 @@ for (const loc of locales) {
   const d = json(join(root, loc, 'delimiters.json')).main[loc].delimiters;
   quotes[loc] = [d.quotationStart, d.quotationEnd, d.alternateQuotationStart, d.alternateQuotationEnd].join('');
 }
-writeFileSync(new URL('../src/data/cldr-delimiters.json', import.meta.url), JSON.stringify({ cldr: version, quotes }, null, 0) + '\n');
+writeFileSync(
+  new URL('../src/data/cldr-delimiters.json', import.meta.url),
+  JSON.stringify({ cldr: version, quotes }, null, 0) + '\n',
+);
 
 /** CLDR exemplar UnicodeSet syntax: [a b-d {ch} \- ‎]. */
 function parseSet(s) {
@@ -27,17 +30,33 @@ function parseSet(s) {
   if (!s) return out;
   const body = s.trim().replace(/^\[/, '').replace(/\]$/, '');
   const chars = [];
-  for (let i = 0; i < body.length; ) {
+  for (let i = 0; i < body.length;) {
     const c = body[i];
     if (c === '\\') {
       const n = body[i + 1];
-      if (n === 'u') { chars.push({ ch: String.fromCodePoint(parseInt(body.slice(i + 2, i + 6), 16)) }); i += 6; }
-      else if (n === 'U') { chars.push({ ch: String.fromCodePoint(parseInt(body.slice(i + 2, i + 10), 16)) }); i += 10; }
-      else { chars.push({ ch: String.fromCodePoint(body.codePointAt(i + 1)) }); i += 1 + String.fromCodePoint(body.codePointAt(i + 1)).length; }
-    } else if (c === '{') { const e = body.indexOf('}', i); chars.push({ ch: body.slice(i + 1, e) }); i = e + 1; }
-    else if (c === '-' && chars.length) { chars.push({ range: true }); i++; }
-    else if (/\s/.test(c)) i++;
-    else { const ch = String.fromCodePoint(body.codePointAt(i)); chars.push({ ch }); i += ch.length; }
+      if (n === 'u') {
+        chars.push({ ch: String.fromCodePoint(parseInt(body.slice(i + 2, i + 6), 16)) });
+        i += 6;
+      } else if (n === 'U') {
+        chars.push({ ch: String.fromCodePoint(parseInt(body.slice(i + 2, i + 10), 16)) });
+        i += 10;
+      } else {
+        chars.push({ ch: String.fromCodePoint(body.codePointAt(i + 1)) });
+        i += 1 + String.fromCodePoint(body.codePointAt(i + 1)).length;
+      }
+    } else if (c === '{') {
+      const e = body.indexOf('}', i);
+      chars.push({ ch: body.slice(i + 1, e) });
+      i = e + 1;
+    } else if (c === '-' && chars.length) {
+      chars.push({ range: true });
+      i++;
+    } else if (/\s/.test(c)) i++;
+    else {
+      const ch = String.fromCodePoint(body.codePointAt(i));
+      chars.push({ ch });
+      i += ch.length;
+    }
   }
   for (let k = 0; k < chars.length; k++) {
     const x = chars[k];
@@ -71,11 +90,13 @@ const sets = {};
 for (const loc of locales) {
   const c = json(join(root, loc, 'characters.json')).main[loc].characters;
   const s = new Set();
-  for (const k of ['exemplarCharacters', 'auxiliary', 'punctuation', 'numbers']) for (const cp of parseSet(c[k])) s.add(cp);
+  for (const k of ['exemplarCharacters', 'auxiliary', 'punctuation', 'numbers'])
+    for (const cp of parseSet(c[k])) s.add(cp);
   // eslint-disable-next-line no-useless-spread -- a snapshot: the loop adds to the set
   for (const cp of [...s]) {
     const ch = String.fromCodePoint(cp);
-    for (const x of [ch.toLocaleUpperCase(loc === 'root' ? undefined : loc), ch.normalize('NFD')]) for (const y of x) s.add(y.codePointAt(0));
+    for (const x of [ch.toLocaleUpperCase(loc === 'root' ? undefined : loc), ch.normalize('NFD')])
+      for (const y of x) s.add(y.codePointAt(0));
   }
   // CLDR uppercases ß to SS; German capital sharp s (ẞ, U+1E9E) is official since 2017.
   if (s.has(0xdf)) s.add(0x1e9e);
@@ -83,9 +104,15 @@ for (const loc of locales) {
   if (cur && loc !== 'root') {
     for (const display of ['symbol', 'narrowSymbol']) {
       try {
-        const txt = new Intl.NumberFormat(loc, { style: 'currency', currency: cur, currencyDisplay: display }).formatToParts(1).filter((p) => p.type === 'currency').map((p) => p.value).join('');
+        const txt = new Intl.NumberFormat(loc, { style: 'currency', currency: cur, currencyDisplay: display })
+          .formatToParts(1)
+          .filter((p) => p.type === 'currency')
+          .map((p) => p.value)
+          .join('');
         for (const ch of txt) s.add(ch.codePointAt(0));
-      } catch { /* Node's ICU lacks this locale */ }
+      } catch {
+        /* Node's ICU lacks this locale */
+      }
     }
   }
   sets[loc] = [...s].filter((cp) => cp >= 0x20).toSorted((a, b) => a - b);
@@ -93,7 +120,7 @@ for (const loc of locales) {
 
 const ranges = (cps) => {
   const out = [];
-  for (let i = 0; i < cps.length; ) {
+  for (let i = 0; i < cps.length;) {
     let j = i;
     while (j + 1 < cps.length && cps[j + 1] === cps[j] + 1) j++;
     out.push(i === j ? cps[i].toString(16) : `${cps[i].toString(16)}-${cps[j].toString(16)}`);
@@ -111,9 +138,19 @@ for (const loc of locales) {
   let p = parentOf(loc);
   while (p && !sets[p]) p = parentOf(p);
   if (p && p !== 'root' && ranges(sets[p]) === r) continue;
-  if (!index.has(r)) { index.set(r, distinct.length); distinct.push(r); }
+  if (!index.has(r)) {
+    index.set(r, distinct.length);
+    distinct.push(r);
+  }
   exemplars[loc] = index.get(r);
 }
-const parentMap = Object.fromEntries(Object.entries(parents).filter(([k]) => locales.includes(k)).toSorted());
-writeFileSync(new URL('../src/data/cldr-exemplars.json', import.meta.url), JSON.stringify({ cldr: version, parents: parentMap, sets: distinct, exemplars }, null, 0) + '\n');
+const parentMap = Object.fromEntries(
+  Object.entries(parents)
+    .filter(([k]) => locales.includes(k))
+    .toSorted(),
+);
+writeFileSync(
+  new URL('../src/data/cldr-exemplars.json', import.meta.url),
+  JSON.stringify({ cldr: version, parents: parentMap, sets: distinct, exemplars }, null, 0) + '\n',
+);
 console.log(locales.length, 'locales;', Object.keys(exemplars).length, 'stored;', distinct.length, 'distinct sets');

@@ -1,12 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import {
-  featuresOf, formatSettings, parseFamilyList, parseFeatureSettings, parseStretchDescriptor, parseStyle, parseStylesheet,
-  parseVariationSettings, parseWeightDescriptor, relativeWeight, splitSelector, styleBlocks, formatUnicodeRange,
+  featuresOf,
+  formatSettings,
+  parseFamilyList,
+  parseFeatureSettings,
+  parseStretchDescriptor,
+  parseStyle,
+  parseStylesheet,
+  parseVariationSettings,
+  parseWeightDescriptor,
+  relativeWeight,
+  splitSelector,
+  styleBlocks,
+  formatUnicodeRange,
 } from '../src/index.ts';
 
 describe('values', () => {
   it('parses family lists', () => {
-    expect(parseFamilyList(`"Inter Variable", Inter,  Helvetica   Neue , 'A\\,B', sans-serif`)).toEqual(['Inter Variable', 'Inter', 'Helvetica Neue', 'A,B', 'sans-serif']);
+    expect(parseFamilyList(`"Inter Variable", Inter,  Helvetica   Neue , 'A\\,B', sans-serif`)).toEqual([
+      'Inter Variable',
+      'Inter',
+      'Helvetica Neue',
+      'A,B',
+      'sans-serif',
+    ]);
   });
   it('parses descriptors', () => {
     expect(parseWeightDescriptor('100 900')).toEqual([100, 900]);
@@ -18,21 +35,55 @@ describe('values', () => {
     expect(parseStyle('italic')).toEqual({ kind: 'italic' });
   });
   it('parses feature and variation settings', () => {
-    expect(parseFeatureSettings(`"tnum", "ss01" 2, 'liga' off, "kern" on`)).toEqual([['tnum', 1], ['ss01', 2], ['liga', 0], ['kern', 1]]);
+    expect(parseFeatureSettings(`"tnum", "ss01" 2, 'liga' off, "kern" on`)).toEqual([
+      ['tnum', 1],
+      ['ss01', 2],
+      ['liga', 0],
+      ['kern', 1],
+    ]);
     expect(parseFeatureSettings('normal')).toEqual([]);
-    expect(parseVariationSettings(`"wght" 650, 'opsz' 32.5`)).toEqual([['wght', 650], ['opsz', 32.5]]);
+    expect(parseVariationSettings(`"wght" 650, 'opsz' 32.5`)).toEqual([
+      ['wght', 650],
+      ['opsz', 32.5],
+    ]);
   });
   it('maps font-variant-* to tags (§7.5)', () => {
-    const fv = new Map([['inter', new Map([['styleset', new Map([['open-digits', [1]], ['alts', [3, 5]]])], ['character-variant', new Map([['g', [11, 2]]])]])]]);
-    const m = featuresOf({
-      fontVariantCaps: 'all-small-caps', fontVariantNumeric: 'tabular-nums slashed-zero diagonal-fractions', fontVariantLigatures: 'no-common-ligatures discretionary-ligatures',
-      fontVariantPosition: 'super', fontVariantAlternates: 'styleset(open-digits, alts) character-variant(g)', fontVariantEastAsian: 'jis04 full-width',
-      fontFeatureSettings: '"zero" 0',
-    }, 'Inter', fv);
-    expect(formatSettings(m)).toBe('c2sc=1,clig=0,cv11=2,dlig=1,frac=1,fwid=1,jp04=1,liga=0,smcp=1,ss01=1,ss03=1,ss05=1,sups=1,tnum=1,zero=0');
+    const fv = new Map([
+      [
+        'inter',
+        new Map([
+          [
+            'styleset',
+            new Map([
+              ['open-digits', [1]],
+              ['alts', [3, 5]],
+            ]),
+          ],
+          ['character-variant', new Map([['g', [11, 2]]])],
+        ]),
+      ],
+    ]);
+    const m = featuresOf(
+      {
+        fontVariantCaps: 'all-small-caps',
+        fontVariantNumeric: 'tabular-nums slashed-zero diagonal-fractions',
+        fontVariantLigatures: 'no-common-ligatures discretionary-ligatures',
+        fontVariantPosition: 'super',
+        fontVariantAlternates: 'styleset(open-digits, alts) character-variant(g)',
+        fontVariantEastAsian: 'jis04 full-width',
+        fontFeatureSettings: '"zero" 0',
+      },
+      'Inter',
+      fv,
+    );
+    expect(formatSettings(m)).toBe(
+      'c2sc=1,clig=0,cv11=2,dlig=1,frac=1,fwid=1,jp04=1,liga=0,smcp=1,ss01=1,ss03=1,ss05=1,sups=1,tnum=1,zero=0',
+    );
   });
   it('turns off optional ligatures with letter-spacing, and kerning with font-kerning: none', () => {
-    expect(formatSettings(featuresOf({ letterSpacing: '0.1em', fontKerning: 'none' }, 'X'))).toBe('calt=0,clig=0,dlig=0,hlig=0,kern=0,liga=0');
+    expect(formatSettings(featuresOf({ letterSpacing: '0.1em', fontKerning: 'none' }, 'X'))).toBe(
+      'calt=0,clig=0,dlig=0,hlig=0,kern=0,liga=0',
+    );
     expect(formatSettings(featuresOf({ letterSpacing: 'normal' }, 'X'))).toBe('');
     expect(formatSettings(featuresOf({ letterSpacing: '0px' }, 'X'))).toBe('');
   });
@@ -63,7 +114,11 @@ describe('stylesheet', () => {
     expect(s.fontFaces).toHaveLength(2);
     const f = s.fontFaces[0]!;
     expect(f.family).toBe('Inter');
-    expect(f.src).toEqual([{ local: 'Inter' }, { url: './a.woff2', format: 'woff2-variations', tech: 'variations' }, { url: 'b.woff', format: 'woff' }]);
+    expect(f.src).toEqual([
+      { local: 'Inter' },
+      { url: './a.woff2', format: 'woff2-variations', tech: 'variations' },
+      { url: 'b.woff', format: 'woff' },
+    ]);
     expect(f.weight).toEqual([100, 900]);
     expect(formatUnicodeRange(f.unicodeRange)).toBe('U+0-FF, U+131');
     expect(f.wrappers).toEqual(['@layer base', '@media (min-width: 40em)']);
@@ -79,7 +134,10 @@ describe('stylesheet', () => {
   it('collects declared values with states stripped (§7.5)', () => {
     expect(s.keyframes).toEqual([{ name: 'pulse', frames: [{ 'font-weight': '300' }, { 'font-weight': '600' }] }]);
     const hover = s.declared.find((d) => d.decls['font-weight'] === '800')!;
-    expect(hover.selectors).toEqual([{ base: '.a', pseudo: undefined, states: [':hover'] }, { base: '.b', pseudo: '::before', states: [':focus-visible'] }]);
+    expect(hover.selectors).toEqual([
+      { base: '.a', pseudo: undefined, states: [':hover'] },
+      { base: '.b', pseudo: '::before', states: [':focus-visible'] },
+    ]);
     expect(s.declared.find((d) => d.decls['font-family'] === 'serif')!.wrappers).toEqual(['@media print']);
     expect(s.declared.some((d) => d.decls.color)).toBe(false);
     expect(s.textTransforms).toEqual([{ selector: '.fw', value: 'full-width' }]);
@@ -87,13 +145,24 @@ describe('stylesheet', () => {
     expect(s.emMediaQueries).toBe(true);
   });
   it('splits selectors', () => {
-    expect(splitSelector('a:hover > span, :focus')).toEqual([{ base: 'a > span', pseudo: undefined, states: [':hover'] }, { base: '*', pseudo: undefined, states: [':focus'] }]);
+    expect(splitSelector('a:hover > span, :focus')).toEqual([
+      { base: 'a > span', pseudo: undefined, states: [':hover'] },
+      { base: '*', pseudo: undefined, states: [':focus'] },
+    ]);
     expect(splitSelector('li::marker')).toEqual([{ base: 'li', pseudo: '::marker', states: [] }]);
     expect(splitSelector('input::placeholder')).toEqual([{ base: 'input', pseudo: '::placeholder', states: [] }]);
   });
   it('reads Sass and Less', () => {
-    expect(parseStylesheet('$w: 400; @font-face { font-family: S; src: url("#{$base}/s.woff2"); font-weight: $w; } .a { .b { c: d } }', { syntax: 'scss' }).fontFaces[0]!.computed).toBe(true);
-    expect(parseStylesheet('@w: 400; @font-face { font-family: L; src: url("l.woff2"); }', { syntax: 'less' }).fontFaces[0]!.family).toBe('L');
+    expect(
+      parseStylesheet(
+        '$w: 400; @font-face { font-family: S; src: url("#{$base}/s.woff2"); font-weight: $w; } .a { .b { c: d } }',
+        { syntax: 'scss' },
+      ).fontFaces[0]!.computed,
+    ).toBe(true);
+    expect(
+      parseStylesheet('@w: 400; @font-face { font-family: L; src: url("l.woff2"); }', { syntax: 'less' }).fontFaces[0]!
+        .family,
+    ).toBe('L');
   });
   it('finds <style> blocks in components', () => {
     const vue = `<template><p/></template>\n<style scoped>\n@font-face { font-family: V; src: url(v.woff2) }\n</style>\n<style lang="sass">\n.x\n  color: red\n</style>`;

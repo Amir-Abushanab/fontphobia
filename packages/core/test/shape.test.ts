@@ -16,7 +16,8 @@ beforeAll(async () => {
   split = [await file(ASCII), await file(EXT)];
   splitMarks = [await file([...ASCII, ...MARKS]), await file(EXT.filter((c) => !MARKS.includes(c)))];
 });
-const verdict = (files: OutputFile[], text: string, extra: object = {}) => checkShaping(inter, files, [{ text, ...extra }])[0]!.verdict;
+const verdict = (files: OutputFile[], text: string, extra: object = {}) =>
+  checkShaping(inter, files, [{ text, ...extra }])[0]!.verdict;
 
 describe('checkShaping (reproduces spike 2 in HarfBuzz)', () => {
   test('one file: identical, including variations and features', () => {
@@ -50,6 +51,8 @@ describe('checkShaping (reproduces spike 2 in HarfBuzz)', () => {
     const ranged = [await file(LATIN1, { wght: { min: 400, max: 700 } })];
     const v = verdict(ranged, 'The quick brown fox jumps over the lazy dog.', { variations: { wght: 550, opsz: 24 } });
     expect(v.kind).toBe('rounding');
-    expect(verdict(ranged, 'The quick brown fox', { variations: { wght: 400, opsz: 14 } })).toEqual({ kind: 'identical' });
+    expect(verdict(ranged, 'The quick brown fox', { variations: { wght: 400, opsz: 14 } })).toEqual({
+      kind: 'identical',
+    });
   });
 });

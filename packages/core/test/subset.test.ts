@@ -1,5 +1,16 @@
 import { describe, expect, test } from 'vitest';
-import { loadFont, nameStrings, parseFvar, parseHead, parseHhea, parseOs2, readSfnt, subsetFont, toSfnt, ValidationError } from '../src/index.ts';
+import {
+  loadFont,
+  nameStrings,
+  parseFvar,
+  parseHead,
+  parseHhea,
+  parseOs2,
+  readSfnt,
+  subsetFont,
+  toSfnt,
+  ValidationError,
+} from '../src/index.ts';
 import { ASCII, LATIN1, fixture, sha256 } from './helpers.ts';
 
 const inter = fixture('InterVariable.ttf');
@@ -19,7 +30,10 @@ describe('subsetFont', () => {
   });
 
   test('one half of a bidi-mirrored pair is accepted, and the output lists its mirror', async () => {
-    for (const [text, mirrored] of [['a>b', [0x3c, 0x3e]], ['(hello', [0x28, 0x29]]] as const) {
+    for (const [text, mirrored] of [
+      ['a>b', [0x3c, 0x3e]],
+      ['(hello', [0x28, 0x29]],
+    ] as const) {
       const r = await subsetFont(inter, { unicodes: [...text].map((c) => c.codePointAt(0)!) });
       for (const c of mirrored) expect(r.unicodes).toContain(c);
       expect(r.unicodes).toEqual([...loadFont(r.decoded).face.collectUnicodes()].toSorted((x, y) => x - y));
@@ -29,11 +43,26 @@ describe('subsetFont', () => {
   test('vertical metrics, unitsPerEm, fsType, head dates and xAvgCharWidth are preserved', async () => {
     for (const src of [inter, dejavu, await toSfnt(fixture('Inter-Regular-hinted.woff2'))]) {
       const { decoded } = await subsetFont(src, { unicodes: ASCII });
-      expect(parseHhea(decoded)).toMatchObject({ ascender: parseHhea(src).ascender, descender: parseHhea(src).descender, lineGap: parseHhea(src).lineGap });
-      const a = parseOs2(src)!, b = parseOs2(decoded)!;
-      for (const k of ['sTypoAscender', 'sTypoDescender', 'sTypoLineGap', 'usWinAscent', 'usWinDescent', 'xAvgCharWidth', 'useTypoMetrics'] as const) expect(b[k], k).toBe(a[k]);
+      expect(parseHhea(decoded)).toMatchObject({
+        ascender: parseHhea(src).ascender,
+        descender: parseHhea(src).descender,
+        lineGap: parseHhea(src).lineGap,
+      });
+      const a = parseOs2(src)!,
+        b = parseOs2(decoded)!;
+      for (const k of [
+        'sTypoAscender',
+        'sTypoDescender',
+        'sTypoLineGap',
+        'usWinAscent',
+        'usWinDescent',
+        'xAvgCharWidth',
+        'useTypoMetrics',
+      ] as const)
+        expect(b[k], k).toBe(a[k]);
       expect(b.fsType).toEqual(a.fsType);
-      const ha = parseHead(src), hb = parseHead(decoded);
+      const ha = parseHead(src),
+        hb = parseHead(decoded);
       expect([hb.unitsPerEm, hb.created, hb.modified]).toEqual([ha.unitsPerEm, ha.created, ha.modified]);
     }
   });
@@ -76,27 +105,39 @@ describe('subsetFont', () => {
   });
 
   test('axes: kept whole by default; ranges keep fvar; pins drop it', async () => {
-    expect(parseFvar((await subsetFont(inter, { unicodes: ASCII })).decoded)!.axes.map((a) => [a.tag, a.min, a.max])).toEqual([['opsz', 14, 32], ['wght', 100, 900]]);
-    const ranged = parseFvar((await subsetFont(inter, { unicodes: ASCII, axes: { wght: { min: 400, max: 700 } } })).decoded)!;
+    expect(
+      parseFvar((await subsetFont(inter, { unicodes: ASCII })).decoded)!.axes.map((a) => [a.tag, a.min, a.max]),
+    ).toEqual([
+      ['opsz', 14, 32],
+      ['wght', 100, 900],
+    ]);
+    const ranged = parseFvar(
+      (await subsetFont(inter, { unicodes: ASCII, axes: { wght: { min: 400, max: 700 } } })).decoded,
+    )!;
     expect(ranged.axes.find((a) => a.tag === 'wght')).toMatchObject({ min: 400, max: 700 });
     const pinned = await subsetFont(inter, { unicodes: ASCII, axes: { wght: 400, opsz: 14 } });
     expect(parseFvar(pinned.decoded)).toBeUndefined();
   });
 
   test('DSIG is always dropped', async () => {
-    const withDsig = (await import('../src/index.ts')).withTables(dejavu, { DSIG: new Uint8Array([0, 0, 0, 1, 0, 0, 0, 0]) });
+    const withDsig = (await import('../src/index.ts')).withTables(dejavu, {
+      DSIG: new Uint8Array([0, 0, 0, 1, 0, 0, 0, 0]),
+    });
     expect(readSfnt((await subsetFont(withDsig, { unicodes: ASCII })).decoded).tables.has('DSIG')).toBe(false);
   });
 
   test('deterministic: repeated runs give identical bytes', async () => {
     const o = { unicodes: LATIN1, features: { add: ['tnum'] } };
-    const a = await subsetFont(inter, o), b = await subsetFont(inter, o);
+    const a = await subsetFont(inter, o),
+      b = await subsetFont(inter, o);
     expect(sha256(a.woff2)).toBe(sha256(b.woff2));
   });
 
   test('bad input fails loudly', async () => {
     await expect(subsetFont(inter, { unicodes: ASCII, axes: { wdth: 100 } })).rejects.toThrow(/axis 'wdth'/);
-    await expect(subsetFont(inter, { unicodes: ASCII, features: { only: ['toolong'] } })).rejects.toThrow(/Bad feature tag/);
+    await expect(subsetFont(inter, { unicodes: ASCII, features: { only: ['toolong'] } })).rejects.toThrow(
+      /Bad feature tag/,
+    );
     void ValidationError;
   });
 });

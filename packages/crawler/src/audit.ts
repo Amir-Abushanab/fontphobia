@@ -5,9 +5,32 @@ import { availableParallelism } from 'node:os';
 import { relative, resolve, sep } from 'node:path';
 import { chromium, type Browser } from 'playwright-core';
 import {
-  adobeFaceFacts, findBlock, findFontCheckCalls, findLocalFontCalls, isTypekitSheet, type AdobeFaceFacts, generatedFaces, readManifest, buildUsage, classifyFace, detectCss, detectProject, fontFacts, globToRegExp, harfbuzzVersion,
-  htmlPages, indexFontFiles, isGlob, routesFromFiles, scanOffDom, usageToJson,
-  type FaceSource, type FontFacts, type OffDomHit, type Project, type Visit,
+  adobeFaceFacts,
+  findBlock,
+  findFontCheckCalls,
+  findLocalFontCalls,
+  isTypekitSheet,
+  type AdobeFaceFacts,
+  generatedFaces,
+  readManifest,
+  buildUsage,
+  classifyFace,
+  detectCss,
+  detectProject,
+  fontFacts,
+  globToRegExp,
+  harfbuzzVersion,
+  htmlPages,
+  indexFontFiles,
+  isGlob,
+  routesFromFiles,
+  scanOffDom,
+  usageToJson,
+  type FaceSource,
+  type FontFacts,
+  type OffDomHit,
+  type Project,
+  type Visit,
 } from '@fontphobia/core';
 import { clearKeptOutput } from './isolate.ts';
 import { openSite, since, type SiteOptions } from './site.ts';
@@ -69,9 +92,16 @@ const NON_PAGE_EXT = /\.(?!html?$|php$|aspx?$)[a-z0-9]{1,5}$/i;
 export async function launchChrome(args: string[] = []): Promise<Browser> {
   const executablePath = process.env.FONTPHOBIA_CHROME;
   try {
-    return await chromium.launch({ headless: true, args, ...(executablePath ? { executablePath } : { channel: 'chrome' }) });
+    return await chromium.launch({
+      headless: true,
+      args,
+      ...(executablePath ? { executablePath } : { channel: 'chrome' }),
+    });
   } catch (e) {
-    throw new Error(`Couldn't start Chrome (${(e as Error).message.split('\n')[0]}). fontphobia uses your installed Google Chrome; install it, or set FONTPHOBIA_CHROME to a Chrome or Chromium binary.`, { cause: e });
+    throw new Error(
+      `Couldn't start Chrome (${(e as Error).message.split('\n')[0]}). fontphobia uses your installed Google Chrome; install it, or set FONTPHOBIA_CHROME to a Chrome or Chromium binary.`,
+      { cause: e },
+    );
   }
 }
 
@@ -81,19 +111,38 @@ async function sitemapPaths(base: string, log: (m: string) => void): Promise<str
   const queue = [pageUrl('/sitemap.xml', base), pageUrl('/sitemap-index.xml', base)];
   try {
     const robots = await fetch(new URL('/robots.txt', base), { signal: AbortSignal.timeout(5000) });
-    if (robots.ok) for (const m of (await robots.text()).matchAll(/^\s*sitemap:\s*(\S+)/gim)) { try { queue.push(pageUrl(new URL(m[1]!).pathname, base)); } catch { /* bad */ } }
-  } catch { /* none */ }
+    if (robots.ok)
+      for (const m of (await robots.text()).matchAll(/^\s*sitemap:\s*(\S+)/gim)) {
+        try {
+          queue.push(pageUrl(new URL(m[1]!).pathname, base));
+        } catch {
+          /* bad */
+        }
+      }
+  } catch {
+    /* none */
+  }
   while (queue.length && seen.size < 50) {
     const u = queue.shift()!;
     if (seen.has(u)) continue;
     seen.add(u);
     let xml: string;
-    try { const r = await fetch(u, { signal: AbortSignal.timeout(10_000) }); if (!r.ok || !/xml/.test(r.headers.get('content-type') ?? 'xml')) continue; xml = await r.text(); } catch { continue; }
+    try {
+      const r = await fetch(u, { signal: AbortSignal.timeout(10_000) });
+      if (!r.ok || !/xml/.test(r.headers.get('content-type') ?? 'xml')) continue;
+      xml = await r.text();
+    } catch {
+      continue;
+    }
     const locs = [...xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)].map((m) => m[1]!.replace(/&amp;/g, '&'));
     const isIndex = /<sitemapindex/i.test(xml);
     for (const l of locs) {
       let p: URL;
-      try { p = new URL(l, base); } catch { continue; }
+      try {
+        p = new URL(l, base);
+      } catch {
+        continue;
+      }
       // Sitemaps carry the production origin: keep the path, crawl it here.
       if (isIndex || p.pathname.endsWith('.xml')) queue.push(pageUrl(p.pathname, base));
       else out.add(p.pathname + p.search);
@@ -105,7 +154,11 @@ async function sitemapPaths(base: string, log: (m: string) => void): Promise<str
 
 async function pool<T>(items: T[], n: number, fn: (x: T) => Promise<void>) {
   let i = 0;
-  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) await fn(items[i++]!); }));
+  await Promise.all(
+    Array.from({ length: Math.min(n, items.length) }, async () => {
+      while (i < items.length) await fn(items[i++]!);
+    }),
+  );
 }
 
 export async function audit(o: AuditOptions): Promise<AuditResult> {
@@ -124,7 +177,6 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
   const opened = await openSite(o, project, log);
   const { site, built, age, mode, base, stop } = opened;
 
-
   let browser: Browser | undefined;
   try {
     browser = await launchChrome();
@@ -137,7 +189,8 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     // the base path is relative to the site's root (pageUrl).
     const keyOf = (p: string) => pageKey(pageUrl(p, base));
     const listed = new Set((o.pages ?? []).filter((p) => !isGlob(p)).map(keyOf));
-    const allowed = (p: string) => !matchesPage(ignore, p, base) && (!include.length || matchesPage(include, p, base) || listed.has(p));
+    const allowed = (p: string) =>
+      !matchesPage(ignore, p, base) && (!include.length || matchesPage(include, p, base) || listed.has(p));
     const seeds = new Set<string>([keyOf('/'), ...listed]);
     if (site?.mode === 'static') for (const p of htmlPages(site.dir!)) seeds.add(keyOf(p));
     for (const r of fileRoutes.routes) seeds.add(keyOf(r));
@@ -150,7 +203,13 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     const bodies = new Map<string, Uint8Array>();
     const failed: Record<string, string> = {};
     const pages = new Set<string>();
-    const contextOpts = { locale: 'en-US', timezoneId: 'UTC', deviceScaleFactor: 1, storageState: o.storageState, reducedMotion: 'no-preference' as const };
+    const contextOpts = {
+      locale: 'en-US',
+      timezoneId: 'UTC',
+      deviceScaleFactor: 1,
+      storageState: o.storageState,
+      reducedMotion: 'no-preference' as const,
+    };
     const bodyCache = new Map<string, { sha256: string; bytes: number }>();
     // M3.5: reuse a page's earlier visit when nothing it loaded changed.
     let cache: VisitCache | undefined;
@@ -164,14 +223,19 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     const doVisit = async (url: string, vo: Omit<VisitOptions, 'locales'>) => {
       const key = vo.private ? undefined : cache?.keyOf(url, vo);
       const hit = key ? await cache!.get(key, origin) : undefined;
-      if (hit) { for (const [k, b] of hit.bodies) bodies.set(k, b); return hit; }
+      if (hit) {
+        for (const [k, b] of hit.bodies) bodies.set(k, b);
+        return hit;
+      }
       const ctx = await browser!.newContext(contextOpts);
       try {
         const r = await visitPage(ctx, url, { ...vo, locales: o.locales ?? [], bodyCache });
         for (const [k, b] of r.bodies) bodies.set(k, b);
         if (key) cache!.put(key, origin, r);
         return r;
-      } finally { await ctx.close().catch(() => {}); }
+      } finally {
+        await ctx.close().catch(() => {});
+      }
     };
 
     // 3. Discovery at the first viewport: BFS over same-origin links (§7.2).
@@ -185,7 +249,11 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       const missed: string[] = [];
       await pool(frontier, concurrency, async (p) => {
         const r = await doVisit(toUrl(p), { viewport: first, fontSize: 16, private: isPrivate(p) });
-        if (!r.visit) { failed[p] = r.error ?? `HTTP ${r.status}`; missed.push(p); return; }
+        if (!r.visit) {
+          failed[p] = r.error ?? `HTTP ${r.status}`;
+          missed.push(p);
+          return;
+        }
         const key = r.visit.page;
         if (pages.has(key)) return; // a redirect landed on a page we already have
         pages.add(key);
@@ -202,10 +270,25 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
         }
       });
       missed.sort();
-      log(`pages: ${pages.size} (${next.length} more found${missed.length ? `, ${missed.length} failed: ${missed.slice(0, 3).map((p) => `${p} ${failed[p]}`).join('; ')}${missed.length > 3 ? '; …' : ''}` : ''})`);
+      log(
+        `pages: ${pages.size} (${next.length} more found${
+          missed.length
+            ? `, ${missed.length} failed: ${missed
+                .slice(0, 3)
+                .map((p) => `${p} ${failed[p]}`)
+                .join('; ')}${missed.length > 3 ? '; …' : ''}`
+            : ''
+        })`,
+      );
       frontier = next.toSorted();
     }
-    if (!pages.size) throw new Error(`No page loaded from ${base}: ${Object.entries(failed).slice(0, 5).map(([p, e]) => `${p} ${e}`).join('; ')}`);
+    if (!pages.size)
+      throw new Error(
+        `No page loaded from ${base}: ${Object.entries(failed)
+          .slice(0, 5)
+          .map(([p, e]) => `${p} ${e}`)
+          .join('; ')}`,
+      );
     if (queued.size >= maxPages) log(`stopped discovering at ${maxPages} pages (--max-pages)`);
 
     // 4. Every other viewport, and the default-font-size sweep (§7.2).
@@ -215,19 +298,30 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     const fontSizes = new Set<number>([16]);
     for (const [page, info] of [...byPage].toSorted(([a], [b]) => (a < b ? -1 : 1))) {
       const priv = isPrivate(page);
-      for (const w of viewports) if (w !== first) tasks.push({ page, url: info.url, viewport: w, fontSize: 16, private: priv });
+      for (const w of viewports)
+        if (w !== first) tasks.push({ page, url: info.url, viewport: w, fontSize: 16, private: priv });
       if (o.fontSizeSweep !== false) {
         const sizes = info.emMq ? [9, 12, 20, 24, 72] : [9, 72];
-        for (const s of sizes) { fontSizes.add(s); tasks.push({ page, url: info.url, viewport: narrow, fontSize: s, private: priv }); }
+        for (const s of sizes) {
+          fontSizes.add(s);
+          tasks.push({ page, url: info.url, viewport: narrow, fontSize: s, private: priv });
+        }
         for (const s of [...sizes, 16]) tasks.push({ page, url: info.url, viewport: WIDE, fontSize: s, private: priv });
-        if (info.textScale) for (const ts of [0.85, 2]) for (const w of [narrow, WIDE]) tasks.push({ page, url: info.url, viewport: w, fontSize: 16, textScale: ts, private: priv });
+        if (info.textScale)
+          for (const ts of [0.85, 2])
+            for (const w of [narrow, WIDE])
+              tasks.push({ page, url: info.url, viewport: w, fontSize: 16, textScale: ts, private: priv });
       }
     }
     let done = 0;
     await pool(tasks, concurrency, async (t) => {
       const r = await doVisit(t.url, t);
-      if (r.visit) { r.visit.page = t.page; visitsOut.push(r.visit); }
-      else failed[`${t.page} @${t.viewport}${t.fontSize !== 16 ? `/fs${t.fontSize}` : ''}`] = r.error ?? `HTTP ${r.status}`;
+      if (r.visit) {
+        r.visit.page = t.page;
+        visitsOut.push(r.visit);
+      } else
+        failed[`${t.page} @${t.viewport}${t.fontSize !== 16 ? `/fs${t.fontSize}` : ''}`] =
+          r.error ?? `HTTP ${r.status}`;
       if (++done % 25 === 0) log(`visits: ${done}/${tasks.length}`);
     });
 
@@ -238,11 +332,19 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     // 5. Font facts, usage, sources.
     const facts = new Map<string, FontFacts>();
     for (const [sha, b] of [...bodies].toSorted(([a], [c]) => (a < c ? -1 : 1))) {
-      try { facts.set(sha, await fontFacts(b)); } catch { /* not a font (an HTML 200 for a missing file) */ }
+      try {
+        facts.set(sha, await fontFacts(b));
+      } catch {
+        /* not a font (an HTML 200 for a missing file) */
+      }
     }
     // Faces fontphobia generated fold back into the original face (§M4 notes).
     const manifest = readManifest(root);
-    const usage = buildUsage(visitsOut, facts, { locales: o.locales, maxWords: o.maxWords ?? 10_000, generated: generatedFaces(manifest) });
+    const usage = buildUsage(visitsOut, facts, {
+      locales: o.locales,
+      maxWords: o.maxWords ?? 10_000,
+      generated: generatedFaces(manifest),
+    });
     const outputDirs = site?.dir ? [relative(opened.root, site.dir).split(sep).join('/')] : [];
     const css = detectCss(root, { outputDirs });
     const fontIndex = indexFontFiles(root, { outputDirs });
@@ -251,39 +353,114 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       const e = f.fixedId ? manifest?.entries[f.fixedId] : undefined;
       if (e) {
         let line: number | undefined;
-        try { const t = readFileSync(resolve(root, e.stylesheet), 'utf8'); const b = findBlock(t, e.id); if (b) line = t.slice(0, b.start).split('\n').length; } catch { /* gone */ }
-        sources.set(id, { adapter: e.adapter, file: e.stylesheet, line, fontFile: e.source.file, sha256: e.source.sha256, note: 'generated by fontphobia' });
+        try {
+          const t = readFileSync(resolve(root, e.stylesheet), 'utf8');
+          const b = findBlock(t, e.id);
+          if (b) line = t.slice(0, b.start).split('\n').length;
+        } catch {
+          /* gone */
+        }
+        sources.set(id, {
+          adapter: e.adapter,
+          file: e.stylesheet,
+          line,
+          fontFile: e.source.file,
+          sha256: e.source.sha256,
+          note: 'generated by fontphobia',
+        });
       } else sources.set(id, classifyFace(f, css, fontIndex));
     }
     // next/font/local (§6.3): a face whose file no stylesheet declares, loaded by a localFont() call.
-    const fromCall = (x: FaceSource) => (x.adapter === 'manual' || (x.adapter === 'next-font-local' && !x.file)) && !!x.fontFile;
+    const fromCall = (x: FaceSource) =>
+      (x.adapter === 'manual' || (x.adapter === 'next-font-local' && !x.file)) && !!x.fontFile;
     const calls = [...sources.values()].some(fromCall) ? findLocalFontCalls(root) : [];
     for (const [id, src] of sources) {
       if (!fromCall(src)) continue;
       const call = calls.find((c) => c.srcs.some((x) => x.file === src.fontFile));
-      if (call) sources.set(id, { adapter: 'next-font-local', file: call.file, line: call.line, fontFile: src.fontFile });
+      if (call)
+        sources.set(id, { adapter: 'next-font-local', file: call.file, line: call.line, fontFile: src.fontFile });
     }
-    const offDom = [...scanOffDom(root), ...findFontCheckCalls(root).filter((c) => c.fixable).map((c) => ({ file: c.file, line: c.line, kind: 'font check', text: c.call.length > 70 ? c.call.slice(0, 67) + '…' : c.call }))];
+    const offDom = [
+      ...scanOffDom(root),
+      ...findFontCheckCalls(root)
+        .filter((c) => c.fixable)
+        .map((c) => ({
+          file: c.file,
+          line: c.line,
+          kind: 'font check',
+          text: c.call.length > 70 ? c.call.slice(0, 67) + '…' : c.call,
+        })),
+    ];
 
     const covered = [...pages];
     const dynamicRoutes = fileRoutes.dynamic.filter((d) => {
-      const re = new RegExp('^' + d.split('/').map((s) => (/^\[|^\$|^:/.test(s) ? '[^/]+' : s.replace(/[.+?^${}()|\\]/g, '\\$&'))).join('/') + '/?$');
+      const re = new RegExp(
+        '^' +
+          d
+            .split('/')
+            .map((s) => (/^\[|^\$|^:/.test(s) ? '[^/]+' : s.replace(/[.+?^${}()|\\]/g, '\\$&')))
+            .join('/') +
+          '/?$',
+      );
       return !covered.some((p) => re.test(p.split('?')[0]!));
     });
     const crawl: CrawlInfo = {
       framework: { id: project.profile.id, name: project.profile.name, tier: project.profile.tier },
-      mode, source: o.url ?? (site?.dir !== undefined ? relative(opened.root, site.dir).split(sep).join('/') || '.' : site?.server?.cmd ?? ''), built,
-      build: age ? { at: new Date(age.builtAt).toISOString(), output: age.output, newer: age.newer && { file: age.newer.file, at: new Date(age.newer.mtime).toISOString(), count: age.newer.count } } : undefined,
-      pages: [...pages].toSorted(), failed: Object.fromEntries(Object.entries(failed).toSorted()), dynamicRoutes, routeSources: fileRoutes.sources,
-      visits: visitsOut.length, cache: cache ? { reused: cache.stats.hits, visited: visitsOut.length - cache.stats.hits, stored: cache.stats.stored } : undefined, viewports, fontSizes: [...fontSizes].toSorted((a, b) => a - b), durationMs: Date.now() - t0,
+      mode,
+      source:
+        o.url ??
+        (site?.dir !== undefined
+          ? relative(opened.root, site.dir).split(sep).join('/') || '.'
+          : (site?.server?.cmd ?? '')),
+      built,
+      build: age
+        ? {
+            at: new Date(age.builtAt).toISOString(),
+            output: age.output,
+            newer: age.newer && {
+              file: age.newer.file,
+              at: new Date(age.newer.mtime).toISOString(),
+              count: age.newer.count,
+            },
+          }
+        : undefined,
+      pages: [...pages].toSorted(),
+      failed: Object.fromEntries(Object.entries(failed).toSorted()),
+      dynamicRoutes,
+      routeSources: fileRoutes.sources,
+      visits: visitsOut.length,
+      cache: cache
+        ? { reused: cache.stats.hits, visited: visitsOut.length - cache.stats.hits, stored: cache.stats.stored }
+        : undefined,
+      viewports,
+      fontSizes: [...fontSizes].toSorted((a, b) => a - b),
+      durationMs: Date.now() - t0,
     };
-    const json = usageToJson(usage, {
-      fontphobia: o.fontphobiaVersion, harfbuzz: harfbuzzVersion(), chrome, framework: project.profile.id, mode,
-      viewports, fontSizes: crawl.fontSizes,
-    }, sources, {
-      declarations: css.map((s) => ({ file: s.file, line: s.line, family: s.rule.family, weight: s.rule.descriptors['font-weight'], style: s.rule.descriptors['font-style'], files: s.files.map((f) => f.path ?? f.url), manual: s.manual })),
-      offDom: offDom.length ? offDom : undefined,
-    });
+    const json = usageToJson(
+      usage,
+      {
+        fontphobia: o.fontphobiaVersion,
+        harfbuzz: harfbuzzVersion(),
+        chrome,
+        framework: project.profile.id,
+        mode,
+        viewports,
+        fontSizes: crawl.fontSizes,
+      },
+      sources,
+      {
+        declarations: css.map((s) => ({
+          file: s.file,
+          line: s.line,
+          family: s.rule.family,
+          weight: s.rule.descriptors['font-weight'],
+          style: s.rule.descriptors['font-style'],
+          files: s.files.map((f) => f.path ?? f.url),
+          manual: s.manual,
+        })),
+        offDom: offDom.length ? offDom : undefined,
+      },
+    );
     // adobe-fonts (§6.6): the kit files, from this crawl's downloads (or fetched again, in memory).
     const adobe: AdobeFaceFacts[] = [];
     for (const [id, f] of Object.entries(json.faces)) {
@@ -292,9 +469,22 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       if (!file) continue;
       let bytes = file.sha256 ? bodies.get(file.sha256) : undefined;
       if (!bytes) {
-        try { const r = await fetch(new URL(file.url, 'https://use.typekit.net/').href, { signal: AbortSignal.timeout(30_000) }); if (r.ok) bytes = new Uint8Array(await r.arrayBuffer()); } catch { /* offline */ }
+        try {
+          const r = await fetch(new URL(file.url, 'https://use.typekit.net/').href, {
+            signal: AbortSignal.timeout(30_000),
+          });
+          if (r.ok) bytes = new Uint8Array(await r.arrayBuffer());
+        } catch {
+          /* offline */
+        }
       }
-      if (bytes) { try { adobe.push(await adobeFaceFacts(f, bytes, { kit: f.sheet, id })); } catch { /* not a font */ } }
+      if (bytes) {
+        try {
+          adobe.push(await adobeFaceFacts(f, bytes, { kit: f.sheet, id }));
+        } catch {
+          /* not a font */
+        }
+      }
     }
     if (adobe.length) crawl.adobe = adobe;
     return { usage: json, crawl, offDom, project };
@@ -302,7 +492,12 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     await browser?.close().catch(() => {});
     // What build reads from the output (an eject's font files and CSS): kept from fontphobia's own
     // build in a copy, or cleared when the project's own output was crawled.
-    try { if (opened.keepOutput) opened.keepOutput(); else if (mode !== 'url') clearKeptOutput(root); } catch (e) { log(`couldn't keep the build output: ${(e as Error).message}`); }
+    try {
+      if (opened.keepOutput) opened.keepOutput();
+      else if (mode !== 'url') clearKeptOutput(root);
+    } catch (e) {
+      log(`couldn't keep the build output: ${(e as Error).message}`);
+    }
     await stop();
   }
 }

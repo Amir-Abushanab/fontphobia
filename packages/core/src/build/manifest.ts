@@ -55,7 +55,14 @@ export interface ManifestOutput {
 
 export interface ManifestEntry {
   id: string;
-  adapter: 'css' | 'fontsource' | 'google-fonts' | 'next-font-local' | 'next-font-google' | 'astro-fonts' | 'nuxt-fonts';
+  adapter:
+    | 'css'
+    | 'fontsource'
+    | 'google-fonts'
+    | 'next-font-local'
+    | 'next-font-google'
+    | 'astro-fonts'
+    | 'nuxt-fonts';
   family: string;
   /** Stylesheet (or component) holding the marked block. */
   stylesheet: string;
@@ -63,7 +70,10 @@ export interface ManifestEntry {
   declaration: string;
   source: { file: string; sha256: string; bytes: number };
   outputs: ManifestOutput[];
-  plan: Pick<FacePlan, 'features' | 'axes' | 'descriptors' | 'hinting'> & { optIns: string[]; rename?: { from: string; to: string } };
+  plan: Pick<FacePlan, 'features' | 'axes' | 'descriptors' | 'hinting'> & {
+    optIns: string[];
+    rename?: { from: string; to: string };
+  };
   /** next/font/local (§6.3): the `src`/`path` string rewritten in the call (`from` is the original). */
   next?: { file: string; from: string; to: string };
   /** Preload hrefs pointed at the core file: `from` is the original text. */
@@ -109,14 +119,27 @@ export interface Manifest {
    * fontsource ejects (§6.2), by generated stylesheet: the package CSS it copies, the imports pointed
    * at it (`from` is the original specifier), and its sha256 (revert deletes it only if unchanged).
    */
-  ejects?: Record<string, {
-    kind?: 'fontsource' | 'google' | 'next-font-google' | 'astro-fonts' | 'nuxt-fonts'; package: string; version: string; specifier: string; css: string; sha256: string; imports: { file: string; from: string; to: string }[];
-    /** google: Google's stylesheet as audited; next/astro: the CSS the framework emitted (later audits no longer see it). */ text?: string;
-    /** next/astro eject: code snippets rewritten (`from` is the original; revert swaps it back). */ snippets?: { file: string; from: string; to: string }[];
-    /** next/astro eject: base names of the files the framework preloaded. */ preloads?: string[];
-    /** next/astro eject: slices no page uses, copied as they are. */ files?: string[];
-    /** nuxt eject: the fallback families @nuxt/fonts added to stacks. */ fallbacks?: string[];
-  }>;
+  ejects?: Record<
+    string,
+    {
+      kind?: 'fontsource' | 'google' | 'next-font-google' | 'astro-fonts' | 'nuxt-fonts';
+      package: string;
+      version: string;
+      specifier: string;
+      css: string;
+      sha256: string;
+      imports: { file: string; from: string; to: string }[];
+      /** google: Google's stylesheet as audited; next/astro: the CSS the framework emitted (later audits no longer see it). */ text?: string;
+      /** next/astro eject: code snippets rewritten (`from` is the original; revert swaps it back). */ snippets?: {
+        file: string;
+        from: string;
+        to: string;
+      }[];
+      /** next/astro eject: base names of the files the framework preloaded. */ preloads?: string[];
+      /** next/astro eject: slices no page uses, copied as they are. */ files?: string[];
+      /** nuxt eject: the fallback families @nuxt/fonts added to stacks. */ fallbacks?: string[];
+    }
+  >;
   google?: GoogleUrlRecord[];
   options?: OptionsRecord[];
   /** adobe-fonts --apply-kit (§6.6): each kit's families before the first change (revert sends them back) and as applied. */
@@ -125,7 +148,11 @@ export interface Manifest {
    * they wait for the files the page uses rather than the core file alone (`from` is the original call).
    */
   fontChecks?: { file: string; from: string; to: string }[];
-  kits?: { kit: string; previous: { id: string; variations: string[]; subset: string }[]; applied: { id: string; variations: string[]; subset: string }[] }[];
+  kits?: {
+    kit: string;
+    previous: { id: string; variations: string[]; subset: string }[];
+    applied: { id: string; variations: string[]; subset: string }[];
+  }[];
   /** Features and axis values the CSS asked for when this was built ("family|feature|tag", "family|axis|wght=700"; family * = any). */
   demands?: string[];
 }
@@ -134,7 +161,8 @@ export function readManifest(root: string): Manifest | undefined {
   const f = manifestPath(root);
   if (!existsSync(f)) return undefined;
   const m = JSON.parse(readFileSync(f, 'utf8')) as Manifest;
-  if (m.version !== MANIFEST_VERSION) throw new Error(`${MANIFEST_FILE} has version ${m.version}; this fontphobia reads version ${MANIFEST_VERSION}`);
+  if (m.version !== MANIFEST_VERSION)
+    throw new Error(`${MANIFEST_FILE} has version ${m.version}; this fontphobia reads version ${MANIFEST_VERSION}`);
   return m;
 }
 
@@ -151,15 +179,20 @@ export function removeManifest(root: string) {
   rmSync(join(root, LEGACY_MANIFEST_FILE), { force: true });
   // .fontphobia/ holding nothing but its .gitignore goes too, so revert leaves the project as it found it.
   const dir = join(root, FONTPHOBIA_DIR);
-  if (existsSync(dir) && readdirSync(dir).every((n) => n === '.gitignore')) rmSync(dir, { recursive: true, force: true });
+  if (existsSync(dir) && readdirSync(dir).every((n) => n === '.gitignore'))
+    rmSync(dir, { recursive: true, force: true });
 }
 
 /** Output file name → the entry it belongs to and the original face's descriptors (audit folds them, §M4 notes). */
-export function generatedFaces(m: Manifest | undefined): Map<string, { id: string; descriptors?: Record<string, string> }> {
+export function generatedFaces(
+  m: Manifest | undefined,
+): Map<string, { id: string; descriptors?: Record<string, string> }> {
   const out = new Map<string, { id: string; descriptors?: Record<string, string> }>();
   for (const e of Object.values(m?.entries ?? {})) {
     // next/font/local entries have no rule of ours: the rule Next emits keeps its own descriptors.
-    const rule = e.declaration ? parseStylesheet(e.declaration, { syntax: syntaxOf(e.stylesheet) }).fontFaces[0] : undefined;
+    const rule = e.declaration
+      ? parseStylesheet(e.declaration, { syntax: syntaxOf(e.stylesheet) }).fontFaces[0]
+      : undefined;
     if (e.declaration && !rule) continue;
     for (const o of e.outputs) out.set(o.file.split('/').pop()!, { id: e.id, descriptors: rule?.descriptors });
   }

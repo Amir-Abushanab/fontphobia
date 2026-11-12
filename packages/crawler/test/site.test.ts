@@ -15,7 +15,8 @@ const BUILD = `node -e "const fs=require('fs');fs.mkdirSync('www',{recursive:tru
 /** A project whose source is page.txt; `built` leaves www/ from an earlier build, older than the source. */
 function project(o: { built?: boolean; script?: boolean } = {}): string {
   const root = mkdtempSync(join(tmp, 'p-'));
-  if (o.script) writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'x', private: true, scripts: { build: BUILD } }));
+  if (o.script)
+    writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'x', private: true, scripts: { build: BUILD } }));
   writeFileSync(join(root, 'page.txt'), 'old');
   if (o.built) {
     mkdirSync(join(root, 'www'));
@@ -29,7 +30,11 @@ function project(o: { built?: boolean; script?: boolean } = {}): string {
 
 async function served(root: string, o: SiteOptions, logs: string[] = []) {
   const site = await openSite(o, detectProject(root), (m) => logs.push(m));
-  try { return { text: await (await fetch(site.base)).text(), built: site.built, site }; } finally { await site.stop(); }
+  try {
+    return { text: await (await fetch(site.base)).text(), built: site.built, site };
+  } finally {
+    await site.stop();
+  }
 }
 
 describe('--dist with a build command', () => {
@@ -45,7 +50,14 @@ describe('--dist with a build command', () => {
   it('asks about a stale output and rebuilds when the caller agrees', async () => {
     const root = project({ built: true });
     let asked = 0;
-    const r = await served(root, { dist: 'www', buildCmd: BUILD, onStale: () => { asked++; return true; } });
+    const r = await served(root, {
+      dist: 'www',
+      buildCmd: BUILD,
+      onStale: () => {
+        asked++;
+        return true;
+      },
+    });
     expect(asked).toBe(1);
     expect(r.text).toBe('<p>new</p>');
     expect(r.built).toBe(BUILD);
@@ -59,7 +71,14 @@ describe('--dist with a build command', () => {
     expect(kept.text).toBe('<p>old</p>');
     expect(kept.built).toBeUndefined();
     expect(logs.join('\n')).toMatch(/page\.txt changed after www was built/);
-    const rebuilt = await served(root, { dist: 'www', buildCmd: BUILD, rebuild: true, onStale: () => { throw new Error('asked'); } });
+    const rebuilt = await served(root, {
+      dist: 'www',
+      buildCmd: BUILD,
+      rebuild: true,
+      onStale: () => {
+        throw new Error('asked');
+      },
+    });
     expect(rebuilt.text).toBe('<p>new</p>');
   });
 
@@ -77,7 +96,17 @@ describe('--dist with a build command', () => {
     await site.stop();
     expect(readFileSync(join(root, KEPT_OUTPUT, 'www/index.html'), 'utf8')).toBe('<p>old</p>');
     const logs: string[] = [];
-    const again = await served(root, { dist: 'www', buildCmd: BUILD, onStale: () => { throw new Error('asked'); } }, logs);
+    const again = await served(
+      root,
+      {
+        dist: 'www',
+        buildCmd: BUILD,
+        onStale: () => {
+          throw new Error('asked');
+        },
+      },
+      logs,
+    );
     expect(again.built).toBeUndefined();
     expect(again.site.site?.dir).toBe(join(root, KEPT_OUTPUT, 'www'));
     expect(again.text).toBe('<p>old</p>');
@@ -89,7 +118,18 @@ describe('--dist without a build command', () => {
     const root = project({ built: true });
     const logs: string[] = [];
     let asked = false;
-    const r = await served(root, { dist: 'www', rebuild: true, onStale: () => { asked = true; return true; } }, logs);
+    const r = await served(
+      root,
+      {
+        dist: 'www',
+        rebuild: true,
+        onStale: () => {
+          asked = true;
+          return true;
+        },
+      },
+      logs,
+    );
     expect(r.text).toBe('<p>old</p>');
     expect(r.built).toBeUndefined();
     expect(asked).toBe(false);
@@ -97,6 +137,8 @@ describe('--dist without a build command', () => {
   });
 
   it('says so when the output is missing', async () => {
-    await expect(openSite({ dist: 'www' }, detectProject(project()), () => {})).rejects.toThrow(/www \(--dist\) is not a directory, and there is no build command/);
+    await expect(openSite({ dist: 'www' }, detectProject(project()), () => {})).rejects.toThrow(
+      /www \(--dist\) is not a directory, and there is no build command/,
+    );
   });
 });

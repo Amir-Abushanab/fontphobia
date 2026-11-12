@@ -8,11 +8,17 @@ import type { Browser, Page } from 'playwright-core';
 
 const site = new URL('../../../site/', import.meta.url);
 const data = JSON.parse(readFileSync(new URL('demo-data.json', site), 'utf8')) as {
-  faces: { family: string; source: { url: string; bytes: number; ranges: number[][] }; outputs: { role: string; url: string; bytes: number; ranges: number[][] }[] }[];
+  faces: {
+    family: string;
+    source: { url: string; bytes: number; ranges: number[][] };
+    outputs: { role: string; url: string; bytes: number; ranges: number[][] }[];
+  }[];
 };
 
 it('the demo data matches the shipped font manifest and source coverage', async () => {
-  const embedded = readFileSync(new URL('index.html', site), 'utf8').match(/<script id="font-data" type="application\/json">([\s\S]*?)<\/script>/)?.[1];
+  const embedded = readFileSync(new URL('index.html', site), 'utf8').match(
+    /<script id="font-data" type="application\/json">([\s\S]*?)<\/script>/,
+  )?.[1];
   expect(embedded).toBeDefined();
   expect(JSON.parse(embedded!)).toEqual(data);
   const manifest = JSON.parse(readFileSync(new URL('.fontphobia/manifest.json', site), 'utf8')) as Manifest;
@@ -22,16 +28,32 @@ it('the demo data matches the shipped font manifest and source coverage', async 
     const source = await inspectFont(new Uint8Array(readFileSync(new URL(face.source.url, site))));
     expect(face.source.bytes).toBe(source.file.bytes);
     expect(face.source.ranges).toEqual(parseUnicodeRange(source.unicodes.ranges));
-    expect(face.outputs).toEqual(entry.outputs.map((o) => ({ role: o.role, url: o.url, bytes: o.bytes, ranges: parseUnicodeRange(o.unicodeRange) })));
+    expect(face.outputs).toEqual(
+      entry.outputs.map((o) => ({
+        role: o.role,
+        url: o.url,
+        bytes: o.bytes,
+        ranges: parseUnicodeRange(o.unicodeRange),
+      })),
+    );
     for (const output of face.outputs) expect(statSync(new URL(output.url, site)).size).toBe(output.bytes);
   }
 });
 
 let browser: Browser | undefined;
-try { browser = await launchChrome(); } catch (e) { if (process.env.CI) throw e; }
+try {
+  browser = await launchChrome();
+} catch (e) {
+  if (process.env.CI) throw e;
+}
 let server: StaticServer;
-beforeAll(async () => { if (browser) server = await serveStatic(fileURLToPath(site), { base: '/fontphobia/' }); });
-afterAll(async () => { await browser?.close(); await server?.close(); });
+beforeAll(async () => {
+  if (browser) server = await serveStatic(fileURLToPath(site), { base: '/fontphobia/' });
+});
+afterAll(async () => {
+  await browser?.close();
+  await server?.close();
+});
 
 const content = (page: Page, selector: string) => page.locator(selector).textContent();
 const visible = (page: Page, selector: string) => page.locator(selector).isVisible();
@@ -56,11 +78,18 @@ describe.skipIf(!browser)('the live font examples', () => {
           const output = face.outputs.find((o) => new URL(o.url, server.url).href === request.url());
           if (output) requested.push(output.role);
         });
-        await page.route('**/font-probe', (route) => route.fulfill({ contentType: 'text/html', body: `<!doctype html><meta charset="utf-8"><base href="${server.url}"><style>${fontRules}p { font-family: ${family}; }</style><p>${sample}</p>` }));
+        await page.route('**/font-probe', (route) =>
+          route.fulfill({
+            contentType: 'text/html',
+            body: `<!doctype html><meta charset="utf-8"><base href="${server.url}"><style>${fontRules}p { font-family: ${family}; }</style><p>${sample}</p>`,
+          }),
+        );
         await page.goto(new URL('font-probe', server.url).href);
         await page.evaluate(() => document.fonts.ready.then(() => {}));
         expect(requested.toSorted(), `${family}: ${sample}`).toEqual([...roles].toSorted());
-      } finally { await page.close(); }
+      } finally {
+        await page.close();
+      }
     }
   });
 
@@ -96,7 +125,9 @@ describe.skipIf(!browser)('the live font examples', () => {
       await page.setViewportSize({ width: 320, height: 700 });
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       expect(errors).toEqual([]);
-    } finally { await page.close(); }
+    } finally {
+      await page.close();
+    }
   });
 
   it('loads the original only on request and updates both real fonts with keyboard controls', async () => {
@@ -104,7 +135,9 @@ describe.skipIf(!browser)('the live font examples', () => {
     try {
       const sources = data.faces.map((face) => new URL(face.source.url, server.url).href);
       const requested: string[] = [];
-      page.on('request', (request) => { if (sources.includes(request.url())) requested.push(request.url()); });
+      page.on('request', (request) => {
+        if (sources.includes(request.url())) requested.push(request.url());
+      });
       await page.goto(server.url);
       await page.locator('#font-demo').waitFor({ state: 'visible' });
       expect(requested).toEqual([]);
@@ -113,7 +146,9 @@ describe.skipIf(!browser)('the live font examples', () => {
       await page.keyboard.press('Enter');
       await page.locator('#compare-previews').waitFor({ state: 'visible' });
       expect(requested).toEqual([sources.find((url) => url.includes('InterVariable.woff2'))]);
-      expect(await page.locator('#preview-original').evaluate((node) => getComputedStyle(node).fontFamily)).toContain('Inter Original');
+      expect(await page.locator('#preview-original').evaluate((node) => getComputedStyle(node).fontFamily)).toContain(
+        'Inter Original',
+      );
       expect(await page.evaluate(() => document.fonts.check('400 32px "Inter Original"'))).toBe(true);
       await page.locator('#demo-weight').focus();
       await page.keyboard.press('ArrowRight');
@@ -128,9 +163,13 @@ describe.skipIf(!browser)('the live font examples', () => {
       expect(await content(page, '#preview-split')).toBe('New text');
       await page.locator('#demo-fraunces').check();
       await page.locator('#compare-previews').waitFor({ state: 'visible' });
-      expect(await page.locator('#preview-original').evaluate((node) => getComputedStyle(node).fontFamily)).toContain('Fraunces Original');
+      expect(await page.locator('#preview-original').evaluate((node) => getComputedStyle(node).fontFamily)).toContain(
+        'Fraunces Original',
+      );
       expect(requested).toHaveLength(2);
-    } finally { await page.close(); }
+    } finally {
+      await page.close();
+    }
   });
 
   it('runs the playground and original-font comparison directly from a local file', async () => {
@@ -147,7 +186,9 @@ describe.skipIf(!browser)('the live font examples', () => {
       await page.locator('#compare-previews').waitFor({ state: 'visible' });
       expect(await page.evaluate(() => document.fonts.check('400 32px "Inter Original"'))).toBe(true);
       expect(errors).toEqual([]);
-    } finally { await page.close(); }
+    } finally {
+      await page.close();
+    }
   });
 
   it('keeps the walkthrough available without JavaScript or with invalid embedded data', async () => {
@@ -159,19 +200,28 @@ describe.skipIf(!browser)('the live font examples', () => {
       expect(await visible(page, '#demo-noscript')).toBe(true);
       expect(await visible(page, '#demo-message')).toBe(false);
       expect(await visible(page, '#walkthrough')).toBe(true);
-    } finally { await context.close(); }
+    } finally {
+      await context.close();
+    }
     const page = await browser!.newPage();
     try {
       await page.route(server.url, async (route) => {
         const response = await route.fetch();
-        const body = (await response.text()).replace(/(<script id="font-data" type="application\/json">)[\s\S]*?(<\/script>)/, '$1invalid JSON$2');
+        const body = (await response.text()).replace(
+          /(<script id="font-data" type="application\/json">)[\s\S]*?(<\/script>)/,
+          '$1invalid JSON$2',
+        );
         await route.fulfill({ response, body });
       });
       await page.goto(server.url);
-      await page.waitForFunction(() => document.querySelector('#demo-message')?.textContent?.includes('could not start'));
+      await page.waitForFunction(() =>
+        document.querySelector('#demo-message')?.textContent?.includes('could not start'),
+      );
       expect(await visible(page, '#demo-message')).toBe(true);
       expect(await visible(page, '#font-demo')).toBe(false);
       expect(await visible(page, '#walkthrough')).toBe(true);
-    } finally { await page.close(); }
+    } finally {
+      await page.close();
+    }
   });
 });

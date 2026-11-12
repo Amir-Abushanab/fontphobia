@@ -4,11 +4,24 @@
 // from HEAD only by fontphobia's own changes, so any other difference is content, not fonts.
 import { existsSync, realpathSync, rmSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
-import { buildCommand, detectProject, LEGACY_MANIFEST_FILE, manifestPath, MANIFEST_FILE, revertProject, type Manifest } from '@fontphobia/core';
+import {
+  buildCommand,
+  detectProject,
+  LEGACY_MANIFEST_FILE,
+  manifestPath,
+  MANIFEST_FILE,
+  revertProject,
+  type Manifest,
+} from '@fontphobia/core';
 import { openSite, type OpenSite, type SiteOptions } from './site.ts';
 import { fillWorktree, git, scratch } from './isolate.ts';
 
-export interface Baseline { site: OpenSite; dir: string; reverted: boolean; stop(): Promise<void> }
+export interface Baseline {
+  site: OpenSite;
+  dir: string;
+  reverted: boolean;
+  stop(): Promise<void>;
+}
 
 /** Paths (relative to the project root) that fontphobia's build may have changed. */
 function ownPaths(m: Manifest): (p: string) => boolean {
@@ -19,17 +32,33 @@ function ownPaths(m: Manifest): (p: string) => boolean {
     for (const p of e.preloads ?? []) exact.add(p.file);
     if (e.next) exact.add(e.next.file);
   }
-  for (const [file, ej] of Object.entries(m.ejects ?? {})) { exact.add(file); for (const i of ej.imports) exact.add(i.file); for (const x of ej.snippets ?? []) exact.add(x.file); for (const x of ej.files ?? []) exact.add(x); }
+  for (const [file, ej] of Object.entries(m.ejects ?? {})) {
+    exact.add(file);
+    for (const i of ej.imports) exact.add(i.file);
+    for (const x of ej.snippets ?? []) exact.add(x.file);
+    for (const x of ej.files ?? []) exact.add(x);
+  }
   for (const r of m.google ?? []) for (const f of r.files) exact.add(f);
   for (const r of m.options ?? []) exact.add(r.file);
   for (const c of m.fontChecks ?? []) exact.add(c.file);
   return (p) => exact.has(p) || p.startsWith('.fontphobia/');
 }
 
-export async function worktreeBaseline(root: string, manifest: Manifest, o: SiteOptions, log: (m: string) => void): Promise<Baseline> {
-  if (o.url) throw new Error('The worktree baseline builds the site itself; it can\'t be used with --url');
+export async function worktreeBaseline(
+  root: string,
+  manifest: Manifest,
+  o: SiteOptions,
+  log: (m: string) => void,
+): Promise<Baseline> {
+  if (o.url) throw new Error("The worktree baseline builds the site itself; it can't be used with --url");
   let top: string;
-  try { top = (await git(root, ['rev-parse', '--show-toplevel'])).trim(); } catch { throw new Error(`${root} isn't in a git repository; the worktree baseline builds HEAD. Use the overlay baseline (the default for css).`); }
+  try {
+    top = (await git(root, ['rev-parse', '--show-toplevel'])).trim();
+  } catch {
+    throw new Error(
+      `${root} isn't in a git repository; the worktree baseline builds HEAD. Use the overlay baseline (the default for css).`,
+    );
+  }
   // git reports the real, long path (macOS: /var is /private/var; Windows: no 8.3 names like RUNNER~1).
   const rel = relative(realpathSync.native(top), realpathSync.native(root)).split(sep).join('/');
   const mine = ownPaths(manifest);
@@ -45,7 +74,9 @@ export async function worktreeBaseline(root: string, manifest: Manifest, o: Site
     if (inProject === undefined || !mine(inProject)) other.push(path);
   }
   if (other.length) {
-    throw new Error(`The worktree baseline compares HEAD with your working tree, which has changes besides fontphobia's: ${other.slice(0, 5).join(', ')}${other.length > 5 ? ` and ${other.length - 5} more` : ''}. Commit or stash them first.`);
+    throw new Error(
+      `The worktree baseline compares HEAD with your working tree, which has changes besides fontphobia's: ${other.slice(0, 5).join(', ')}${other.length > 5 ? ` and ${other.length - 5} more` : ''}. Commit or stash them first.`,
+    );
   }
 
   const dir = scratch(root, 'baseline-');
@@ -57,22 +88,46 @@ export async function worktreeBaseline(root: string, manifest: Manifest, o: Site
   };
   try {
     const wroot = rel ? join(dir, rel) : dir;
-    if (!existsSync(wroot)) throw new Error(`${root} isn't in HEAD (not committed, or ignored by git); the worktree baseline builds HEAD. Use the overlay baseline.`);
+    if (!existsSync(wroot))
+      throw new Error(
+        `${root} isn't in HEAD (not committed, or ignored by git); the worktree baseline builds HEAD. Use the overlay baseline.`,
+      );
     // What the checkout has besides HEAD's files (dependencies, .env, submodules), as the build in a copy gets it.
     await fillWorktree(top, dir, rel);
     // HEAD may already have fontphobia's edits committed: put the original declarations back there.
     let reverted = false;
     if (existsSync(manifestPath(wroot))) {
       const r = revertProject(wroot, { write: true });
-      if (r.problems.length) throw new Error(`Couldn't revert fontphobia's edits in the baseline: ${r.problems.join('; ')}`);
+      if (r.problems.length)
+        throw new Error(`Couldn't revert fontphobia's edits in the baseline: ${r.problems.join('; ')}`);
       reverted = true;
     }
     const project = detectProject(wroot);
     const cmd = o.buildCmd ?? buildCommand(project);
-    log(`baseline: HEAD in a git worktree${reverted ? ', fontphobia\'s committed edits reverted' : ''}${cmd ? `, building with ${cmd}` : ''}`);
+    log(
+      `baseline: HEAD in a git worktree${reverted ? ", fontphobia's committed edits reverted" : ''}${cmd ? `, building with ${cmd}` : ''}`,
+    );
     // Always built when there's a command (a fresh checkout's times say nothing): --dist only says where the output goes.
-    const site = await openSite({ dist: o.dist, buildCmd: o.buildCmd, startCmd: o.startCmd, rebuild: !!cmd && (!!o.dist || !o.startCmd), inPlace: true }, project, (m) => log(`baseline: ${m}`));
-    return { site, dir: wroot, reverted, stop: async () => { await site.stop(); await cleanup(); } };
+    const site = await openSite(
+      {
+        dist: o.dist,
+        buildCmd: o.buildCmd,
+        startCmd: o.startCmd,
+        rebuild: !!cmd && (!!o.dist || !o.startCmd),
+        inPlace: true,
+      },
+      project,
+      (m) => log(`baseline: ${m}`),
+    );
+    return {
+      site,
+      dir: wroot,
+      reverted,
+      stop: async () => {
+        await site.stop();
+        await cleanup();
+      },
+    };
   } catch (e) {
     await cleanup();
     throw e;

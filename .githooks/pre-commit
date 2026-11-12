@@ -1,0 +1,32 @@
+#!/bin/sh
+# Format and lint what is being committed, and nothing else.
+#
+# `pnpm check` stays the gate in CI. Here it would make every commit wait on the typecheck, knip
+# and dependency-cruiser, which is the kind of hook people skip with --no-verify. Checking only
+# the staged files takes about a second.
+#
+# Left out: what the formatter does not own. Fixtures, spikes, examples and the published site
+# are other projects or byte-exact inputs; changelogs, changesets, the CLDR data and the golden
+# hashes are written by tools.
+set -eu
+
+files=$(git diff --cached --name-only --diff-filter=ACMR -- . \
+  ':!fixtures/' ':!spikes/' ':!examples/' ':!site/' ':!pnpm-lock.yaml' ':!AGENTS.md' \
+  ':!.changeset/*.md' ':!**/CHANGELOG.md' ':!packages/*/src/data/' ':!**/__golden__/')
+[ -n "$files" ] || exit 0
+
+# Only the file types oxfmt formats; anything else (LICENSE, fonts, this hook) is left alone.
+formatted=$(printf '%s\n' "$files" | grep -E '\.(m?[jt]sx?|c[jt]s|jsonc?|md|ya?ml|css|html)$' || true)
+if [ -n "$formatted" ]; then
+  # shellcheck disable=SC2086
+  pnpm exec oxfmt --check $formatted || {
+    echo "pre-commit: run \`pnpm format\` (or \`pnpm exec oxfmt <file>\`) and stage the result." >&2
+    exit 1
+  }
+fi
+
+code=$(printf '%s\n' "$files" | grep -E '\.(m?[jt]sx?|c[jt]s)$' || true)
+if [ -n "$code" ]; then
+  # shellcheck disable=SC2086
+  pnpm exec oxlint $code
+fi

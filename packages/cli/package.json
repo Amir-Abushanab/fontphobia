@@ -3,26 +3,25 @@
   "version": "0.2.0",
   "description": "Shrink a site's web fonts without changing how anything renders.",
   "keywords": [
-    "fonts",
-    "web fonts",
-    "subset",
-    "woff2",
-    "unicode-range",
-    "performance",
-    "harfbuzz",
     "cli",
-    "tanstack-intent"
+    "fonts",
+    "harfbuzz",
+    "performance",
+    "subset",
+    "tanstack-intent",
+    "unicode-range",
+    "web fonts",
+    "woff2"
   ],
-  "author": "Amir Abushanab",
-  "license": "MIT",
   "homepage": "https://github.com/Amir-Abushanab/fontphobia#readme",
+  "bugs": "https://github.com/Amir-Abushanab/fontphobia/issues",
+  "license": "MIT",
+  "author": "Amir Abushanab",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Amir-Abushanab/fontphobia.git",
     "directory": "packages/cli"
   },
-  "bugs": "https://github.com/Amir-Abushanab/fontphobia/issues",
-  "type": "module",
   "bin": {
     "fontphobia": "./dist/cli.mjs"
   },
@@ -30,27 +29,7 @@
     "dist",
     "skills"
   ],
-  "engines": {
-    "node": ">=22"
-  },
-  "scripts": {
-    "build": "tsdown",
-    "dev": "node src/cli.ts",
-    "prepack": "pnpm run build && node -e \"for (const f of ['README.md', 'LICENSE']) require('fs').copyFileSync('../../' + f, f)\""
-  },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
-  "devDependencies": {
-    "@fontphobia/core": "workspace:*",
-    "@fontphobia/crawler": "workspace:*",
-    "cac": "7.1.0",
-    "tsdown": "0.23.4"
-  },
-  "dependencies": {
-    "playwright-core": "1.64.1"
-  },
+  "type": "module",
   "exports": {
     ".": "./dist/index.mjs",
     "./vite": "./dist/vite.mjs",
@@ -64,5 +43,26 @@
     "./rsbuild": "./dist/rsbuild.mjs",
     "./rspack": "./dist/rspack.mjs",
     "./webpack": "./dist/webpack.mjs"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "node src/cli.ts",
+    "prepack": "pnpm run build && node -e \"for (const f of ['README.md', 'LICENSE']) require('fs').copyFileSync('../../' + f, f)\""
+  },
+  "dependencies": {
+    "playwright-core": "1.64.1"
+  },
+  "devDependencies": {
+    "@fontphobia/core": "workspace:*",
+    "@fontphobia/crawler": "workspace:*",
+    "cac": "7.1.0",
+    "tsdown": "0.23.4"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

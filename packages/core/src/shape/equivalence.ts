@@ -23,9 +23,19 @@ export type Verdict =
   | { kind: 'rounding'; maxPointDelta: number; maxAdvanceDelta: number; widthDelta: number }
   | { kind: 'regression'; reason: string };
 
-export interface CaseResult { case: ShapeCase; verdict: Verdict }
+export interface CaseResult {
+  case: ShapeCase;
+  verdict: Verdict;
+}
 
-interface Glyph { outline: number[]; ax: number; ay: number; dx: number; dy: number; cluster: number }
+interface Glyph {
+  outline: number[];
+  ax: number;
+  ay: number;
+  dx: number;
+  dy: number;
+  cluster: number;
+}
 
 const ROUNDING_POINT = 2.5;
 const ROUNDING_ADVANCE = 1;
@@ -43,7 +53,10 @@ class Shaper {
 
   shape(text: string, c: ShapeCase, clusterBase: number, clusterOverride?: number): Glyph[] {
     const vk = varKey(c.variations);
-    if (vk !== this.lastVar) { setVariations(this.f.font, c.variations); this.lastVar = vk; }
+    if (vk !== this.lastVar) {
+      setVariations(this.f.font, c.variations);
+      this.lastVar = vk;
+    }
     const buf = new hb.Buffer();
     buf.addText(text);
     buf.guessSegmentProperties();
@@ -56,7 +69,10 @@ class Shaper {
     const pos = buf.getGlyphPositions();
     return buf.getGlyphInfos().map((g, i) => ({
       outline: this.outline(g.codepoint, vk),
-      ax: pos[i]!.xAdvance, ay: pos[i]!.yAdvance, dx: pos[i]!.xOffset, dy: pos[i]!.yOffset,
+      ax: pos[i]!.xAdvance,
+      ay: pos[i]!.yAdvance,
+      dx: pos[i]!.xOffset,
+      dy: pos[i]!.yOffset,
       cluster: clusterOverride ?? clusterBase + g.cluster,
     }));
   }
@@ -73,7 +89,11 @@ class Shaper {
 }
 
 /** Order-independent of direction: stable sort by cluster. */
-const byCluster = (g: Glyph[]) => g.map((x, i) => [x, i] as const).toSorted((a, b) => a[0].cluster - b[0].cluster || a[1] - b[1]).map(([x]) => x);
+const byCluster = (g: Glyph[]) =>
+  g
+    .map((x, i) => [x, i] as const)
+    .toSorted((a, b) => a[0].cluster - b[0].cluster || a[1] - b[1])
+    .map(([x]) => x);
 
 export function checkShaping(source: Uint8Array, files: OutputFile[], cases: ShapeCase[]): CaseResult[] {
   const src = new Shaper(loadFont(source));
@@ -96,8 +116,16 @@ export function checkShaping(source: Uint8Array, files: OutputFile[], cases: Sha
         const nfc = segment.normalize('NFC');
         file = nfc !== segment ? covers(nfc) : -1;
         if (file < 0) {
-          const miss = [...segment].map((ch) => ch.codePointAt(0)!).filter((cp) => !outs.some((o) => inRanges(o.ranges, cp)));
-          return { case: c, verdict: { kind: 'regression', reason: `no output file covers ${miss.map(hex).join(' ') || hex(segment.codePointAt(0)!)}` } };
+          const miss = [...segment]
+            .map((ch) => ch.codePointAt(0)!)
+            .filter((cp) => !outs.some((o) => inRanges(o.ranges, cp)));
+          return {
+            case: c,
+            verdict: {
+              kind: 'regression',
+              reason: `no output file covers ${miss.map(hex).join(' ') || hex(segment.codePointAt(0)!)}`,
+            },
+          };
         }
         text = nfc;
         override = index;
@@ -114,22 +142,42 @@ export function checkShaping(source: Uint8Array, files: OutputFile[], cases: Sha
 
 function compare(a: Glyph[], b: Glyph[]): Verdict {
   if (a.length !== b.length) return { kind: 'regression', reason: `glyph count ${a.length} → ${b.length}` };
-  let maxPoint = 0, maxAdv = 0, exact = true;
-  let wa = 0, wb = 0;
+  let maxPoint = 0,
+    maxAdv = 0,
+    exact = true;
+  let wa = 0,
+    wb = 0;
   for (let i = 0; i < a.length; i++) {
-    const x = a[i]!, y = b[i]!;
-    wa += x.ax; wb += y.ax;
-    if (x.cluster !== y.cluster) return { kind: 'regression', reason: `glyph ${i}: cluster ${x.cluster} → ${y.cluster}` };
-    if (x.outline.length !== y.outline.length) return { kind: 'regression', reason: `glyph ${i} (cluster ${x.cluster}): different glyph` };
+    const x = a[i]!,
+      y = b[i]!;
+    wa += x.ax;
+    wb += y.ax;
+    if (x.cluster !== y.cluster)
+      return { kind: 'regression', reason: `glyph ${i}: cluster ${x.cluster} → ${y.cluster}` };
+    if (x.outline.length !== y.outline.length)
+      return { kind: 'regression', reason: `glyph ${i} (cluster ${x.cluster}): different glyph` };
     let glyphMax = 0;
     for (let k = 0; k < x.outline.length; k++) glyphMax = Math.max(glyphMax, Math.abs(x.outline[k]! - y.outline[k]!));
-    if (glyphMax > ROUNDING_POINT) return { kind: 'regression', reason: `glyph ${i} (cluster ${x.cluster}): different glyph (outline moved ${glyphMax.toFixed(1)} units)` };
-    if (glyphMax) { exact = false; maxPoint = Math.max(maxPoint, glyphMax); }
-    for (const [p, q, what] of [[x.ax, y.ax, 'advance'], [x.ay, y.ay, 'advance'], [x.dx, y.dx, 'offset'], [x.dy, y.dy, 'offset']] as const) {
+    if (glyphMax > ROUNDING_POINT)
+      return {
+        kind: 'regression',
+        reason: `glyph ${i} (cluster ${x.cluster}): different glyph (outline moved ${glyphMax.toFixed(1)} units)`,
+      };
+    if (glyphMax) {
+      exact = false;
+      maxPoint = Math.max(maxPoint, glyphMax);
+    }
+    for (const [p, q, what] of [
+      [x.ax, y.ax, 'advance'],
+      [x.ay, y.ay, 'advance'],
+      [x.dx, y.dx, 'offset'],
+      [x.dy, y.dy, 'offset'],
+    ] as const) {
       const d = Math.abs(p - q);
       if (!d) continue;
       exact = false;
-      if (what === 'offset' || d > ROUNDING_ADVANCE) return { kind: 'regression', reason: `glyph ${i} (cluster ${x.cluster}): ${what} ${p} → ${q}` };
+      if (what === 'offset' || d > ROUNDING_ADVANCE)
+        return { kind: 'regression', reason: `glyph ${i} (cluster ${x.cluster}): ${what} ${p} → ${q}` };
       maxAdv = Math.max(maxAdv, d);
     }
   }

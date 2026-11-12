@@ -9,13 +9,19 @@ export function detectFormat(buf: Uint8Array): FontFormat {
   if (buf.byteLength < 4) throw new Error('Not a font: too short');
   const sig = untag(view(buf).getUint32(0));
   switch (sig) {
-    case 'wOF2': return 'woff2';
-    case 'wOFF': return 'woff';
-    case 'OTTO': return 'opentype';
-    case 'ttcf': return 'collection';
+    case 'wOF2':
+      return 'woff2';
+    case 'wOFF':
+      return 'woff';
+    case 'OTTO':
+      return 'opentype';
+    case 'ttcf':
+      return 'collection';
     case 'true':
-    case '\0\x01\0\0': return 'truetype';
-    default: throw new Error(`Not a font: unknown signature ${JSON.stringify(sig)}`);
+    case '\0\x01\0\0':
+      return 'truetype';
+    default:
+      throw new Error(`Not a font: unknown signature ${JSON.stringify(sig)}`);
   }
 }
 
@@ -63,10 +69,14 @@ function decodeWoff1(buf: Uint8Array): Uint8Array {
 export async function toSfnt(buf: Uint8Array): Promise<Uint8Array> {
   const format = detectFormat(buf);
   switch (format) {
-    case 'woff2': return woff2Decompress(buf);
-    case 'woff': return decodeWoff1(buf);
+    case 'woff2':
+      return woff2Decompress(buf);
+    case 'woff':
+      return decodeWoff1(buf);
     case 'truetype':
-    case 'opentype': return buf;
-    case 'collection': throw new Error('Font collections (.ttc) are not supported');
+    case 'opentype':
+      return buf;
+    case 'collection':
+      throw new Error('Font collections (.ttc) are not supported');
   }
 }

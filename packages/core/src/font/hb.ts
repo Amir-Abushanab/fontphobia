@@ -66,7 +66,11 @@ export function loadFont(sfnt: Uint8Array): LoadedFont {
 }
 
 export function setVariations(font: hb.Font, coords: Record<string, number> | undefined): void {
-  font.setVariations(Object.entries(coords ?? {}).toSorted(([a], [b]) => (a < b ? -1 : 1)).map(([t, v]) => new hb.Variation(t, v)));
+  font.setVariations(
+    Object.entries(coords ?? {})
+      .toSorted(([a], [b]) => (a < b ? -1 : 1))
+      .map(([t, v]) => new hb.Variation(t, v)),
+  );
 }
 
 export const harfbuzzVersion = (): string => hb.versionString();

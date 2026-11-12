@@ -21,15 +21,15 @@ on:
     # being here: when main moves under them, the push's own run is guaranteed to be queued.
     # README.md and docs/ci.md are here because `pnpm run version` rewrites their version pins.
     paths:
-      - "packages/**"
-      - ".changeset/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "scripts/**"
-      - "README.md"
-      - "docs/ci.md"
-      - ".github/workflows/version.yml"
+      - 'packages/**'
+      - '.changeset/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'scripts/**'
+      - 'README.md'
+      - 'docs/ci.md'
+      - '.github/workflows/version.yml'
   workflow_dispatch: {}
 
 # One at a time, so two runs never force-push the version branch over each other. No
@@ -86,9 +86,9 @@ jobs:
           # Never runs: this step only runs with changesets present, which is version mode. It is
           # set because the action words the PR body from it ("will be published to npm
           # automatically", which release.yml makes true). If it ever did run, `false` fails.
-          publish-script: "false"
-          commit-message: "chore: version packages"
-          pr-title: "chore: version packages"
+          publish-script: 'false'
+          commit-message: 'chore: version packages'
+          pr-title: 'chore: version packages'
         env:
           # @changesets/changelog-github reads process.env.GITHUB_TOKEN to resolve each commit to
           # a PR and author for the changelog.

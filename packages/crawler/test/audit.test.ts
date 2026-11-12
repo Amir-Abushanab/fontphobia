@@ -5,7 +5,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { buildProject, canonicalJson, checkUsage, codePointsOf, parseUnicodeRange, type UsageFileJson } from '@fontphobia/core';
+import {
+  buildProject,
+  canonicalJson,
+  checkUsage,
+  codePointsOf,
+  parseUnicodeRange,
+  type UsageFileJson,
+} from '@fontphobia/core';
 import { audit, launchChrome, resolveStatic, startServer, type AuditResult } from '../src/index.ts';
 import { writeGoldenUsage } from './golden.ts';
 
@@ -14,7 +21,9 @@ const tmp = mkdtempSync(join(tmpdir(), 'fontphobia-crawl-'));
 afterAll(() => rmSync(tmp, { recursive: true, force: true }));
 
 let chrome = true;
-try { await (await launchChrome()).close(); } catch (e) {
+try {
+  await (await launchChrome()).close();
+} catch (e) {
   if (process.env.CI) throw e;
   chrome = false;
 }
@@ -22,11 +31,24 @@ try { await (await launchChrome()).close(); } catch (e) {
 const site = join(tmp, 'static-css');
 cpSync(join(repo, 'fixtures/sites/static-css'), site, { recursive: true });
 mkdirSync(join(site, 'fonts'));
-for (const f of ['InterVariable.ttf', 'DejaVuSans.ttf', 'Inter-Regular-hinted.woff2']) cpSync(join(repo, 'fixtures/fonts', f), join(site, 'fonts', f));
+for (const f of ['InterVariable.ttf', 'DejaVuSans.ttf', 'Inter-Regular-hinted.woff2'])
+  cpSync(join(repo, 'fixtures/fonts', f), join(site, 'fonts', f));
 
-type Face = { chars: string; inserted: Record<string, string>; rendered: { weight?: number[]; axes?: Record<string, number[]> }; declared: { weight?: number[] }; features: string[]; editable?: boolean; source: { adapter: string; line?: number }; pages: string[] };
+type Face = {
+  chars: string;
+  inserted: Record<string, string>;
+  rendered: { weight?: number[]; axes?: Record<string, number[]> };
+  declared: { weight?: number[] };
+  features: string[];
+  editable?: boolean;
+  source: { adapter: string; line?: number };
+  pages: string[];
+};
 const set = (ranges: string | undefined) => new Set(ranges ? [...codePointsOf(parseUnicodeRange(ranges))] : []);
-const has = (ranges: string | undefined, chars: string) => { const s = set(ranges); return [...chars].filter((c) => !s.has(c.codePointAt(0)!)); };
+const has = (ranges: string | undefined, chars: string) => {
+  const s = set(ranges);
+  return [...chars].filter((c) => !s.has(c.codePointAt(0)!));
+};
 
 describe.skipIf(!chrome)('audit: static css fixture', () => {
   let r: AuditResult;
@@ -82,7 +104,16 @@ describe.skipIf(!chrome)('audit: static css fixture', () => {
   it('collects declared values, features and axes (§7.5)', () => {
     const n = faces['inter-100-900-normal']!;
     expect(n.declared.weight).toEqual(expect.arrayContaining([300, 400, 500, 600, 650, 800, 900]));
-    expect(Object.keys(n.inserted).filter((k) => k.startsWith('declared')).toSorted()).toEqual(['declared :hover', 'declared @keyframes pulse', 'declared @media (min-width: 40em)', 'declared @media print']);
+    expect(
+      Object.keys(n.inserted)
+        .filter((k) => k.startsWith('declared'))
+        .toSorted(),
+    ).toEqual([
+      'declared :hover',
+      'declared @keyframes pulse',
+      'declared @media (min-width: 40em)',
+      'declared @media print',
+    ]);
     expect(n.features).toEqual(expect.arrayContaining(['ss01', 'tnum']));
     const opsz = n.rendered.axes!.opsz!;
     expect(Math.min(...opsz)).toBe(14);
@@ -91,7 +122,10 @@ describe.skipIf(!chrome)('audit: static css fixture', () => {
   });
 
   it('reports bytes and preloads per page', () => {
-    const home = r.usage.pages['/'] as { bytes: number; preloads: { href: string; used: boolean; crossorigin: string | null }[] };
+    const home = r.usage.pages['/'] as {
+      bytes: number;
+      preloads: { href: string; used: boolean; crossorigin: string | null }[];
+    };
     expect(home.bytes).toBeGreaterThan(800_000);
     expect(home.preloads).toEqual([
       { href: '/fonts/Inter-Regular-hinted.woff2', crossorigin: null, type: 'font/woff2', used: false },
@@ -118,9 +152,12 @@ describe('static server', () => {
 describe('server mode', () => {
   it('starts a server on $PORT, or finds the URL it prints, and stops it', async () => {
     const script = join(tmp, 'srv.mjs');
-    writeFileSync(script, `import http from 'node:http';
+    writeFileSync(
+      script,
+      `import http from 'node:http';
 const port = process.argv[2] === 'own' ? 0 : Number(process.env.PORT);
-const s = http.createServer((q, r) => r.end('ok')).listen(port, '127.0.0.1', () => console.log('Listening on http://localhost:' + s.address().port + '/'));`);
+const s = http.createServer((q, r) => r.end('ok')).listen(port, '127.0.0.1', () => console.log('Listening on http://localhost:' + s.address().port + '/'));`,
+    );
     for (const mode of ['port', 'own']) {
       const s = await startServer(`node "${script}" ${mode}`, { cwd: tmp });
       expect(await (await fetch(s.url)).text()).toBe('ok');
@@ -129,10 +166,11 @@ const s = http.createServer((q, r) => r.end('ok')).listen(port, '127.0.0.1', () 
     }
   });
   it('reports a server that exits', async () => {
-    await expect(startServer('node -e "console.log(\'boom\'); process.exit(3)"', { cwd: tmp })).rejects.toThrow(/exited with code 3[\s\S]*boom/);
+    await expect(startServer('node -e "console.log(\'boom\'); process.exit(3)"', { cwd: tmp })).rejects.toThrow(
+      /exited with code 3[\s\S]*boom/,
+    );
   });
 });
-
 
 describe.skipIf(!chrome)('stale builds', () => {
   it('asks before crawling output older than the source, and rebuilds on yes', async () => {
@@ -140,7 +178,10 @@ describe.skipIf(!chrome)('stale builds', () => {
     mkdirSync(join(root, 'src'), { recursive: true });
     mkdirSync(join(root, 'dist'));
     writeFileSync(join(root, 'package.json'), '{"devDependencies":{"vite":"8"},"scripts":{"build":"node build.mjs"}}');
-    writeFileSync(join(root, 'build.mjs'), `import fs from 'node:fs'; fs.writeFileSync('dist/index.html', '<p>' + fs.readFileSync('src/text.txt', 'utf8'));`);
+    writeFileSync(
+      join(root, 'build.mjs'),
+      `import fs from 'node:fs'; fs.writeFileSync('dist/index.html', '<p>' + fs.readFileSync('src/text.txt', 'utf8'));`,
+    );
     writeFileSync(join(root, 'src/text.txt'), 'old');
     writeFileSync(join(root, 'dist/index.html'), '<p>old');
     const t = Date.now() / 1000;
@@ -149,7 +190,13 @@ describe.skipIf(!chrome)('stale builds', () => {
     const opts = { root, fontphobiaVersion: 'test', fontSizeSweep: false, viewports: [1280] };
 
     let asked = 0;
-    const kept = await audit({ ...opts, onStale: () => { asked++; return false; } });
+    const kept = await audit({
+      ...opts,
+      onStale: () => {
+        asked++;
+        return false;
+      },
+    });
     expect(asked).toBe(1);
     expect(kept.crawl.built).toBeUndefined();
     expect(kept.crawl.build).toMatchObject({ output: 'dist', newer: { file: 'src/text.txt', count: 1 } });
@@ -158,7 +205,12 @@ describe.skipIf(!chrome)('stale builds', () => {
     expect(rebuilt.crawl.built).toBe('npm run build');
     expect(rebuilt.crawl.build).toBeUndefined();
     // Fresh output now: no question.
-    const again = await audit({ ...opts, onStale: () => { throw new Error('asked about a fresh build'); } });
+    const again = await audit({
+      ...opts,
+      onStale: () => {
+        throw new Error('asked about a fresh build');
+      },
+    });
     expect(again.crawl.build?.newer).toBeUndefined();
   }, 120_000);
 });
@@ -181,7 +233,11 @@ describe.skipIf(!chrome)('incremental audit (M3.5)', () => {
     writeFileSync(about, readFileSync(about, 'utf8').replace('Only ASCII here', 'Only ASCII here, and ñ'));
     const a3 = await audit(opts);
     const aboutVisits = a1.usage.pages['/about/']!.visits.length;
-    expect(a3.crawl.cache).toEqual({ reused: a1.crawl.visits - aboutVisits, visited: aboutVisits, stored: aboutVisits });
+    expect(a3.crawl.cache).toEqual({
+      reused: a1.crawl.visits - aboutVisits,
+      visited: aboutVisits,
+      stored: aboutVisits,
+    });
     const full = await audit({ ...opts, cache: false });
     expect(full.crawl.cache).toBeUndefined();
     expect(canonicalJson(a3.usage)).toBe(canonicalJson(full.usage));
@@ -208,7 +264,8 @@ describe.skipIf(!chrome)('after build --write (M4)', () => {
     for (const [p, pg] of Object.entries(u2.pages)) {
       for (const f of pg.fonts) {
         expect(f.status, `${p} ${f.url}`).toBeLessThan(400);
-        if (f.faces.some((id) => id.startsWith('inter') || id.startsWith('deja'))) expect(f.url).toMatch(/\.(core|ext|rest)\.[0-9a-f]{8}\.woff2$/);
+        if (f.faces.some((id) => id.startsWith('inter') || id.startsWith('deja')))
+          expect(f.url).toMatch(/\.(core|ext|rest)\.[0-9a-f]{8}\.woff2$/);
       }
       expect(pg.bytes).toBeLessThan(u1.pages[p]!.bytes);
     }
@@ -228,7 +285,9 @@ describe.skipIf(!chrome)('after build --write (M4)', () => {
     writeFileSync(about, readFileSync(about, 'utf8').replace('Only ASCII here', 'Only ASCII here, Жизнь'));
     const u3 = (await audit(opts)).usage as unknown as UsageFileJson;
     const exact = await checkUsage(root, u3);
-    expect(exact.issues.map((i) => `${i.severity} ${i.message}`)).toEqual([expect.stringMatching(/^warning Inter: Ж \(U\+0416\), .* drawn on \d+ page\(s\) came from the rest file$/)]);
+    expect(exact.issues.map((i) => `${i.severity} ${i.message}`)).toEqual([
+      expect.stringMatching(/^warning Inter: Ж \(U\+0416\), .* drawn on \d+ page\(s\) came from the rest file$/),
+    ]);
     expect(exact.ok).toBe(true);
     expect((await checkUsage(root, u3, { strict: true })).ok).toBe(false);
   }, 300_000);

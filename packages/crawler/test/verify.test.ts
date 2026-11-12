@@ -7,7 +7,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import { buildProject, createOverlay, parseStylesheet, readManifest, type Mutation, type UsageFileJson } from '@fontphobia/core';
+import {
+  buildProject,
+  createOverlay,
+  parseStylesheet,
+  readManifest,
+  type Mutation,
+  type UsageFileJson,
+} from '@fontphobia/core';
 import { findRuntime, formatVerify, launchChrome, verify, verifyMarkdown, type Comparison } from '../src/index.ts';
 import { firefox, webkit } from 'playwright-core';
 
@@ -17,12 +24,21 @@ afterAll(() => rmSync(tmp, { recursive: true, force: true }));
 const usage = JSON.parse(readFileSync(join(repo, 'fixtures/plans/static-css/usage.json'), 'utf8')) as UsageFileJson;
 
 let chrome = true;
-try { await (await launchChrome()).close(); } catch (e) {
+try {
+  await (await launchChrome()).close();
+} catch (e) {
   if (process.env.CI) throw e;
   chrome = false;
 }
 
-const starts = async (t: typeof webkit) => { try { await (await t.launch()).close(); return true; } catch { return false; } };
+const starts = async (t: typeof webkit) => {
+  try {
+    await (await t.launch()).close();
+    return true;
+  } catch {
+    return false;
+  }
+};
 const hostEngines = { webkit: await starts(webkit), firefox: await starts(firefox) };
 // Linux engines need a container runtime (Apple container, Docker or Podman); CI's sites job has Docker.
 const runtime = chrome && (process.env.FONTPHOBIA_LINUX || !process.env.CI) ? await findRuntime() : undefined;
@@ -35,16 +51,23 @@ const outDir = (name: string) => (process.env.VERIFY_ARTIFACTS ? join(process.en
 const settled = (c: Comparison) => (c.class === 'flaky' ? 'identical' : c.class);
 const differences = (r: Awaited<ReturnType<typeof verify>>) => {
   // Logged, so a CI run says where the noise was and how big.
-  for (const c of r.browser!.comparisons) if (c.class === 'flaky') console.warn(`flaky: ${c.browser} ${c.page} ${c.viewport} DPR ${c.dpr} ${c.pixels}px: ${c.causes.join('; ')}`);
-  return r.browser!.comparisons.filter((c) => settled(c) !== 'identical' && c.class !== 'unrelated')
-    .map((c) => `${c.browser} ${c.page} ${c.viewport} DPR ${c.dpr} ${c.class} ${c.pixels}px: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`);
+  for (const c of r.browser!.comparisons)
+    if (c.class === 'flaky')
+      console.warn(`flaky: ${c.browser} ${c.page} ${c.viewport} DPR ${c.dpr} ${c.pixels}px: ${c.causes.join('; ')}`);
+  return r
+    .browser!.comparisons.filter((c) => settled(c) !== 'identical' && c.class !== 'unrelated')
+    .map(
+      (c) =>
+        `${c.browser} ${c.page} ${c.viewport} DPR ${c.dpr} ${c.class} ${c.pixels}px: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`,
+    );
 };
 
 function copy(name: string) {
   const root = join(tmp, name);
   cpSync(join(repo, 'fixtures/sites/static-css'), root, { recursive: true });
   mkdirSync(join(root, 'fonts'));
-  for (const f of ['InterVariable.ttf', 'DejaVuSans.ttf', 'Inter-Regular-hinted.woff2']) cpSync(join(repo, 'fixtures/fonts', f), join(root, 'fonts', f));
+  for (const f of ['InterVariable.ttf', 'DejaVuSans.ttf', 'Inter-Regular-hinted.woff2'])
+    cpSync(join(repo, 'fixtures/fonts', f), join(root, 'fonts', f));
   return root;
 }
 async function built(name: string, mutation?: Mutation) {
@@ -58,13 +81,25 @@ describe('overlay (§10.3): the built CSS and HTML with the original fonts swapp
     const root = await built('overlay');
     const o = createOverlay(readManifest(root)!);
     const css = o.restoreCss(readFileSync(join(root, 'styles.css'), 'utf8'))!;
-    const original = parseStylesheet(readFileSync(join(repo, 'fixtures/sites/static-css/styles.css'), 'utf8')).fontFaces;
+    const original = parseStylesheet(
+      readFileSync(join(repo, 'fixtures/sites/static-css/styles.css'), 'utf8'),
+    ).fontFaces;
     const restored = parseStylesheet(css).fontFaces;
-    expect(restored.map((f) => [f.family, f.descriptors['font-style']])).toEqual(original.map((f) => [f.family, f.descriptors['font-style']]));
-    expect(restored.slice(0, 3).map((f) => f.src[0]!.url)).toEqual([0, 1, 2].map((i) => expect.stringMatching(new RegExp(`^/__fontphobia/before/[0-9a-f]{16}/${i === 2 ? 'DejaVuSans' : 'InterVariable'}\\.ttf$`))));
+    expect(restored.map((f) => [f.family, f.descriptors['font-style']])).toEqual(
+      original.map((f) => [f.family, f.descriptors['font-style']]),
+    );
+    expect(restored.slice(0, 3).map((f) => f.src[0]!.url)).toEqual(
+      [0, 1, 2].map((i) =>
+        expect.stringMatching(
+          new RegExp(`^/__fontphobia/before/[0-9a-f]{16}/${i === 2 ? 'DejaVuSans' : 'InterVariable'}\\.ttf$`),
+        ),
+      ),
+    );
     expect(restored[3]!.src[0]!.url).toBe('./fonts/Inter-Regular-hinted.woff2'); // never generated
     const html = o.restoreHtml(readFileSync(join(root, 'index.html'), 'utf8'))!;
-    expect(html).toMatch(/<link rel="preload" href="\/__fontphobia\/before\/[0-9a-f]{16}\/InterVariable\.ttf" as="font" type="font\/ttf" crossorigin>/);
+    expect(html).toMatch(
+      /<link rel="preload" href="\/__fontphobia\/before\/[0-9a-f]{16}\/InterVariable\.ttf" as="font" type="font\/ttf" crossorigin>/,
+    );
     expect(o.restoreCss('body { color: red }')).toBeUndefined();
   }, 120_000);
 });
@@ -78,12 +113,20 @@ describe.skipIf(!chrome)('verify in Chrome (§10.3)', () => {
     expect(r.browser!.loads).toEqual([]);
     expect(differences(r)).toEqual([]);
     expect(r.browser!.comparisons.map((c) => `${c.page} ${c.viewport} ${c.dpr}`)).toEqual(
-      ['/', '/about/', '/edge.html'].flatMap((p) => ['360 1', '360 2', '1280 1', '1280 2'].map((v) => `${p} ${v}`)));
+      ['/', '/about/', '/edge.html'].flatMap((p) => ['360 1', '360 2', '1280 1', '1280 2'].map((v) => `${p} ${v}`)),
+    );
     // On macOS every comparison is pixel-identical, at once or on a reload; elsewhere system-font text may show unrelated noise.
-    if (process.platform === 'darwin') expect(r.browser!.comparisons.filter((c) => settled(c) !== 'identical').map((c) => `${c.page} ${c.viewport} ${c.dpr} ${c.class} ${c.pixels}px`)).toEqual([]);
+    if (process.platform === 'darwin')
+      expect(
+        r
+          .browser!.comparisons.filter((c) => settled(c) !== 'identical')
+          .map((c) => `${c.page} ${c.viewport} ${c.dpr} ${c.class} ${c.pixels}px`),
+      ).toEqual([]);
     // Every page downloads less, and the about page only Inter's core.
     for (const p of r.browser!.bytes) expect(p.after.bytes).toBeLessThan(p.before.bytes);
-    expect(r.browser!.bytes.find((p) => p.page === '/about/')!.faces).toEqual({ 'inter-100-900-normal': { before: 879708, after: expect.any(Number) } });
+    expect(r.browser!.bytes.find((p) => p.page === '/about/')!.faces).toEqual({
+      'inter-100-900-normal': { before: 879708, after: expect.any(Number) },
+    });
     expect(r.ok).toBe(true);
     const text = formatVerify(r, root);
     expect(text).toContain('Verify passed');
@@ -95,9 +138,12 @@ describe.skipIf(!chrome)('verify in Chrome (§10.3)', () => {
     const root = await built('mask');
     // A canvas painted from crypto randomness (verify seeds Math.random, not this) and hidden text that moves.
     const canvas = 200 * 60;
-    const page = readFileSync(join(root, 'about/index.html'), 'utf8').replace('</body>', `<canvas id="noise" width="200" height="60"></canvas><p class="ghost" style="visibility:hidden">hidden</p>
+    const page = readFileSync(join(root, 'about/index.html'), 'utf8').replace(
+      '</body>',
+      `<canvas id="noise" width="200" height="60"></canvas><p class="ghost" style="visibility:hidden">hidden</p>
 <script>const c=document.getElementById('noise').getContext('2d');const v=crypto.getRandomValues(new Uint8Array(3));c.fillStyle='rgb('+v.join(',')+')';c.fillRect(0,0,200,60);
-document.querySelector('.ghost').style.marginLeft=v[0]+'px';</script></body>`);
+document.querySelector('.ghost').style.marginLeft=v[0]+'px';</script></body>`,
+    );
     writeFileSync(join(root, 'about/index.html'), page);
     const o = { root, usage, viewports: [1280], dprs: [1], pages: ['/about/'], maxPages: 1 };
     const about = (r: Awaited<ReturnType<typeof verify>>) => r.browser!.comparisons.find((c) => c.page === '/about/')!;
@@ -127,7 +173,11 @@ document.querySelector('.ghost').style.marginLeft=v[0]+'px';</script></body>`);
     ['drop a used character', { face, kind: 'drop-char', cp: 0x219 }, /^fallback font: system /],
     ['drop a used feature', { face, kind: 'drop-feature', tag: 'tnum' }, /^width changed/],
     ['pin an axis that something overrides', { face, kind: 'pin-axis', tag: 'wght', value: 400 }, /^width changed/],
-    ['give the extended file its own family name', { face, kind: 'ext-family', family: 'Inter Ext' }, /^fallback font: system /],
+    [
+      'give the extended file its own family name',
+      { face, kind: 'ext-family', family: 'Inter Ext' },
+      /^fallback font: system /,
+    ],
   ];
   for (const [name, mutation, cause] of cases) {
     it(`mutation: ${name}`, async () => {
@@ -138,7 +188,12 @@ document.querySelector('.ghost').style.marginLeft=v[0]+'px';</script></body>`);
       expect(bad.length).toBeGreaterThan(0);
       expect(bad.flatMap((c) => c.causes)).toContainEqual(expect.stringMatching(cause));
       // Each example says where the text is.
-      expect(bad.flatMap((c) => c.examples).filter((e) => e.text).every((e) => typeof e.where === 'string' && e.where.length > 0)).toBe(true);
+      expect(
+        bad
+          .flatMap((c) => c.examples)
+          .filter((e) => e.text)
+          .every((e) => typeof e.where === 'string' && e.where.length > 0),
+      ).toBe(true);
       expect(r.static.ok).toBe(false);
     }, 300_000);
   }
@@ -147,7 +202,9 @@ document.querySelector('.ghost').style.marginLeft=v[0]+'px';</script></body>`);
     const root = await built('mark-out-of-core', { face, kind: 'mark-out-of-core' });
     const r = await verify({ root, usage, viewports: [1280], dprs: [1] });
     expect(r.ok).toBe(false);
-    expect(r.static.findings.map((f) => `${f.kind} ${f.message}`)).toContainEqual(expect.stringMatching(/^shaping \d+ of \d+ shaping case\(s\) differ/));
+    expect(r.static.findings.map((f) => `${f.kind} ${f.message}`)).toContainEqual(
+      expect.stringMatching(/^shaping \d+ of \d+ shaping case\(s\) differ/),
+    );
   }, 300_000);
 });
 
@@ -160,7 +217,15 @@ for (const engine of ['webkit', 'firefox'] as const) {
       // WebKit on macOS draws the fixture's synthesized small caps one pixel differently at DPR 1
       // (docs/notes/webkit-small-caps.md): that paragraph is masked there, everything else is compared.
       const mask = engine === 'webkit' && process.platform === 'darwin' ? ['#caps'] : undefined;
-      const r = await verify({ root, usage, viewports: [360, 1280], dprs: [1, 2], browsers: [engine], mask, outDir: outDir(engine) });
+      const r = await verify({
+        root,
+        usage,
+        viewports: [360, 1280],
+        dprs: [1, 2],
+        browsers: [engine],
+        mask,
+        outDir: outDir(engine),
+      });
       expect(differences(r)).toEqual([]);
       expect(r.browser!.rejected).toEqual([]);
       expect(r.ok).toBe(true);
@@ -171,7 +236,15 @@ for (const engine of ['webkit', 'firefox'] as const) {
 describe.skipIf(!runtime)('verify in the pinned Linux image (§10.3, --hinting)', () => {
   it('is pixel-identical in Linux Chromium with hinting on, Firefox and WebKit (auto-hinter references and glyph aliases)', async () => {
     const root = await built('linux');
-    const r = await verify({ root, usage, viewports: [1280], dprs: [1, 2], browsers: ['linux-firefox', 'linux-webkit'], hinting: true, outDir: outDir('linux') });
+    const r = await verify({
+      root,
+      usage,
+      viewports: [1280],
+      dprs: [1, 2],
+      browsers: ['linux-firefox', 'linux-webkit'],
+      hinting: true,
+      outDir: outDir('linux'),
+    });
     expect(r.browser!.browsers.map((b) => b.engine)).toEqual(['linux-firefox', 'linux-webkit', 'linux-chromium']);
     // --hinting alone is DPR 1.
     expect(r.browser!.comparisons.filter((c) => c.browser === 'linux-chromium').map((c) => c.dpr)).toEqual([1, 1, 1]);
@@ -181,7 +254,11 @@ describe.skipIf(!runtime)('verify in the pinned Linux image (§10.3, --hinting)'
 });
 
 describe.skipIf(!chrome)('verify --baseline worktree (§10.3)', () => {
-  const g = (cwd: string, ...args: string[]) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...args], { cwd, stdio: 'pipe' }).toString();
+  const g = (cwd: string, ...args: string[]) =>
+    execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...args], {
+      cwd,
+      stdio: 'pipe',
+    }).toString();
   function gitRepo(name: string) {
     const root = copy(name);
     g(root, 'init', '-q', '-b', 'main');
@@ -193,7 +270,14 @@ describe.skipIf(!chrome)('verify --baseline worktree (§10.3)', () => {
   it('builds HEAD in a worktree as "before", whether the build is committed or not, and cleans up', async () => {
     const root = gitRepo('worktree');
     await buildProject(root, usage, {}, { version: '1', write: true });
-    const r1 = await verify({ root, usage, viewports: [1280], dprs: [1], baseline: 'worktree', outDir: outDir('worktree') });
+    const r1 = await verify({
+      root,
+      usage,
+      viewports: [1280],
+      dprs: [1],
+      baseline: 'worktree',
+      outDir: outDir('worktree'),
+    });
     expect(r1.browser!.baseline).toBe('worktree');
     expect(differences(r1)).toEqual([]);
     expect(r1.browser!.comparisons.map(settled)).toEqual(['identical', 'identical', 'identical']);
@@ -207,10 +291,15 @@ describe.skipIf(!chrome)('verify --baseline worktree (§10.3)', () => {
     expect(g(root, 'worktree', 'list').trim().split('\n')).toHaveLength(1);
   }, 300_000);
 
-  it('refuses when the working tree has changes besides fontphobia\'s', async () => {
+  it("refuses when the working tree has changes besides fontphobia's", async () => {
     const root = gitRepo('worktree-dirty');
     await buildProject(root, usage, {}, { version: '1', write: true });
-    writeFileSync(join(root, 'about/index.html'), readFileSync(join(root, 'about/index.html'), 'utf8').replace('About', 'About us'));
-    await expect(verify({ root, usage, viewports: [1280], dprs: [1], baseline: 'worktree' })).rejects.toThrow(/changes besides fontphobia's: about\/index\.html/);
+    writeFileSync(
+      join(root, 'about/index.html'),
+      readFileSync(join(root, 'about/index.html'), 'utf8').replace('About', 'About us'),
+    );
+    await expect(verify({ root, usage, viewports: [1280], dprs: [1], baseline: 'worktree' })).rejects.toThrow(
+      /changes besides fontphobia's: about\/index\.html/,
+    );
   }, 300_000);
 });

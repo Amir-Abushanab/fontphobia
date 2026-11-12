@@ -16,11 +16,13 @@ async function built(name: string, mutation?: Mutation) {
   const root = join(tmp, name);
   cpSync(join(repo, 'fixtures/sites/static-css'), root, { recursive: true });
   mkdirSync(join(root, 'fonts'));
-  for (const f of ['InterVariable.ttf', 'DejaVuSans.ttf', 'Inter-Regular-hinted.woff2']) cpSync(join(repo, 'fixtures/fonts', f), join(root, 'fonts', f));
+  for (const f of ['InterVariable.ttf', 'DejaVuSans.ttf', 'Inter-Regular-hinted.woff2'])
+    cpSync(join(repo, 'fixtures/fonts', f), join(root, 'fonts', f));
   await buildProject(root, usage, { mutation }, { version: '1', write: true });
   return root;
 }
-const regressions = (r: Awaited<ReturnType<typeof verifyStatic>>) => r.findings.filter((f) => f.severity === 'regression');
+const regressions = (r: Awaited<ReturnType<typeof verifyStatic>>) =>
+  r.findings.filter((f) => f.severity === 'regression');
 
 describe('verify: font level and shaping (§10.1–10.2)', () => {
   it('passes a clean build, with every stored word shaped identically', async () => {
@@ -42,7 +44,11 @@ describe('verify: font level and shaping (§10.1–10.2)', () => {
     rmSync(join(root, m.entries['inter-100-900-italic']!.outputs[0]!.file));
     const r = await verifyStatic(root, usage, m);
     expect(r.ok).toBe(false);
-    expect(regressions(r).map((f) => f.message).join('\n')).toMatch(/changed since the build[\s\S]*is missing/);
+    expect(
+      regressions(r)
+        .map((f) => f.message)
+        .join('\n'),
+    ).toMatch(/changed since the build[\s\S]*is missing/);
   }, 300_000);
 });
 
@@ -51,19 +57,33 @@ describe('verify: mutation tests (§15)', () => {
   const cases: [string, Mutation, RegExp, string][] = [
     ['drop a used character', { face, kind: 'drop-char', cp: 0xe9 }, /U\+00E9 aren't in any output/, 'coverage'],
     ['drop a used feature', { face, kind: 'drop-feature', tag: 'tnum' }, /tnum=1/, 'shaping'],
-    ['pin an axis that something overrides', { face, kind: 'pin-axis', tag: 'wght', value: 400 }, /wght=(300|700)/, 'shaping'],
-    ['give the extended file its own family name', { face, kind: 'ext-family', family: 'Inter Ext' }, /ext rule has font-family "Inter Ext"/, 'css'],
+    [
+      'pin an axis that something overrides',
+      { face, kind: 'pin-axis', tag: 'wght', value: 400 },
+      /wght=(300|700)/,
+      'shaping',
+    ],
+    [
+      'give the extended file its own family name',
+      { face, kind: 'ext-family', family: 'Inter Ext' },
+      /ext rule has font-family "Inter Ext"/,
+      'css',
+    ],
     ['move a combining mark out of core', { face, kind: 'mark-out-of-core' }, /café|naïve|glyph count/, 'shaping'],
   ];
   for (const [name, mutation, cause, kind] of cases) {
-    it(name, async () => {
-      const root = await built(mutation.kind, mutation);
-      const r = await verifyStatic(root, usage, readManifest(root)!);
-      expect(r.ok).toBe(false);
-      const hit = regressions(r).filter((f) => f.id === face && f.kind === kind);
-      expect(hit.map((f) => f.message).join('\n')).toMatch(cause);
-      // Only the mutated face fails.
-      expect(regressions(r).every((f) => f.id === face)).toBe(true);
-    }, 300_000);
+    it(
+      name,
+      async () => {
+        const root = await built(mutation.kind, mutation);
+        const r = await verifyStatic(root, usage, readManifest(root)!);
+        expect(r.ok).toBe(false);
+        const hit = regressions(r).filter((f) => f.id === face && f.kind === kind);
+        expect(hit.map((f) => f.message).join('\n')).toMatch(cause);
+        // Only the mutated face fails.
+        expect(regressions(r).every((f) => f.id === face)).toBe(true);
+      },
+      300_000,
+    );
   }
 });

@@ -19,10 +19,13 @@ describe('htmlText', () => {
     expect(scriptStrings('"é\\u{110000}"')).toContain('\uFFFD');
   });
   it('reads single-quoted attributes like double-quoted ones', () => {
-    const t = htmlText("<img alt='Ω &rarr;'><p style='--x: 1' title='★'>x</p><style>a::after{content:'\\2603'}</style>");
+    const t = htmlText(
+      "<img alt='Ω &rarr;'><p style='--x: 1' title='★'>x</p><style>a::after{content:'\\2603'}</style>",
+    );
     for (const ch of 'Ω→★☃') expect(t).toContain(ch);
   });
-  it('leaves unknown references as they are', () => expect(htmlText('<p>&nosuchthing;</p>')).toContain('&nosuchthing;'));
+  it('leaves unknown references as they are', () =>
+    expect(htmlText('<p>&nosuchthing;</p>')).toContain('&nosuchthing;'));
   it('does not count <title> text, but keeps the title attribute', () => {
     const t = htmlText('<html><head><title>Zürich ★</title></head><body><p title="Ω">x</p></body></html>');
     expect(t).not.toContain('★');

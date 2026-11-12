@@ -8,7 +8,9 @@ const { version } = JSON.parse(read('packages/cli/package.json')) as { version: 
 describe('release metadata', () => {
   for (const file of ['README.md', 'docs/ci.md']) {
     it(`${file} pins fontphobia@${version} everywhere`, () => {
-      const pins = [...read(file).matchAll(/fontphobia@(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)/g)].map((m) => m[1]);
+      const pins = [...read(file).matchAll(/fontphobia@(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)/g)].map(
+        (m) => m[1],
+      );
       expect(pins.length).toBeGreaterThan(0);
       expect(pins.filter((v) => v !== version)).toEqual([]);
     });
@@ -24,7 +26,10 @@ describe('release metadata', () => {
     const bad: string[] = [];
     for (const f of readdirSync(new URL('.changeset/', root)).filter((n) => n.endsWith('.md') && n !== 'README.md')) {
       const front = /^---\n([\s\S]*?)\n?---/.exec(read(`.changeset/${f}`));
-      if (!front) { bad.push(`${f}: no frontmatter`); continue; }
+      if (!front) {
+        bad.push(`${f}: no frontmatter`);
+        continue;
+      }
       for (const line of front[1]!.split('\n').filter((l) => l.trim())) {
         if (!/^(["']?)fontphobia\1: (patch|minor|major)$/.test(line.trim())) bad.push(`${f}: ${line.trim()}`);
       }

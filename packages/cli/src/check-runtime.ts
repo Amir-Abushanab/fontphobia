@@ -7,18 +7,35 @@ import { checkProject, formatCheck, type UsageFileJson } from '@fontphobia/core'
 import { loadConfig, selfUrl } from './config.ts';
 import type { FontphobiaCheckOptions, Logger } from './integration.ts';
 
-export async function runCheck(root: string, outputDir: string | undefined, opts: FontphobiaCheckOptions, log: Logger): Promise<void> {
+export async function runCheck(
+  root: string,
+  outputDir: string | undefined,
+  opts: FontphobiaCheckOptions,
+  log: Logger,
+): Promise<void> {
   // Options given to the integration win; the rest come from fontphobia.config's `check`.
   // A config that fails to load fails the check with its error.
   const fromConfig = (await loadConfig(root, selfUrl(import.meta.url))).config.check ?? {};
-  const o = { ...fromConfig, ...Object.fromEntries(Object.entries(opts).filter(([, v]) => v !== undefined)) } as FontphobiaCheckOptions;
+  const o = {
+    ...fromConfig,
+    ...Object.fromEntries(Object.entries(opts).filter(([, v]) => v !== undefined)),
+  } as FontphobiaCheckOptions;
   const usageFile = join(root, '.fontphobia', 'usage.json');
   const usage = existsSync(usageFile) ? (JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson) : undefined;
   const r = await checkProject({ root, outputDir, usage, allowChars: o.allowChars, strict: o.strict });
   const text = formatCheck(r);
-  if (r.noManifest) { log.warn(text); return; }
-  if (!r.issues.length) { log.info(text); return; }
-  if (r.ok || o.mode === 'warn') { log.warn(text); return; }
+  if (r.noManifest) {
+    log.warn(text);
+    return;
+  }
+  if (!r.issues.length) {
+    log.info(text);
+    return;
+  }
+  if (r.ok || o.mode === 'warn') {
+    log.warn(text);
+    return;
+  }
   throw new Error(text);
 }
 
@@ -28,7 +45,18 @@ if (arg && /check-runtime\.(m?js|ts)$/.test(process.argv[1] ?? '')) {
   const { root, outputDir, o } = JSON.parse(arg) as { root: string; outputDir?: string; o: FontphobiaCheckOptions };
   let level = 'info';
   const out: string[] = [];
-  runCheck(root, outputDir, o, { info: (m) => out.push(m), warn: (m) => { level = 'warn'; out.push(m); } })
-    .then(() => { process.stdout.write(`${level}\n${out.join('\n')}\n`); })
-    .catch((e: Error) => { process.stdout.write(`error\n${e.message}\n`); process.exitCode = 1; });
+  runCheck(root, outputDir, o, {
+    info: (m) => out.push(m),
+    warn: (m) => {
+      level = 'warn';
+      out.push(m);
+    },
+  })
+    .then(() => {
+      process.stdout.write(`${level}\n${out.join('\n')}\n`);
+    })
+    .catch((e: Error) => {
+      process.stdout.write(`error\n${e.message}\n`);
+      process.exitCode = 1;
+    });
 }
