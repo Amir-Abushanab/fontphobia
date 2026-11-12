@@ -78,11 +78,13 @@ const page = (title: string, links: string[]) => `<!doctype html><html lang="en"
 
 describe.skipIf(!chrome)('audit and verify of a site served under /sub/', () => {
   const site = join(tmp, 'site');
+  // A file name can't contain ':' on Windows, so the page with one is left out there (the pageUrl tests above cover such paths everywhere).
+  const colon = process.platform === 'win32' ? [] : ['Special:Notes'];
   const files: Record<string, string> = {
-    'index.html': page('Home', ['./about/', 'about/team/', './Special:Notes/', 'bakery/a/', '/elsewhere/', '/sub/about/']),
+    'index.html': page('Home', ['./about/', 'about/team/', ...colon.map((d) => `./${d}/`), 'bakery/a/', '/elsewhere/', '/sub/about/']),
     'about/index.html': page('About us', ['../', 'team/']),
     'about/team/index.html': page('The team', ['../../']),
-    'Special:Notes/index.html': page('Special notes', ['../']),
+    ...Object.fromEntries(colon.map((d) => [`${d}/index.html`, page('Special notes', ['../'])])),
     'bakery/a/index.html': page('Bakery A', ['../../']),
     // Served (the server falls back to the root for paths outside /sub/), but another site's page.
     'elsewhere/index.html': page('Elsewhere', []),
@@ -101,9 +103,9 @@ describe.skipIf(!chrome)('audit and verify of a site served under /sub/', () => 
   it('visits every page once, keys them with the prefix, and skips links outside it', async () => {
     const r = await audit({ ...opts(), ignore: ['/bakery/**'] });
     expect(r.crawl.failed).toEqual({});
-    expect(r.crawl.pages).toEqual(['/sub/', '/sub/Special:Notes/', '/sub/about/', '/sub/about/team/']);
+    expect(r.crawl.pages).toEqual(['/sub/', ...colon.map((d) => `/sub/${d}/`), '/sub/about/', '/sub/about/team/']);
     expect(Object.keys(r.usage.pages).sort()).toEqual(r.crawl.pages);
-    expect(r.crawl.visits).toBe(4);
+    expect(r.crawl.visits).toBe(3 + colon.length);
   }, 120_000);
 
   it('matches page globs and config pages written without the prefix, and logs failed visits', async () => {

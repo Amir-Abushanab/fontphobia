@@ -11,7 +11,7 @@
 ### Changed
 
 - `check` exits 1 when there is no `.fontphobia/manifest.json` to check against, and `check --url` exits 1 when a page can't be loaded. `--mode warn` reports both without failing. For a missing manifest, the framework integrations log a warning and let the build finish.
-- `verify` counts every differing pixel. It used to skip pixels that were classified as anti-aliasing, which hid changes on glyph edges.
+- `verify` counts every differing pixel. It used to skip pixels that were classified as anti-aliasing, which hid changes on glyph edges. A difference that shows on one load and not on a reload is reported as `flaky` and doesn't fail the run; Chrome on macOS sometimes draws the corners of form controls this way.
 - A font's license is read only from files that belong to the font. The project's own `LICENSE` and `package.json` no longer count.
 - The rename for an OFL Reserved Font Name is decided from the font's own family name instead of the CSS `font-family`, so a font declared under another CSS name is renamed too.
 - With `dist` and a build command both set, the site is built when the output is missing or stale, or with `--rebuild`. Before, setting `dist` meant the build never ran.
