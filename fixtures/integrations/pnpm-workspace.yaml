@@ -25,3 +25,5 @@ minimumReleaseAgeExclude:
   - '@rspack/binding@2.3.1'
   - '@rspack/cli@2.3.1'
   - '@rspack/core@2.3.1'
+# The same 7-day install cooldown as the root pnpm-workspace.yaml, which explains it.
+minimumReleaseAge: 10080
