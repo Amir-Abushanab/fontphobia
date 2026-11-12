@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  # For the "chore: version packages" pull request. GitHub runs nothing for a pull request that
+  # Actions opened, so CI is started on its branch by hand:
+  #   gh workflow run ci.yml --ref changeset-release/main
+  workflow_dispatch: {}
 
 permissions:
   contents: read

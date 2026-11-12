@@ -11,9 +11,13 @@
     "golden": "vitest run packages/core/test/golden.test.ts",
     "golden:update": "UPDATE_GOLDEN=1 vitest run packages/core/test/golden.test.ts",
     "plans:update": "UPDATE_GOLDEN=1 FONTPHOBIA_SITES=1 vitest run packages/crawler/test/audit.test.ts packages/crawler/test/sites.test.ts && UPDATE_GOLDEN=1 vitest run packages/core/test/plan.test.ts",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "version": "changeset version && node scripts/sync-version-pins.mjs",
+    "release": "node scripts/publish-if-needed.mjs"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "1.0.1",
+    "@changesets/cli": "3.0.3",
     "@types/node": "26.6.6",
     "typescript": "6.0.3",
     "vitest": "5.1.0"

@@ -273,6 +273,13 @@ pnpm plans:update   # re-crawl the fixtures and rewrite fixtures/plans/*
 - Comments cite the design notes by section (`§9.1`) and milestone (`M5`); the notes are not in this repository.
 - `spikes/`: research, not part of the build.
 
-**Releasing:** run `node scripts/set-version.mjs <version>`, which sets the version in `packages/cli/package.json` and in the `fontphobia@<version>` pins in `README.md` and `docs/ci.md`. Add a `## <version>` section to `CHANGELOG.md`, commit, and push a `v<version>` tag. `.github/workflows/release.yml` tests, packs and publishes with npm provenance, then creates the GitHub release with that changelog section as the notes.
+**Dependencies** have a 7-day cooldown: pnpm does not install a version published less than 7 days ago (`minimumReleaseAge` in `pnpm-workspace.yaml`, and in each fixture's own file).
+
+**Changes and releases** go through [Changesets](https://github.com/changesets/changesets). A change to the published package comes with a changeset: run `pnpm changeset`, or `pnpm changeset --patch fontphobia -m "..."` without the prompts, and commit the file it writes under `.changeset/`. Every changeset names `fontphobia`, because `packages/core` and `packages/crawler` are bundled into it.
+
+- On a push to `main`, `.github/workflows/version.yml` collects the pending changesets into a "chore: version packages" pull request. It bumps the version, writes [`packages/cli/CHANGELOG.md`](packages/cli/CHANGELOG.md) and updates the `fontphobia@<version>` pins in `README.md` and `docs/ci.md`. It never publishes.
+- Merging that pull request runs `.github/workflows/release.yml`. It typechecks, tests, publishes to npm with provenance over trusted publishing, tags `fontphobia@<version>` and creates the GitHub release from the changelog entry. It never versions.
+
+The version pull request needs the repository setting "Allow GitHub Actions to create and approve pull requests". GitHub does not run CI on a pull request that Actions opened. To run it, start it on the pull request's branch with `gh workflow run ci.yml --ref changeset-release/main`. The release workflow also runs the typecheck and the tests before it publishes.
 
 MIT © Amir Abushanab
