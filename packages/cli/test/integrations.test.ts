@@ -24,10 +24,10 @@ function build(dir: string, cmd: string[], env: Record<string, string> = {}): { 
   return { code: r.status ?? 1, out: `${r.stdout}${r.stderr}` };
 }
 
-/** Both runs: nothing built (passes, logs the check), then a stale manifest (fails, says why). */
+/** Both runs: nothing built (passes, and says there is nothing to check), then a stale manifest (fails, says why). */
 function roundTrip(dir: string, cmd: string[], env?: Record<string, string>) {
   const ok = build(dir, cmd, env);
-  expect(ok.out).toContain('fontphobia: subsets are up to date');
+  expect(ok.out).toContain('fontphobia: nothing to check');
   expect(ok.code).toBe(0);
   writeFileSync(join(dir, 'fontphobia.manifest.json'), STALE);
   try {

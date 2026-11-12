@@ -6,7 +6,7 @@ import { existsSync, realpathSync, rmSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { buildCommand, detectProject, LEGACY_MANIFEST_FILE, manifestPath, MANIFEST_FILE, revertProject, type Manifest } from '@fontphobia/core';
 import { openSite, type OpenSite, type SiteOptions } from './site.ts';
-import { git, linkDependencies, scratch } from './isolate.ts';
+import { fillWorktree, git, scratch } from './isolate.ts';
 
 export interface Baseline { site: OpenSite; dir: string; reverted: boolean; stop(): Promise<void> }
 
@@ -22,6 +22,7 @@ function ownPaths(m: Manifest): (p: string) => boolean {
   for (const [file, ej] of Object.entries(m.ejects ?? {})) { exact.add(file); for (const i of ej.imports) exact.add(i.file); for (const x of ej.snippets ?? []) exact.add(x.file); for (const x of ej.files ?? []) exact.add(x); }
   for (const r of m.google ?? []) for (const f of r.files) exact.add(f);
   for (const r of m.options ?? []) exact.add(r.file);
+  for (const c of m.fontChecks ?? []) exact.add(c.file);
   return (p) => exact.has(p) || p.startsWith('.fontphobia/');
 }
 
@@ -56,6 +57,9 @@ export async function worktreeBaseline(root: string, manifest: Manifest, o: Site
   };
   try {
     const wroot = rel ? join(dir, rel) : dir;
+    if (!existsSync(wroot)) throw new Error(`${root} isn't in HEAD (not committed, or ignored by git); the worktree baseline builds HEAD. Use the overlay baseline.`);
+    // What the checkout has besides HEAD's files (dependencies, .env, submodules), as the build in a copy gets it.
+    await fillWorktree(top, dir, rel);
     // HEAD may already have fontphobia's edits committed: put the original declarations back there.
     let reverted = false;
     if (existsSync(manifestPath(wroot))) {
@@ -64,10 +68,10 @@ export async function worktreeBaseline(root: string, manifest: Manifest, o: Site
       reverted = true;
     }
     const project = detectProject(wroot);
-    linkDependencies([[top, dir], [root, wroot]]);
     const cmd = o.buildCmd ?? buildCommand(project);
     log(`baseline: HEAD in a git worktree${reverted ? ', fontphobia\'s committed edits reverted' : ''}${cmd ? `, building with ${cmd}` : ''}`);
-    const site = await openSite({ dist: o.dist, buildCmd: o.buildCmd, startCmd: o.startCmd, rebuild: !!cmd && !o.dist && !o.startCmd, inPlace: true }, project, (m) => log(`baseline: ${m}`));
+    // Always built when there's a command (a fresh checkout's times say nothing): --dist only says where the output goes.
+    const site = await openSite({ dist: o.dist, buildCmd: o.buildCmd, startCmd: o.startCmd, rebuild: !!cmd && (!!o.dist || !o.startCmd), inPlace: true }, project, (m) => log(`baseline: ${m}`));
     return { site, dir: wroot, reverted, stop: async () => { await site.stop(); await cleanup(); } };
   } catch (e) {
     await cleanup();

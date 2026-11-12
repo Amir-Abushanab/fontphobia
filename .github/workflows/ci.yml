@@ -18,11 +18,12 @@ jobs:
     # M1: byte-identical output on macOS, Linux and Windows (PLAN §4, §16). The golden test
     # compares every output's sha256 with the committed hashes.
     # M2: the crawler tests run against the runner's Google Chrome (every image ships one).
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        node: [22, 24]
+        node: [22, 24, 26]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -61,6 +62,12 @@ jobs:
           echo '{"name":"smoke","private":true}' > package.json
           npm install --no-audit --no-fund ./fontphobia-*.tgz
           npx fontphobia --version
+          # The package ships the licenses of what it bundles.
+          test -s node_modules/fontphobia/dist/THIRD-PARTY-NOTICES.txt
+          # The package ships type declarations: a strict TypeScript consumer resolves them.
+          npm install --no-audit --no-fund typescript@6.0.3
+          printf "import { defineConfig } from 'fontphobia'\nimport fontphobia from 'fontphobia/vite'\nexport default defineConfig({ dist: 'dist' })\nexport const plugin = fontphobia()\n" > types-check.mts
+          npx tsc --noEmit --strict --module nodenext --moduleResolution nodenext --target es2023 --skipLibCheck types-check.mts
           npx fontphobia subset "$GITHUB_WORKSPACE/fixtures/fonts/InterVariable.ttf" --unicodes U+20-7E -o x.woff2
           npx fontphobia inspect x.woff2 --json > /dev/null
           cp -R "$GITHUB_WORKSPACE/fixtures/sites/static-css" site
@@ -81,6 +88,7 @@ jobs:
 
   sites:
     # M2–M5: the Astro and TanStack Start fixtures build, are crawled with no config, plan as committed, and render identically after build --write; verify in WebKit and the Linux image (PLAN §16).
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -111,7 +119,14 @@ jobs:
           VERIFY_ARTIFACTS: ${{ runner.temp }}/verify
       # M5: WebKit (Playwright's build) on the host, and Chromium with hinting, Firefox and WebKit in the
       # pinned Playwright image through Docker (verify --hinting / linux-*).
-      - run: pnpm --filter @fontphobia/crawler exec playwright-core install --with-deps webkit
+      - name: Install WebKit (the download sometimes hangs, so each attempt has a time limit)
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            timeout 600 pnpm --filter @fontphobia/crawler exec playwright-core install --with-deps webkit && exit 0
+            echo "::warning::WebKit install attempt $attempt failed or timed out"
+          done
+          exit 1
       - run: pnpm vitest run packages/crawler/test/verify.test.ts
         env:
           FONTPHOBIA_LINUX: '1'

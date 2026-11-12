@@ -1,6 +1,6 @@
 # fontphobia M0 spikes
 
-Answers to the open questions in `../PLAN.md` §16. Each folder has a `RESULTS.md` (answer first, then evidence, then implications for the plan) and the scripts that produced it. The summary table is in PLAN.md §16.
+Answers to the open questions in §16 of the design notes (the notes are not in this repository). Each folder has a `RESULTS.md` (answer first, then evidence, then implications for the plan) and the scripts that produced it.
 
 ```sh
 cd spikes && pnpm install          # harfbuzzjs, wawoff2, fontkit, playwright-core, pixelmatch, pngjs

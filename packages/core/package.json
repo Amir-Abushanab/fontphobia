@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@babel/parser": "7.29.9",
+    "entities": "9.0.0",
     "harfbuzzjs": "1.6.4",
     "postcss": "8.5.32",
     "postcss-less": "7.0.1",

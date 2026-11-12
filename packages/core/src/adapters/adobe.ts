@@ -4,6 +4,8 @@
 import { hb, loadFont } from '../font/hb.ts';
 import { toSfnt } from '../font/io.ts';
 import { parseWeightDescriptor } from '../css/values.ts';
+import { codePointsOf, parseUnicodeRange } from '../css/unicode-range.ts';
+import type { UsageFaceJson } from '../plan/planner.ts';
 
 export const isTypekitSheet = (u: string | undefined): u is string => !!u && /^https?:\/\/use\.typekit\.net\/[a-z0-9]+\.css/i.test(u);
 
@@ -86,7 +88,7 @@ const DEFAULT_EXTRA = new Set([0x152, 0x153, 0x178, 0x2dc, 0x2013, 0x2014, 0x201
 export const inAdobeDefault = (cp: number) => (cp >= 0x20 && cp <= 0x7e) || (cp >= 0xa0 && cp <= 0xff) || DEFAULT_EXTRA.has(cp);
 
 export interface AdobeUsage {
-  faces: Record<string, { family: string; descriptors: Record<string, string>; sheet?: string; chars: string; pages: string[]; source: { adapter: string } }>;
+  faces: Record<string, Pick<UsageFaceJson, 'family' | 'descriptors' | 'sheet' | 'chars' | 'pages' | 'source'>>;
   unloaded: Record<string, { family: string; descriptors: Record<string, string>; sheet?: string }>;
   pages: Record<string, { fonts: { url: string; status: number; bytes: number }[] }>;
 }
@@ -112,7 +114,7 @@ export function adobeFindings(u: AdobeUsage, facts: AdobeFaceFacts[]): { kind: s
       out.push({ kind: 'adobe-fonts', text: `kit ${name}: keep "Include OpenType features" on: ${needing.map((f) => `${f.family} ${f.fvd} shapes ${f.needsFeatures.slice(0, 3).map((w) => `"${w.trim()}"`).join(', ')}${f.needsFeatures.length > 3 ? ' …' : ''} with ${f.usedFeatures.join(', ') || 'them'}`).join('; ')}` });
     }
     const outside = new Set<string>();
-    for (const [, f] of faces) for (const ch of f.chars) if (!inAdobeDefault(ch.codePointAt(0)!)) outside.add(ch);
+    for (const [, f] of faces) for (const cp of codePointsOf(parseUnicodeRange(f.chars))) if (!inAdobeDefault(cp)) outside.add(String.fromCodePoint(cp));
     const big = kf.filter((f) => f.cmap > 260);
     if (big.length && outside.size === 0) out.push({ kind: 'adobe-fonts', text: `kit ${name}: every character the pages use is in Adobe's Default set (EN, FR, DE, IT, PT, ES), but ${big.map((f) => `${f.family} ${f.fvd}`).join(', ')} map${big.length === 1 ? 's' : ''} ${Math.max(...big.map((f) => f.cmap))} characters: if the character set is "All Characters", "Default" is smaller; check that every language the site will publish in is in it` });
     else if (outside.size) out.push({ kind: 'adobe-fonts', text: `kit ${name}: the pages use characters outside Adobe's Default set (${[...outside].slice(0, 12).join(' ')}${outside.size > 12 ? ' …' : ''}); keep a character set that includes them` });

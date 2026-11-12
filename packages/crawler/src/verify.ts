@@ -15,6 +15,7 @@ import {
 import { launchChrome } from './audit.ts';
 import { playwrightVersion, startLinuxBrowsers, stopOnExit, type LinuxBrowsers, type Runtime } from './linux.ts';
 import { openSite, type OpenSite, type SiteOptions } from './site.ts';
+import { matchesPage, pageKey, pageUrl, sitePath } from './visit.ts';
 import { worktreeBaseline, type Baseline } from './baseline.ts';
 
 /** Host browsers, and the same engines in the pinned Playwright Linux image (`linux-*`, via a container runtime). */
@@ -397,10 +398,6 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
   const project = detectProject(root);
   const overlay = createOverlay(o.manifest);
   const entryIds = new Set(Object.keys(o.manifest.entries));
-  const ignored = (o.ignore ?? []).map(globToRegExp);
-  const usable = ignored.length ? { ...o.usage, pages: Object.fromEntries(Object.entries(o.usage.pages).filter(([p]) => !ignored.some((r) => r.test(p)))) } : o.usage;
-  const { pages, skipped } = selectPages(usable, entryIds, o.maxPages ?? 200, (o.pages ?? []).filter((p) => !ignored.some((r) => r.test(p))));
-  if (skipped) log(`verifying ${pages.length} pages chosen to cover every face × character class (${skipped} more not visited; raise --max-pages to include them)`);
   const viewports = o.viewports?.length ? o.viewports : o.usage.meta.viewports;
   const dprs = o.dprs?.length ? o.dprs : [1, 2];
   const engines: Engine[] = [...new Set([...(o.browsers?.length ? o.browsers : ['chromium' as const]), ...(o.hinting ? ['linux-chromium' as const] : [])])];
@@ -424,6 +421,14 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
 
   // A verify of an old build checks nothing: rebuild whenever the source is newer (§M4: build --write edits it).
   const site = await openSite({ ...o, onStale: o.onStale ?? (() => true) }, project, log);
+  // Usage keys and config pages, with or without the base path (a usage.json recorded at the root
+  // verifies against a --url with a path), match by their path under the base.
+  const ignored = (o.ignore ?? []).map(globToRegExp);
+  const usable = ignored.length ? { ...o.usage, pages: Object.fromEntries(Object.entries(o.usage.pages).filter(([p]) => !matchesPage(ignored, p, site.base))) } : o.usage;
+  const listed = new Set((o.pages ?? []).map((p) => sitePath(pageKey(pageUrl(p, site.base)), site.base)));
+  const always = Object.keys(usable.pages).filter((k) => listed.has(sitePath(k, site.base)));
+  const { pages, skipped } = selectPages(usable, entryIds, o.maxPages ?? 200, always);
+  if (skipped) log(`verifying ${pages.length} pages chosen to cover every face × character class (${skipped} more not visited; raise --max-pages to include them)`);
   let baseline: Baseline | undefined;
   // next/font/google and Astro narrowing and ejects change what the framework builds: only a second build can show "before".
   const baselineMode = o.baseline ?? (o.manifest.options?.length || Object.values(o.manifest.ejects ?? {}).some((e) => e.kind === 'next-font-google' || e.kind === 'astro-fonts' || e.kind === 'nuxt-fonts') ? 'worktree' : 'overlay');
@@ -467,8 +472,8 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
     const concurrency = o.concurrency ?? Math.max(1, Math.min(4, availableParallelism() - 1));
     let done = 0;
     await pool(tasks, concurrency, async (t) => {
-      const url = new URL(t.page.replace(/^\//, ''), site.base).href;
-      const beforeUrl = baseline ? new URL(t.page.replace(/^\//, ''), baseline.site.base).href : url;
+      const url = pageUrl(t.page, site.base);
+      const beforeUrl = baseline ? pageUrl(t.page, baseline.site.base) : url;
       const base: Comparison = { page: t.page, viewport: t.viewport, dpr: t.dpr, browser: t.engine, class: 'failed', causes: [], nodes: 0, moved: 0, maxDx: 0, pixels: 0, examples: [] };
       const hitsB = new Set<string>(), hitsA = new Set<string>();
       const [cb, ca] = await Promise.all([context(t.browser, { ...t, mask: o.mask }, overlay, baseline ? 'plain' : 'before', root, hitsB, local, snapshots), context(t.browser, { ...t, mask: o.mask }, overlay, 'plain', root, hitsA, local, snapshots)]);
@@ -572,6 +577,17 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
   }
 }
 
+/**
+ * How many pixels differ between two RGBA buffers of the same size, and the diff image (differing
+ * pixels in red). Every differing pixel counts: pixelmatch's anti-aliasing detection would skip
+ * exactly the pixels a changed glyph edge touches. Rasterizer noise is handled by the reloads in
+ * `verify`, not by ignoring pixels here.
+ */
+export function diffPixels(before: Buffer, after: Buffer, width: number, height: number): { pixels: number; diff: PNG } {
+  const diff = new PNG({ width, height });
+  return { pixels: pixelmatch(before, after, diff.data, width, height, { threshold: 0, includeAA: true }), diff };
+}
+
 async function compare(
   t: { page: string; viewport: number; dpr: number; engine: Engine },
   base: Comparison,
@@ -610,8 +626,8 @@ async function compare(
     for (let y = 0; y < h; y++) p.data.copy(out, y * w * 4, y * p.width * 4, y * p.width * 4 + w * 4);
     return out;
   };
-  const diff = new PNG({ width: w, height: h });
-  r.pixels = pixelmatch(crop(B.png), crop(A.png), diff.data, w, h, { threshold: 0, includeAA: false });
+  const { pixels, diff } = diffPixels(crop(B.png), crop(A.png), w, h);
+  r.pixels = pixels;
   if (B.png.height !== A.png.height || B.png.width !== A.png.width) vertical = true;
 
   // Map differing pixels back to text nodes.

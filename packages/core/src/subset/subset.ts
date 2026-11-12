@@ -173,13 +173,24 @@ export async function subsetFont(sourceBytes: Uint8Array, opts: SubsetOptions): 
   return { woff2, decoded, unicodes: have };
 }
 
+/** `cps` plus the bidi mirrors HarfBuzz keeps (the planner's `closure`, which this module can't import without a cycle). */
+function mirrorClosure(sfnt: Uint8Array, cps: number[]): number[] {
+  if (!cps.length) return cps;
+  const got = new Set(loadFont(hbSubset(sfnt, { unicodes: new Set(cps), features: { only: [] }, hinting: false })).face.collectUnicodes());
+  for (const c of cps) got.add(c);
+  return [...got];
+}
+
 /** §9.5 on a decoded output: cmap exactly as planned, axes, and preserved (or renamed) names. Returns the cmap. */
 export function validateOutput(source: Uint8Array, decoded: Uint8Array, opts: SubsetOptions): number[] {
   const have = sortedUnicodes(decoded);
   const srcSet = new Set(sortedUnicodes(source));
-  const want = opts.unicodes === '*' ? [...srcSet].sort((x, y) => x - y) : [...new Set(opts.unicodes)].filter((c) => srcSet.has(c)).sort((x, y) => x - y);
-  // The output cmap must be exactly the requested set ∩ the source cmap.
-  if (have.length !== want.length || have.some((c, i) => c !== want[i])) {
+  let want = opts.unicodes === '*' ? [...srcSet].sort((x, y) => x - y) : [...new Set(opts.unicodes)].filter((c) => srcSet.has(c)).sort((x, y) => x - y);
+  const differs = () => have.length !== want.length || have.some((c, i) => c !== want[i]);
+  // The output cmap must be exactly the requested set ∩ the source cmap, plus HarfBuzz's bidi mirrors ('>' brings '<').
+  // The planner asks for closed sets, so the closure is only worked out when the plain comparison fails.
+  if (opts.unicodes !== '*' && differs()) want = mirrorClosure(source, want).sort((x, y) => x - y);
+  if (differs()) {
     const hs = new Set(have);
     const missing = want.filter((c) => !hs.has(c)).slice(0, 10);
     const extra = have.filter((c) => !want.includes(c)).slice(0, 10);

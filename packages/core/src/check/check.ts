@@ -8,6 +8,7 @@
 //  - built text (HTML, inline styles, JS/JSON string literals) has characters a face's core and
 //    extended files don't cover. Approximate: unrendered strings cause false alarms; `allowChars`
 //    silences them.
+import { decodeHTML, decodeHTMLAttribute } from 'entities';
 import { findFontCheckCalls } from '../project/font-checks.ts';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
@@ -56,6 +57,8 @@ export interface CheckResult {
   command: string;
   checked: { entries: number; outputs: number; styleFiles: number; textFiles: number };
   notes: string[];
+  /** There is no manifest (or nothing in it): nothing was checked. */
+  noManifest?: boolean;
 }
 
 const sha = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
@@ -73,17 +76,16 @@ export function rerunCommand(root: string, version: string): string {
 
 // ─── Text from the built site ───────────────────────────────────────────────────────────────────
 
-const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', shy: '­', mdash: '—', ndash: '–', hellip: '…', lsquo: '‘', rsquo: '’', ldquo: '“', rdquo: '”', copy: '©', reg: '®', trade: '™', middot: '·', laquo: '«', raquo: '»' };
-const decode = (s: string) => s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) =>
-  e[0] === '#' ? String.fromCodePoint(e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10)) : ENTITIES[e.toLowerCase()] ?? m);
+/** A code point as text; out-of-range, surrogate and NUL values (which `String.fromCodePoint` rejects or HTML maps to U+FFFD) become U+FFFD. */
+const cpText = (cp: number) => (cp > 0 && cp <= 0x10ffff && !(cp >= 0xd800 && cp <= 0xdfff) ? String.fromCodePoint(cp) : '\uFFFD');
 
-/** Visible text of an HTML file, plus attribute text that renders (alt, title, placeholder, value) and CSS `content`. */
+/** Visible text of an HTML file (not `<title>`, which web fonts never draw), plus attribute text that renders (alt, title, placeholder, value) and CSS `content`. */
 export function htmlText(html: string): string {
-  const css = [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]!).join('\n') + [...html.matchAll(/\bstyle\s*=\s*"([^"]*)"/gi)].map((m) => m[1]!).join('\n');
-  const content = [...css.matchAll(/content\s*:\s*(["'])((?:\\.|(?!\1).)*)\1/gi)].map((m) => m[2]!.replace(/\\([0-9a-f]{1,6})\s?/gi, (_, h: string) => String.fromCodePoint(parseInt(h, 16)))).join(' ');
-  const attrs = [...html.matchAll(/\b(?:alt|title|placeholder|value|aria-label)\s*=\s*"([^"]*)"/gi)].map((m) => m[1]!).join(' ');
-  const body = html.replace(/<(script|style|template)\b[\s\S]*?<\/\1>/gi, ' ').replace(/<!--[\s\S]*?-->/g, ' ').replace(/<[^>]+>/g, ' ');
-  return decode(`${body} ${attrs}`) + ' ' + content;
+  const css = [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]!).join('\n') + [...html.matchAll(/\bstyle\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)].map((m) => m[1] ?? m[2]!).join('\n');
+  const content = [...css.matchAll(/content\s*:\s*(["'])((?:\\.|(?!\1).)*)\1/gi)].map((m) => m[2]!.replace(/\\([0-9a-f]{1,6})\s?/gi, (_, h: string) => cpText(parseInt(h, 16)))).join(' ');
+  const attrs = [...html.matchAll(/\b(?:alt|title|placeholder|value|aria-label)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)].map((m) => m[1] ?? m[2]!).join(' ');
+  const body = html.replace(/<(script|style|template|title)\b[\s\S]*?<\/\1>/gi, ' ').replace(/<!--[\s\S]*?-->/g, ' ').replace(/<[^>]+>/g, ' ');
+  return decodeHTML(body) + ' ' + decodeHTMLAttribute(attrs) + ' ' + content;
 }
 
 /** String literals in JS or JSON (escapes decoded), which may become rendered text. */
@@ -92,7 +94,7 @@ export function scriptStrings(js: string): string {
   for (const m of js.matchAll(/(["'`])((?:\\[\s\S]|(?!\1)[^\\\n])*)\1/g)) {
     const s = m[2]!;
     if (!/[^\x00-\x7f]|\\u/.test(s)) continue;
-    out.push(s.replace(/\\u\{([0-9a-f]+)\}|\\u([0-9a-f]{4})|\\x([0-9a-f]{2})/gi, (_, a?: string, b?: string, c?: string) => String.fromCodePoint(parseInt((a ?? b ?? c)!, 16))));
+    out.push(s.replace(/\\u\{([0-9a-f]+)\}|\\u([0-9a-f]{4})|\\x([0-9a-f]{2})/gi, (_, a?: string, b?: string, c?: string) => ((n) => (n > 0x10ffff ? '\uFFFD' : String.fromCodePoint(n)))(parseInt((a ?? b ?? c)!, 16))));
   }
   return out.join(' ');
 }
@@ -113,7 +115,7 @@ export async function checkProject(opts: CheckOptions): Promise<CheckResult> {
   const manifest: Manifest | undefined = readManifest(root);
   const notes: string[] = [];
   if (!manifest || (!Object.keys(manifest.entries).length && !manifest.google?.length && !manifest.options?.length && !manifest.kits?.length)) {
-    return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: ['no .fontphobia/manifest.json: nothing has been built to check'] };
+    return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: [], noManifest: true };
   }
   const issues: CheckIssue[] = [];
   const add = (i: Omit<CheckIssue, 'severity'> & { severity?: CheckIssue['severity'] }) => issues.push({ severity: 'error', ...i });
@@ -315,7 +317,8 @@ export async function checkProject(opts: CheckOptions): Promise<CheckResult> {
 export function formatCheck(r: CheckResult): string {
   const L: string[] = [];
   const errors = r.issues.filter((i) => i.severity === 'error'), warnings = r.issues.filter((i) => i.severity === 'warning');
-  if (!r.issues.length) L.push(`fontphobia: subsets are up to date (${r.checked.entries} face(s), ${r.checked.outputs} file(s), ${r.checked.textFiles} built file(s) read)`);
+  if (r.noManifest) L.push('fontphobia: nothing to check: no .fontphobia/manifest.json here (run fontphobia to build the subsets)');
+  else if (!r.issues.length) L.push(`fontphobia: subsets are up to date (${r.checked.entries} face(s), ${r.checked.outputs} file(s), ${r.checked.textFiles} built file(s) read)`);
   else {
     if (errors.length) {
       L.push(`fontphobia: subsets are out of date (${errors.length} reason(s)):`);
@@ -338,7 +341,7 @@ export function formatCheck(r: CheckResult): string {
  */
 export async function checkUsage(root: string, usage: UsageFileJson, o: { strict?: boolean } = {}): Promise<CheckResult> {
   const manifest = readManifest(root);
-  if (!manifest || !Object.keys(manifest.entries).length) return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: ['no .fontphobia/manifest.json: nothing has been built to check'] };
+  if (!manifest || !Object.keys(manifest.entries).length) return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: [], noManifest: true };
   const issues: CheckIssue[] = [];
   let outputs = 0;
   for (const e of Object.values(manifest.entries).sort((a, b) => (a.id < b.id ? -1 : 1))) {

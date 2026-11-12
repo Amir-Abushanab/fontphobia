@@ -8,17 +8,33 @@ const parse = (r: string): number[] => r.split(',').flatMap((x) => {
   return b === undefined ? [a] : Array.from({ length: b - a + 1 }, (_, i) => a + i);
 });
 
-/** CLDR's locale id for a BCP 47 tag, walking parents: "pt-BR" → "pt", "en-AU" → "en-001". */
-export function cldrLocale(tag: string): string | undefined {
-  let t: string | undefined;
-  try { t = new Intl.Locale(tag).toString(); } catch { t = tag; }
-  while (t) {
-    if (t in d.exemplars) return t;
-    t = d.parents[t] ?? (t.includes('-') ? t.slice(0, t.lastIndexOf('-')) : undefined);
-    if (t === 'root') return undefined;
+/** First CLDR id in `has` for a BCP 47 tag, walking parents: "pt-BR" → "pt", "en-AU" → "en-001". A script that differs from the language's default is tried first: "zh-TW" → "zh-Hant", "sr-ME" → "sr-Latn". */
+export function cldrFallback(tag: string, has: (id: string) => boolean): string | undefined {
+  let t: string;
+  let loc: Intl.Locale | undefined;
+  try { loc = new Intl.Locale(tag); t = loc.toString(); } catch { t = tag; }
+  const walk = (start: string | undefined) => {
+    for (let x = start; x; ) {
+      if (has(x)) return x;
+      x = d.parents[x] ?? (x.includes('-') ? x.slice(0, x.lastIndexOf('-')) : undefined);
+      if (x === 'root') return undefined;
+    }
+    return undefined;
+  };
+  if (loc && !loc.script) {
+    try {
+      const script = loc.maximize().script;
+      if (script && script !== new Intl.Locale(loc.language).maximize().script) {
+        const hit = walk(loc.region ? `${loc.language}-${script}-${loc.region}` : undefined) ?? walk(`${loc.language}-${script}`);
+        if (hit) return hit;
+      }
+    } catch { /* fall through to the plain chain */ }
   }
-  return undefined;
+  return walk(t);
 }
+
+/** CLDR's locale id for a BCP 47 tag with exemplar data. */
+export const cldrLocale = (tag: string): string | undefined => cldrFallback(tag, (id) => id in d.exemplars);
 
 /** Characters a locale's text may use, or undefined for a locale CLDR doesn't know. */
 export function localeChars(tag: string): number[] | undefined {

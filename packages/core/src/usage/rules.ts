@@ -2,6 +2,7 @@
 // Each function returns the characters a trigger adds; the builder attributes them through the
 // same family stack as the text, so a rule only reaches the faces its trigger applies to.
 import type { CounterStyle } from '../css/stylesheet.ts';
+import { cldrFallback } from '../plan/locale.ts';
 import { splitTop, unquote } from '../css/values.ts';
 import delimiters from '../data/cldr-delimiters.json' with { type: 'json' };
 
@@ -135,14 +136,10 @@ export function contentCounterStyles(content: string): string[] {
 }
 
 const QUOTES = (delimiters as { quotes: Record<string, string> }).quotes;
-/** CLDR quotation marks for a locale, falling back from "pt-BR" to "pt" (§7.4 `<q>`). */
+/** CLDR quotation marks for a locale, falling back from "pt-BR" to "pt" and by script ("zh-TW" → "zh-Hant", §7.4 `<q>`). */
 export function quoteChars(locale: string): string {
-  const parts = locale.split(/[-_]/);
-  for (let i = parts.length; i > 0; i--) {
-    const k = parts.slice(0, i).join('-');
-    if (QUOTES[k]) return QUOTES[k]!;
-  }
-  return QUOTES.en ?? '“”‘’';
+  const k = cldrFallback(locale.replace(/_/g, '-'), (id) => id in QUOTES);
+  return (k && QUOTES[k]) || QUOTES.en || '“”‘’';
 }
 
 /** Input types that render locale digits and separators (§7.4). */

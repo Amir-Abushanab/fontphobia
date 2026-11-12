@@ -375,6 +375,39 @@ async function run(page: Page, cdp: CDPSession, url: string, o: VisitOptions, bo
 
 export const pageKey = (u: string): string => { const x = new URL(u); return x.pathname + x.search; };
 
+/** The base URL's path with a trailing slash: "/" for a site served at the origin's root. */
+const basePathOf = (base: string) => new URL(base).pathname.replace(/\/?$/, '/');
+const pathOnly = (p: string) => p.replace(/[?#].*$/s, '');
+/** A pathname at the base path or under it (else it belongs to another site on the origin). */
+export const underBase = (pathname: string, base: string): boolean => (pathOnly(pathname) + '/').startsWith(basePathOf(base));
+
+/**
+ * A page key or seed (`pathname + search`) as a URL on the site at `base`. A path that already starts
+ * with the base path is taken as it is; any other is relative to the site's root, so it goes under
+ * the base path ("/" → the base itself). Set as a path, never parsed as a reference: `/Special:x`
+ * and `//host/x` stay on the base's origin.
+ */
+export function pageUrl(p: string, base: string): string {
+  const prefix = basePathOf(base);
+  const [, path = '', search = ''] = /^([^?#]*)(\?[^#]*)?/.exec(p)!;
+  const abs = '/' + path.replace(/^[/\\]+/, '');
+  const u = new URL(new URL(base).origin);
+  u.pathname = underBase(abs, base) ? abs : prefix + abs.slice(1);
+  u.search = search;
+  return u.href;
+}
+
+/** A page key relative to the site's root: the base path stripped when the key has it ("/sub/a/" → "/a/" at /sub/). */
+export function sitePath(p: string, base: string): string {
+  const prefix = basePathOf(base);
+  if (prefix === '/' || !underBase(p, base)) return p;
+  const rest = p.slice(prefix.length - 1);
+  return rest.startsWith('/') ? rest : '/' + rest;
+}
+
+/** Page globs (`pages`, `ignore`, `auth.pages`) match a key by its full pathname or its path under the base. */
+export const matchesPage = (globs: RegExp[], p: string, base: string): boolean => globs.some((r) => r.test(p) || r.test(sitePath(p, base)));
+
 /** Wait for fonts and lazy content: fonts.ready, a scroll through the page, then no font requests in flight. */
 async function settle(page: Page, inflight: () => number, scroll: boolean) {
   await page.evaluate(() => document.fonts.ready.then(() => undefined)).catch(() => {});

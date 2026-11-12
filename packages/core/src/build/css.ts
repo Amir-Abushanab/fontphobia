@@ -1,7 +1,10 @@
 // The css adapter's writer (§6.1): each @font-face is replaced in place by a marked block of one
 // rule per output file. Descriptors are copied as written; only src and unicode-range change (and
 // the weight/stretch ranges with limit-axes).
-import postcss, { type AtRule } from 'postcss';
+import postcss, { type AtRule, type Root } from 'postcss';
+import postcssScss from 'postcss-scss';
+import postcssLess from 'postcss-less';
+import { styleBlocks, type Syntax } from '../css/stylesheet.ts';
 import { splitTop, unquote } from '../css/values.ts';
 
 export const beginMarker = (id: string, version: string) => `/* fontphobia:begin ${id} ${version} (generated; rerun \`fontphobia build\`) */`;
@@ -22,6 +25,21 @@ export function blockIds(text: string): string[] {
   return [...text.matchAll(/\/\* fontphobia:begin (\S+) /g)].map((m) => m[1]!);
 }
 
+/**
+ * The syntax of `file`'s stylesheet text at `at`: .scss, .less, or the <style lang> block of an
+ * HTML-like file (needs `text`; without it, css).
+ */
+export function syntaxOf(file: string, text?: string, at = 0): Syntax {
+  if (/\.scss$/i.test(file)) return 'scss';
+  if (/\.less$/i.test(file)) return 'less';
+  if (text === undefined || !/\.(html?|vue|svelte|astro)$/i.test(file)) return 'css';
+  return styleBlocks(text).find((b) => at >= b.offset && at <= b.offset + b.text.length)?.syntax ?? 'css';
+}
+
+const SYNTAX = { scss: postcssScss, less: postcssLess } as const;
+/** Parse stylesheet text in its syntax (Sass and Less allow `//` comments inside @font-face). */
+export const parseCss = (text: string, syntax: Syntax = 'css'): Root => (syntax === 'css' ? postcss.parse(text) : (SYNTAX[syntax].parse!(text) as Root));
+
 export interface BlockFile {
   url: string;
   /**
@@ -38,8 +56,8 @@ export interface BlockFile {
  * The marked block replacing `declaration`. `sourceUrl` is the src url that points at the source font;
  * its quoting and format() are kept, with woff2 replacing the container.
  */
-export function cssBlock(o: { id: string; version: string; declaration: string; sourceUrl: string; files: BlockFile[]; descriptors?: Record<string, string>; indent: string; eol: string }): string {
-  const root = postcss.parse(o.declaration);
+export function cssBlock(o: { id: string; version: string; declaration: string; sourceUrl: string; files: BlockFile[]; descriptors?: Record<string, string>; indent: string; eol: string; syntax?: Syntax }): string {
+  const root = parseCss(o.declaration, o.syntax);
   const rule = root.first as AtRule | undefined;
   if (!rule || rule.type !== 'atrule' || rule.name.toLowerCase() !== 'font-face') throw new Error('Not an @font-face rule');
   const srcDecl = rule.nodes?.find((n) => n.type === 'decl' && n.prop.toLowerCase() === 'src');
@@ -63,7 +81,7 @@ export function cssBlock(o: { id: string; version: string; declaration: string; 
       else if (o.descriptors?.[p] !== undefined) d.value = o.descriptors[p]!;
     });
     if (!hasRange && f.unicodeRange !== undefined) r.append({ prop: 'unicode-range', value: f.unicodeRange });
-    return r.toString().replace(/\r?\n/g, o.eol);
+    return (o.syntax && o.syntax !== 'css' ? r.toString(SYNTAX[o.syntax]) : r.toString()).replace(/\r?\n/g, o.eol);
   });
   return [beginMarker(o.id, o.version), ...rules, endMarker(o.id)].join(o.eol + o.indent);
 }

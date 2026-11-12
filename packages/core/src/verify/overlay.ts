@@ -9,6 +9,7 @@ import { posix } from 'node:path';
 import postcss, { type AtRule } from 'postcss';
 import { splitTop, unquote } from '../css/values.ts';
 import { parseStylesheet } from '../css/stylesheet.ts';
+import { parseCss, syntaxOf } from '../build/css.ts';
 import type { Manifest, ManifestEntry } from '../build/manifest.ts';
 
 export const BEFORE_PREFIX = '/__fontphobia/before/';
@@ -69,9 +70,12 @@ export function createOverlay(manifest: Manifest): Overlay {
   };
   const outputOf = (url: string): OutputRef | undefined => outputsOf(url)[0];
 
+  // An entry's declaration in its stylesheet's syntax (Sass or Less `//` comments). Without the
+  // file's text a <style lang="scss"> block reads as css, so that falls back to Sass's parser.
+  const declRoot = (e: ManifestEntry): postcss.Root => { const s = syntaxOf(e.stylesheet); try { return parseCss(e.declaration, s); } catch (x) { if (s !== 'css') throw x; return parseCss(e.declaration, 'scss'); } };
   // The original declaration, with the url that loaded the source pointed at the virtual URL.
   const restored = (e: ManifestEntry): string => {
-    const root = postcss.parse(e.declaration);
+    const root = declRoot(e);
     const rule = root.first as AtRule;
     const srcName = posix.basename(e.source.file);
     rule.walkDecls(/^src$/i, (d) => {
@@ -85,7 +89,7 @@ export function createOverlay(manifest: Manifest): Overlay {
 
   // One file can back two entries (the same source and set for normal and italic): tell them apart by style.
   const styleOf = (decls: Record<string, string>) => (decls['font-style'] ?? 'normal').trim().toLowerCase().split(/\s+/)[0];
-  const origStyle = new Map(Object.values(manifest.entries).map((e) => [e.id, styleOf(parseStylesheet(e.declaration).fontFaces[0]?.descriptors ?? {})]));
+  const origStyle = new Map(Object.values(manifest.entries).map((e) => [e.id, styleOf(parseStylesheet(e.declaration, { syntax: syntaxOf(e.stylesheet) }).fontFaces[0]?.descriptors ?? {})]));
   const entryOf = (rule: AtRule): ManifestEntry | undefined => {
     const refs: OutputRef[] = [];
     rule.walkDecls(/^src$/i, (d) => { for (const m of d.value.matchAll(URL_RE)) refs.push(...outputsOf(unquote(m[2]!))); });

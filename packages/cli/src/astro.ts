@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkProject, formatCheck, type UsageFileJson } from '@fontphobia/core';
+import { loadConfig, selfUrl } from './config.ts';
 import { devWarningScript, fontphobia as vitePlugin } from './vite.ts';
 
 export interface FontphobiaAstroOptions {
@@ -31,13 +32,17 @@ export default function fontphobia(o: FontphobiaAstroOptions = {}) {
         if (command === 'dev') { const s = devWarningScript(root); if (s) injectScript('page', s); }
       },
       'astro:build:done': async ({ dir, logger }: { dir: URL; logger: Logger }) => {
+        // Options given to the integration win; the rest come from fontphobia.config's `check` (as in check-runtime).
+        const fromConfig = (await loadConfig(root, selfUrl(import.meta.url))).config.check ?? {};
+        const c = { ...fromConfig, ...Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) } as FontphobiaAstroOptions;
         const usageFile = join(root, '.fontphobia', 'usage.json');
         const usage = existsSync(usageFile) ? (JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson) : undefined;
-        const r = await checkProject({ root, outputDir: fileURLToPath(dir), usage, allowChars: o.allowChars, strict: o.strict });
+        const r = await checkProject({ root, outputDir: fileURLToPath(dir), usage, allowChars: c.allowChars, strict: c.strict });
         const text = formatCheck(r).replace(/^fontphobia: /, '');
+        if (r.noManifest) { logger.warn(text); return; }
         if (!r.issues.length) { logger.info(text); return; }
         if (r.ok) { logger.warn(text); return; }
-        if (o.mode === 'warn') logger.warn(text);
+        if (c.mode === 'warn') logger.warn(text);
         else throw new Error(`fontphobia: ${text}`);
       },
     },

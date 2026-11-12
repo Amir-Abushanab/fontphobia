@@ -7,6 +7,8 @@
 // Every write is read back before anything is published.
 import { matchWeight } from './google-url.ts';
 import { parseStylesheet } from '../css/stylesheet.ts';
+import { codePointsOf, parseUnicodeRange } from '../css/unicode-range.ts';
+import type { UsageFaceJson } from '../plan/planner.ts';
 import { loadFont } from '../font/hb.ts';
 import { toSfnt } from '../font/io.ts';
 
@@ -16,7 +18,8 @@ export interface KitFamily { id: string; name?: string; slug?: string; css_names
 export interface KitChange { id: string; name: string; variations: [string[], string[]]; why: string[] }
 export interface KitPlan { kit: string; families: KitFamily[]; changes: KitChange[] }
 
-export interface KitUsageFace { family: string; descriptors: Record<string, string>; chars: string; rendered: { weight?: number[] }; declared: { weight?: number[] } }
+/** The usage.json fields the kit code reads (`chars` is a unicode-range string). */
+export type KitUsageFace = Pick<UsageFaceJson, 'family' | 'descriptors' | 'chars' | 'rendered' | 'declared'>;
 
 const fvdWeight = (v: string) => Number(v.slice(1)) * 100;
 
@@ -122,7 +125,7 @@ export async function checkLiveKit(kit: string, faces: KitUsageFace[], o: { fetc
     if (!url) { problems.push(`${fam} ${want.replace('|', ' ')} is no longer in kit ${kit}`); continue; }
     const bytes = new Uint8Array(await (await f(url, { signal: AbortSignal.timeout(30_000) })).arrayBuffer());
     const cmap = new Set(loadFont(await toSfnt(bytes)).face.collectUnicodes());
-    const missing = [...face.chars].filter((ch) => !cmap.has(ch.codePointAt(0)!));
+    const missing = [...codePointsOf(parseUnicodeRange(face.chars))].filter((cp) => !cmap.has(cp)).map((cp) => String.fromCodePoint(cp));
     if (missing.length) problems.push(`${fam} ${want.replace('|', ' ')} in kit ${kit} no longer has ${missing.slice(0, 12).join(' ')}`);
   }
   return problems;

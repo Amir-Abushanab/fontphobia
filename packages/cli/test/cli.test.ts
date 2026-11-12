@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -22,6 +22,21 @@ test('subset writes a WOFF2 and prints its unicode-range', () => {
   const stdout = run('subset', font, '--unicodes', 'U+20-7E', '--features', '+tnum', '-o', out);
   expect(stdout).toMatch(/unicode-range: U\+20-7E/);
   expect(String.fromCharCode(...readFileSync(out).subarray(0, 4))).toBe('wOF2');
+});
+
+test('numeric-looking option values stay strings', () => {
+  const out = join(tmp, 'n.woff2');
+  // --text 2024 keeps 2, 0, 4; --text 0 keeps only "0" (it used to keep every character)
+  expect(run('subset', font, '--text', '2024', '-o', out)).toMatch(/3 characters/);
+  expect(run('subset', font, '--text', '0', '-o', out)).toMatch(/1 characters/);
+  expect(run('subset', font, '--unicodes', 'U+30', '--name-ids', '1', '-o', out)).toMatch(/unicode-range: U\+30\n/);
+  expect(run('subset', font, '--text', 'a', '--name-ids', '0', '-o', out)).toMatch(/1 characters/);
+});
+
+test('check --allow-chars with a number does not crash', () => {
+  const r = spawnSync(process.execPath, [cli, 'check', '--allow-chars', '123', '--mode', 'warn', '--cwd', tmp], { encoding: 'utf8' });
+  expect(r.stderr).toBe('');
+  expect(r.stdout).toMatch(/nothing to check/);
 });
 
 test('bad arguments exit non-zero with a message', () => {

@@ -136,7 +136,7 @@ Every command takes `--cwd <dir>`, and most take `--json`.
 | `audit` | Crawl and write `.fontphobia/usage.json` and `report.md` | `--dist`, `--build-cmd`, `--start-cmd` (SSR routes), `--url`, `--pages`, `--ignore`, `--viewports`, `--locales`, `--rebuild`, `--no-cache` |
 | `build` | Plan from `usage.json` (no browser). Shows the plan and diff; `--write` applies | `--write`, `--allow`, `--no-remainder` |
 | `verify` | Check the files and shaping, then compare every page before and after | `--browsers`, `--dpr`, `--viewports`, `--mask`, `--ignore`, `--timeout`, `--baseline overlay\|worktree`, `--hinting`, `--no-browser` |
-| `check` | Are the subsets still up to date? Exits 1 when the site would render differently | `--url` (crawl production), `--mode warn`, `--strict`, `--allow-chars` |
+| `check` | Are the subsets still up to date? Exits 1 when the site would render differently, or when there was nothing to check | `--url` (crawl production), `--mode warn`, `--strict`, `--allow-chars` |
 | `revert` | Put everything back from the manifest | `--dry-run`, `--keep-kits` |
 | `apply-kit` | Adobe Fonts: remove kit styles nothing uses, through the Typekit API (`TYPEKIT_TOKEN` from fonts.adobe.com/account/tokens) | `--yes`, `--check` |
 | `inspect <font>` | A font's tables, axes, features, hinting and sizes | |
@@ -158,6 +158,7 @@ Every command takes `--cwd <dir>`, and most take `--json`.
 `check` is static by default: no browser and no network.
 - **Errors:** anything that would render differently, such as a source font that changed, an edited block, a new `@font-face`, a feature or axis value the subsets dropped, or a character no file has.
 - **Warnings:** characters that would load the rest file. They render correctly but download more; `--strict` fails on them too.
+- **Nothing to check:** with no `.fontphobia/manifest.json`, or when `check --url` can't load a page, `check` exits 1, because it confirmed nothing. `--mode warn` reports this without failing. With no manifest, the framework integrations log a warning and let the build finish.
 
 Run it after your build with your framework's hook:
 
@@ -194,7 +195,7 @@ Three recipes; full workflow files are in [docs/ci.md](https://github.com/Amir-A
 
 ## Configuration
 
-`fontphobia.config.ts` (also `.mts`, `.mjs`, `.js` or `.json`) is optional. Every key is optional too.
+`fontphobia.config.ts` (also `.mts`, `.mjs`, `.js` or `.json`) is optional. Every key is optional too. An unknown key or a value of the wrong type is an error that names the file and the key.
 
 ```ts
 import { defineConfig } from 'fontphobia'
@@ -226,7 +227,11 @@ fontphobia modifies only fonts whose license it recognizes as open:
 - the Ubuntu Font Licence and the Bitstream Vera license;
 - MIT, CC0, and GPL with the font exception.
 
-It reads the license from the font's name table, or from a license file or `package.json` next to the font.
+It reads the license from the font's name table, or from a license file that belongs to the font:
+- a file next to the font, or in a folder above it inside the project (`OFL.txt`, `LICENSE`, or `<Family>-LICENSE.txt` when the family matches);
+- for a font in `node_modules`, its package's license file or `package.json` license.
+
+The project's own `LICENSE` and `package.json` never count as a font's license. At the project root, only a file named for the font or for the OFL does.
 
 **Refused:**
 - other fonts, unless you list the family under `licenses.allow`;
@@ -265,9 +270,9 @@ pnpm plans:update   # re-crawl the fixtures and rewrite fixtures/plans/*
 - `packages/crawler`: audit and verify, with Chrome through `playwright-core`.
 - `packages/cli`: the published `fontphobia` package and the integrations.
 - `fixtures/`: test fonts and sites.
-- `PLAN.md`: the design and the notes from each milestone.
+- Comments cite the design notes by section (`§9.1`) and milestone (`M5`); the notes are not in this repository.
 - `spikes/`: research, not part of the build.
 
-**Releasing:** bump `packages/cli/package.json`, then push a `v<version>` tag. `.github/workflows/release.yml` tests, packs and publishes with npm provenance.
+**Releasing:** run `node scripts/set-version.mjs <version>`, which sets the version in `packages/cli/package.json` and in the `fontphobia@<version>` pins in `README.md` and `docs/ci.md`. Add a `## <version>` section to `CHANGELOG.md`, commit, and push a `v<version>` tag. `.github/workflows/release.yml` tests, packs and publishes with npm provenance, then creates the GitHub release with that changelog section as the notes.
 
 MIT © Amir Abushanab

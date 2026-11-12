@@ -8,7 +8,7 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: read
+  contents: write # create the GitHub release
   id-token: write # npm provenance and trusted publishing
 
 jobs:
@@ -24,6 +24,8 @@ jobs:
           registry-url: https://registry.npmjs.org
       - name: The tag matches the package version
         run: test "v$(node -p "require('./packages/cli/package.json').version")" = "$GITHUB_REF_NAME"
+      - name: The changelog has a section for this version (checked before anything is published)
+        run: node scripts/changelog-section.mjs "${GITHUB_REF_NAME#v}" > "$RUNNER_TEMP/release-notes.md"
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
@@ -36,3 +38,10 @@ jobs:
           # The first version is published by hand (npm only lets a package that exists have a trusted publisher).
           if npm view "fontphobia@$v" version >/dev/null 2>&1; then echo "fontphobia@$v is already on npm"; exit 0; fi
           npm publish "$RUNNER_TEMP"/pkg/fontphobia-*.tgz --provenance --access public
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Also runs when the version was already on npm, unless the release exists.
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then echo "release $GITHUB_REF_NAME already exists"; exit 0; fi
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"
