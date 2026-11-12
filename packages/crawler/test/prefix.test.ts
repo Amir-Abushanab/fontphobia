@@ -104,7 +104,7 @@ describe.skipIf(!chrome)('audit and verify of a site served under /sub/', () => 
     const r = await audit({ ...opts(), ignore: ['/bakery/**'] });
     expect(r.crawl.failed).toEqual({});
     expect(r.crawl.pages).toEqual(['/sub/', ...colon.map((d) => `/sub/${d}/`), '/sub/about/', '/sub/about/team/']);
-    expect(Object.keys(r.usage.pages).sort()).toEqual(r.crawl.pages);
+    expect(Object.keys(r.usage.pages).toSorted()).toEqual(r.crawl.pages);
     expect(r.crawl.visits).toBe(3 + colon.length);
   }, 120_000);
 
@@ -129,7 +129,7 @@ describe.skipIf(!chrome)('verify against a --url with a path', () => {
     server = await serveStatic(root, { base: '/sub/' });
   }, 120_000);
   afterAll(async () => { await server?.close(); });
-  const loaded = (r: Awaited<ReturnType<typeof verify>>) => r.browser!.comparisons.map((c) => `${c.page} ${c.class === 'failed' ? `failed: ${c.causes.join('; ')}` : 'loaded'}`).sort();
+  const loaded = (r: Awaited<ReturnType<typeof verify>>) => r.browser!.comparisons.map((c) => `${c.page} ${c.class === 'failed' ? `failed: ${c.causes.join('; ')}` : 'loaded'}`).toSorted();
 
   it('verifies a usage.json recorded under the same prefix', async () => {
     const prefixed: UsageFileJson = { ...usage, pages: Object.fromEntries(Object.entries(usage.pages).map(([k, v]) => [`/sub${k}`, v])) };

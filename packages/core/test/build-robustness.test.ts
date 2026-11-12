@@ -51,7 +51,7 @@ describe('build --write is all or nothing', () => {
     expect(snapshot(root)).toEqual(before);
 
     const r = await buildProject(root, u, {}, { version: '1', write: true });
-    expect(r.edits.map((e) => e.file).sort()).toEqual(['index.html', 'src/fonts.ts', 'styles.css', 'styles.css']);
+    expect(r.edits.map((e) => e.file).toSorted()).toEqual(['index.html', 'src/fonts.ts', 'styles.css', 'styles.css']);
     expect(readManifest(root)!.fontChecks).toHaveLength(1);
     expect(readManifest(root)!.entries['inter-100-900-normal']!.preloads).toHaveLength(1);
     expect(revertProject(root, { write: true }).problems).toEqual([]);
@@ -123,7 +123,7 @@ describe('the stylesheet changed since the audit', () => {
     u.faces['deja-copy'] = structuredClone(u.faces['deja-400-normal']!);
     const r = await buildProject(root, u, {}, { version: '1' });
     expect(r.edits.filter((e) => e.file === 'styles.css')).toEqual([]);
-    expect(r.notWritten.map((n) => n.id).sort()).toEqual(['deja-400-normal', 'deja-copy', 'inter-100-900-italic']);
+    expect(r.notWritten.map((n) => n.id).toSorted()).toEqual(['deja-400-normal', 'deja-copy', 'inter-100-900-italic']);
     for (const n of r.notWritten) expect(n.reason).toMatch(/changed since the audit; rerun `fontphobia audit`/);
   }, 300_000);
 });

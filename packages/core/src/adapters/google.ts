@@ -71,7 +71,7 @@ export function googleCssFromAudit(usage: UsageFileJson & { unloaded?: Record<st
   const hasSpace = (d: Record<string, string>) => !d['unicode-range'] || inRanges(parseUnicodeRange(d['unicode-range']), 0x20);
   const rules = faces.map((f) => {
     const d = f.descriptors;
-    const keys = [...order.filter((k) => d[k] !== undefined), ...Object.keys(d).filter((k) => !order.includes(k)).sort()];
+    const keys = [...order.filter((k) => d[k] !== undefined), ...Object.keys(d).filter((k) => !order.includes(k)).toSorted()];
     return { last: hasSpace(d), text: `@font-face {\n${keys.map((k) => `  ${k}: ${d[k]};`).join('\n')}\n}` };
   });
   const sorted = [...rules.filter((r) => !r.last), ...rules.filter((r) => r.last)];
@@ -93,7 +93,7 @@ export function findSheetRefs(root: string, sheet: string): SheetRef[] {
     if (!text.includes('fonts.googleapis.com')) continue;
     for (const v of variants) for (let at = text.indexOf(v); at >= 0; at = text.indexOf(v, at + v.length)) out.push({ file, start: at, end: at + v.length, text: v });
   }
-  return out.sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : a.start - b.start));
+  return out.toSorted((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : a.start - b.start));
 }
 
 /** `css2?family=Fraunces:wght@400..700&family=Inter` → `google-fraunces-inter`. */

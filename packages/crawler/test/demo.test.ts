@@ -59,7 +59,7 @@ describe.skipIf(!browser)('the live font examples', () => {
         await page.route('**/font-probe', (route) => route.fulfill({ contentType: 'text/html', body: `<!doctype html><meta charset="utf-8"><base href="${server.url}"><style>${fontRules}p { font-family: ${family}; }</style><p>${sample}</p>` }));
         await page.goto(new URL('font-probe', server.url).href);
         await page.evaluate(() => document.fonts.ready.then(() => {}));
-        expect(requested.sort(), `${family}: ${sample}`).toEqual([...roles].sort());
+        expect(requested.toSorted(), `${family}: ${sample}`).toEqual([...roles].toSorted());
       } finally { await page.close(); }
     }
   });

@@ -37,12 +37,12 @@ function reservedNames(text: string): string[] {
     for (let n; (n = /^(?:\s*[“"'‘]([^”"'’\n]+)[”"'’]|\s*<([^>\n]+)>|[ \t]*([\p{Lu}\d][^,;&()<>“”"‘’\n]*?)(?=[ \t]+and[ \t]|[ \t]*[,;&()]|\.(?:\s|$)|[ \t]*(?:\r?\n|$)))/u.exec(rest));) {
       const name = (n[1] ?? n[2] ?? n[3])!.trim();
       if (name && name.length <= 64) out.add(name);
-      const sep = /^[ \t]*(?:,[ \t]*(?:and\b|&)?|and\b|&)/.exec(rest.slice(n[0].length));
-      if (!sep) break;
-      rest = rest.slice(n[0].length + sep[0].length);
+      const joiner = /^[ \t]*(?:,[ \t]*(?:and\b|&)?|and\b|&)/.exec(rest.slice(n[0].length));
+      if (!joiner) break;
+      rest = rest.slice(n[0].length + joiner[0].length);
     }
   }
-  return [...out].sort();
+  return [...out].toSorted();
 }
 
 /** The font's own family: name ID 16, else 1. */
@@ -69,7 +69,7 @@ function licenseFiles(names: string[], keys: string[], generic: boolean): string
     else if (k && keys.some((x) => x.startsWith(k))) named.push([k.length, n]);
   }
   const by = (a: string, b: string) => a.length - b.length || (a < b ? -1 : a > b ? 1 : 0);
-  return [...named.sort((a, b) => b[0] - a[0] || by(a[1], b[1])).map((x) => x[1]), ...ofl.sort(by), ...plain.sort(by)];
+  return [...named.toSorted((a, b) => b[0] - a[0] || by(a[1], b[1])).map((x) => x[1]), ...ofl.toSorted(by), ...plain.toSorted(by)];
 }
 
 /**
@@ -111,7 +111,7 @@ export function detectLicense(sfnt: Uint8Array, file?: string, root?: string): L
     const all = `${copyright}\n${fromName}\n${near?.text ?? ''}`;
     const reserved = new Set(reservedNames(all));
     if (hit[1] === 'Bitstream-Vera') { reserved.add('Bitstream'); reserved.add('Vera'); }
-    return { id: hit[1], open: true, reserved: [...reserved].sort(), from };
+    return { id: hit[1], open: true, reserved: [...reserved].toSorted(), from };
   }
   return { id: 'unknown', open: false, reserved: reservedNames(`${copyright}\n${fromName}`), from: fromName ? 'name table' : near?.from ?? 'none' };
 }

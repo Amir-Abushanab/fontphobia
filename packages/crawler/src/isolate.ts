@@ -15,7 +15,7 @@ export const git = (cwd: string, args: string[]) => new Promise<string>((resolve
 });
 
 /** The repository's top and the project's path inside it, or undefined outside git. */
-export async function gitTop(root: string): Promise<{ top: string; rel: string } | undefined> {
+async function gitTop(root: string): Promise<{ top: string; rel: string } | undefined> {
   try {
     const top = (await git(root, ['rev-parse', '--show-toplevel'])).trim();
     // git reports the real, long path (macOS: /var is /private/var; Windows: no 8.3 names like RUNNER~1).
@@ -24,7 +24,7 @@ export async function gitTop(root: string): Promise<{ top: string; rel: string }
 }
 
 /** `git status --porcelain -z` as paths, with what happened to each. */
-export async function gitChanges(top: string): Promise<{ path: string; deleted: boolean }[]> {
+async function gitChanges(top: string): Promise<{ path: string; deleted: boolean }[]> {
   const status = (await git(top, ['status', '--porcelain', '-z', '--untracked-files=all'])).split('\0').filter(Boolean);
   const out: { path: string; deleted: boolean }[] = [];
   for (let i = 0; i < status.length; i++) {
@@ -39,7 +39,7 @@ export async function gitChanges(top: string): Promise<{ path: string; deleted: 
  * The same tree with every file hard-linked (copied where the disk can't link) and every link kept.
  * A link to an absolute path inside `from` (pnpm's junctions on Windows) points into `to` instead.
  */
-export function linkTree(from: string, to: string, top = { from: realpathSync.native(from), to }) {
+function linkTree(from: string, to: string, top = { from: realpathSync.native(from), to }) {
   mkdirSync(to, { recursive: true });
   for (const e of readdirSync(from, { withFileTypes: true })) {
     const a = join(from, e.name), b = join(to, e.name);

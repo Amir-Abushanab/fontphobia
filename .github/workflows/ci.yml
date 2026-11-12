@@ -18,6 +18,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check:
+    # The static checks the sibling projects run. `pnpm check`: oxlint, the typecheck, knip (unused
+    # files, exports and dependencies), dependency-cruiser (import rules between the packages) and
+    # the agent skill (`intent validate` and `intent stale`). Then publint and
+    # are-the-types-wrong on the packed package.
+    name: Check
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm build
+      - run: pnpm package:check
+
+  audit:
+    name: Audit dependencies
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level high
+
   test:
     # M1: byte-identical output on macOS, Linux and Windows (PLAN §4, §16). The golden test
     # compares every output's sha256 with the committed hashes.

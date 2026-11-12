@@ -12,6 +12,7 @@ export function freePort(): Promise<number> {
   });
 }
 
+// eslint-disable-next-line no-control-regex -- a URL in the output ends at an ANSI escape
 const URL_RE = /https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)(?::\d+)?[^\s"'\x1b]*/g;
 // eslint-disable-next-line no-control-regex
 const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
@@ -59,7 +60,7 @@ export async function startServer(command: string, opts: { cwd: string; env?: Re
   const suffix = (opts.path ?? '/').replace(/^\/?/, '/');
   const candidates = () => [`http://localhost:${port}`, `http://127.0.0.1:${port}`, ...[...stripAnsi(out).matchAll(URL_RE)].map((m) => m[0].replace('0.0.0.0', '127.0.0.1').replace(/\/+$/, ''))];
   while (Date.now() < deadline) {
-    for (const base of [...new Set(candidates())]) {
+    for (const base of new Set(candidates())) {
       const origin = new URL(base).origin;
       if (await responds(origin + suffix)) return { url: origin, pid: child.pid, output: () => out, stop: () => killTree(child) };
     }

@@ -163,9 +163,9 @@ describe('buildUsage', () => {
     expect(charsToRanges(byFile('ext.woff2').chars)).toBe('U+103, U+21A, U+1EBF');
   });
   it('puts bold inside italic into the italic face', () => {
-    const it = byFile('italic.woff2');
-    expect([...it.chars].map((c) => String.fromCodePoint(c)).sort().join('')).toBe('bdlo');
-    expect([...it.rendered.weight]).toEqual([700]);
+    const italic = byFile('italic.woff2');
+    expect([...italic.chars].map((c) => String.fromCodePoint(c)).toSorted().join('')).toBe('bdlo');
+    expect([...italic.rendered.weight]).toEqual([700]);
   });
   it('records system fallback, inserted characters and declared states', () => {
     expect(charsToRanges(u.pages.get('/')!.fallback.get('sans-serif')!)).toBe('U+2603');
@@ -176,8 +176,8 @@ describe('buildUsage', () => {
     expect([...l.declared.weight]).toEqual([800]);
     expect(l.editable).toBe(true);
     expect(l.features.has('tnum')).toBe(true);
-    expect([...l.rendered.axes.get('opsz')!].sort()).toEqual([16, 24]);
-    expect([...l.rendered.axes.get('wght')!].sort()).toEqual([400, 650]);
+    expect([...l.rendered.axes.get('opsz')!].toSorted()).toEqual([16, 24]);
+    expect([...l.rendered.axes.get('wght')!].toSorted()).toEqual([400, 650]);
   });
   it('records characters drawn in text set in a system font, apart from fallback', () => {
     const mono = [row(), row({ 'font-family': 'monospace' })];
@@ -196,7 +196,7 @@ describe('buildUsage', () => {
     expect(words).toContain('Hello ');
     expect(words).toContain('ar'); // "Țară": Ț and ă go to ext, "ar" to latin
     const ext = [...byFile('ext.woff2').contexts.values()].flatMap((c) => [...c.words]);
-    expect(ext.sort()).toEqual([' Ț', 'ă', 'ế']);
+    expect(ext.toSorted()).toEqual([' Ț', 'ă', 'ế']);
   });
   it('reports preloads and unloaded faces', () => {
     const p = u.pages.get('/')!.preloads;

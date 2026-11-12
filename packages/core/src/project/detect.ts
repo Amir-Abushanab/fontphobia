@@ -24,7 +24,7 @@ export function detectProject(root: string): Project {
   const deps = new Set<string>(Object.keys({ ...pkg?.dependencies, ...pkg?.devDependencies, ...pkg?.peerDependencies, ...pkg?.optionalDependencies }));
   const matched = PROFILES.filter((p) =>
     (p.deps ?? []).every((d) => d.split('|').some((x) => deps.has(x))) && (p.files ?? []).every((f) => has(root, f)) && (p.deps?.length || p.files?.length),
-  ).sort((a, b) => b.priority - a.priority);
+  ).toSorted((a, b) => b.priority - a.priority);
   const pm = pkg?.packageManager?.split('@')[0];
   const packageManager = (['pnpm', 'npm', 'yarn', 'bun', 'deno'].includes(pm) ? pm
     : existsSync(join(root, 'pnpm-lock.yaml')) ? 'pnpm' : existsSync(join(root, 'bun.lock')) || existsSync(join(root, 'bun.lockb')) ? 'bun'
@@ -46,7 +46,7 @@ export function expandPattern(root: string, pattern: string): string[] {
     }
     cur = next;
   }
-  return cur.sort();
+  return cur.toSorted();
 }
 
 export function listFiles(dir: string, pred: (rel: string) => boolean, opts: { skip?: (rel: string, name: string) => boolean; max?: number } = {}): string[] {
@@ -171,7 +171,7 @@ export function buildAge(p: Project, site: SiteSource): BuildAge | undefined {
         if (e.name.startsWith('.') && e.name !== '.vitepress') continue;
         if (rel.endsWith('.vitepress/cache')) continue;
         walk(abs);
-      } else if (e.isFile() && !/^fontphobia\.config\./.test(e.name) && !e.name.endsWith('.log')) {
+      } else if (e.isFile() && !e.name.startsWith('fontphobia.config.') && !e.name.endsWith('.log')) {
         let m: number;
         try { m = statSync(abs).mtimeMs; } catch { continue; }
         if (m > builtAt + SLACK_MS) {
@@ -198,7 +198,7 @@ export function htmlPages(dir: string): string[] {
   return listFiles(dir, (r) => r.endsWith('.html'), { skip: (_r, n) => n === 'node_modules' || n.startsWith('.') })
     .map((r) => (r === 'index.html' ? '/' : r.endsWith('/index.html') ? '/' + r.slice(0, -'index.html'.length) : '/' + r))
     .filter((p) => !/^\/(_next|_nuxt|_astro|assets|static)\//.test(p))
-    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    .toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
 /** Route lists the build left on disk (§7.1.1 "Route list"). Dynamic routes come back separately. */
@@ -215,13 +215,13 @@ export function routesFromFiles(p: Project): { routes: string[]; dynamic: string
         const pre = readJson(join(p.root, '.next/prerender-manifest.json'));
         for (const r of Object.keys(pre?.routes ?? {})) add(r, src);
         const rm = readJson(join(p.root, '.next/routes-manifest.json'));
-        for (const r of rm?.staticRoutes ?? []) if (!/^\/_/.test(r.page)) add(r.page, src);
+        for (const r of rm?.staticRoutes ?? []) if (!r.page.startsWith('/_')) add(r.page, src);
         for (const r of rm?.dynamicRoutes ?? []) add(r.page, src);
         break;
       }
       case 'nuxt-meta': {
         const dir = join(p.root, '.output/public/_nuxt/builds/meta');
-        if (existsSync(dir)) for (const f of readdirSync(dir).filter((x) => x.endsWith('.json')).sort()) for (const r of readJson(join(dir, f))?.prerendered ?? []) add(r, src);
+        if (existsSync(dir)) for (const f of readdirSync(dir).filter((x) => x.endsWith('.json')).toSorted()) for (const r of readJson(join(dir, f))?.prerendered ?? []) add(r, src);
         break;
       }
       case 'angular-prerendered':
@@ -253,7 +253,7 @@ export function routesFromFiles(p: Project): { routes: string[]; dynamic: string
       default: break;
     }
   }
-  return { routes: [...routes].sort(), dynamic: [...dynamic].sort(), sources };
+  return { routes: [...routes].toSorted(), dynamic: [...dynamic].toSorted(), sources };
 }
 
 /** `**` any depth, `*` one segment, `?` one character. */

@@ -30,7 +30,7 @@ export async function inspectFont(bytes: Uint8Array): Promise<Inspection> {
   const os2 = parseOs2(sfnt);
   const head = parseHead(sfnt);
   const hhea = parseHhea(sfnt);
-  const uniq = (xs: string[]) => [...new Set(xs)].sort();
+  const uniq = (xs: string[]) => [...new Set(xs)].toSorted();
   const outlines = tables.has('glyf') ? 'truetype' : tables.has('CFF2') ? 'cff2' : tables.has('CFF ') ? 'cff' : 'unknown';
   return {
     file: { format, bytes: bytes.byteLength, sha256: createHash('sha256').update(bytes).digest('hex'), sfntBytes: sfnt.byteLength, outlines },
@@ -55,7 +55,7 @@ export async function inspectFont(bytes: Uint8Array): Promise<Inspection> {
       win: os2 && { ascent: os2.usWinAscent, descent: os2.usWinDescent },
     },
     os2: os2 && { weightClass: os2.usWeightClass, widthClass: os2.usWidthClass, fsType: os2.fsType },
-    tables: [...tables].map(([tag, d]) => ({ tag, bytes: d.byteLength })).sort((a, b) => (a.tag < b.tag ? -1 : 1)),
+    tables: [...tables].map(([tag, d]) => ({ tag, bytes: d.byteLength })).toSorted((a, b) => (a.tag < b.tag ? -1 : 1)),
   };
 }
 
@@ -89,6 +89,6 @@ export function formatInspection(i: Inspection): string {
   if (lic) L.push(`License    ${lic.split('\n')[0]!.slice(0, 110)}${i.names['14'] ? `  ${i.names['14']}` : ''}`);
   L.push('');
   L.push('Tables');
-  for (const t of [...i.tables].sort((a, b) => b.bytes - a.bytes)) L.push(`  ${t.tag.padEnd(4)} ${kb(t.bytes).padStart(10)}`);
+  for (const t of [...i.tables].toSorted((a, b) => b.bytes - a.bytes)) L.push(`  ${t.tag.padEnd(4)} ${kb(t.bytes).padStart(10)}`);
   return L.join('\n');
 }

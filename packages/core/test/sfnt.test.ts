@@ -8,7 +8,7 @@ test('canonical write is idempotent and keeps every table byte-for-byte', () => 
   const once = writeSfnt(readSfnt(font));
   expect(writeSfnt(readSfnt(once))).toEqual(once);
   const a = readSfnt(font).tables, b = readSfnt(once).tables;
-  expect([...b.keys()].sort()).toEqual([...a.keys()].sort());
+  expect([...b.keys()].toSorted()).toEqual([...a.keys()].toSorted());
   for (const [tag, data] of a) if (tag !== 'head') expect(b.get(tag)).toEqual(data);
 });
 

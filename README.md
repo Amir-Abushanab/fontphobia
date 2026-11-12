@@ -128,7 +128,7 @@ Italic styles are never dropped, because browsers italicize `em`, `i`, `cite` an
 
 ## Commands
 
-Every command takes `--cwd <dir>`, and most take `--json`.
+Every command except `inspect` and `subset` takes `--cwd <dir>`, and most take `--json`.
 
 | Command | What it does | Key options |
 |---|---|---|
@@ -252,8 +252,9 @@ The project's own `LICENSE` and `package.json` never count as a font's license. 
 ```sh
 pnpm install
 pnpm test                       # unit, golden-hash and crawler tests (crawler tests need Chrome)
-pnpm typecheck
+pnpm check                      # oxlint, typecheck, knip, dependency-cruiser and the agent skill
 pnpm --filter fontphobia build  # bundles packages/cli/dist and the HarfBuzz WASM
+pnpm package:check              # publint and are-the-types-wrong on the packed package
 node packages/cli/src/cli.ts --help
 ```
 
@@ -278,7 +279,7 @@ pnpm plans:update   # re-crawl the fixtures and rewrite fixtures/plans/*
 **Changes and releases** go through [Changesets](https://github.com/changesets/changesets). A change to the published package comes with a changeset: run `pnpm changeset`, or `pnpm changeset --patch fontphobia -m "..."` without the prompts, and commit the file it writes under `.changeset/`. Every changeset names `fontphobia`, because `packages/core` and `packages/crawler` are bundled into it.
 
 - On a push to `main`, `.github/workflows/version.yml` collects the pending changesets into a "chore: version packages" pull request. It bumps the version, writes [`packages/cli/CHANGELOG.md`](packages/cli/CHANGELOG.md) and updates the `fontphobia@<version>` pins in `README.md` and `docs/ci.md`. It never publishes.
-- Merging that pull request runs `.github/workflows/release.yml`. It typechecks, tests, publishes to npm with provenance over trusted publishing, tags `fontphobia@<version>` and creates the GitHub release from the changelog entry. It never versions.
+- Merging that pull request runs `.github/workflows/release.yml`. It typechecks, tests, checks the packed package, publishes to npm with provenance over trusted publishing, tags `fontphobia@<version>` and creates the GitHub release from the changelog entry. It never versions.
 
 The version pull request needs the repository setting "Allow GitHub Actions to create and approve pull requests". GitHub does not run CI on a pull request that Actions opened. To run it, start it on the pull request's branch with `gh workflow run ci.yml --ref changeset-release/main`. The release workflow also runs the typecheck and the tests before it publishes.
 

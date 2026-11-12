@@ -2,7 +2,7 @@
 // Run from the repository root: pnpm bakery:build (requires installed Google Chrome).
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, dirname, join, relative } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { audit, launchChrome, serveStatic, verify, formatVerify } from '../packages/crawler/src/index.ts';
@@ -86,7 +86,7 @@ try {
     const plan = built.plan.faces.find((face) => face.id === entry.id);
     faces.push({ family: entry.family, used: audited.usage.faces[entry.id].count,
       source: { file: entry.source.file, bytes: entry.source.bytes, characters: original.unicodes.count },
-      outputs: entry.outputs.map(({ role, file, bytes, sha256, unicodeRange }) => ({ role, file, bytes, sha256, unicodeRange })),
+      outputs: entry.outputs.map(({ role, file, bytes, sha256: hash, unicodeRange }) => ({ role, file, bytes, sha256: hash, unicodeRange })),
       repair: plan.repair, optIns: plan.optIns });
   }
   writeFileSync(join(output, 'font-files.json'), JSON.stringify({ faces }, null, 2) + '\n');
@@ -143,7 +143,7 @@ try {
     const before = await capture('before', path, width, dpr);
     const after = await capture('after', path, width, dpr);
     try {
-      const assets = (result) => result.resources.filter((r) => r.type === 'image' || r.type === 'script').sort((a, b) => a.path.localeCompare(b.path));
+      const assets = (result) => result.resources.filter((r) => r.type === 'image' || r.type === 'script').toSorted((a, b) => a.path.localeCompare(b.path));
       if (JSON.stringify(assets(before)) !== JSON.stringify(assets(after))) throw new Error(`Images/scripts differ on ${path}`);
       const imageGeometry = (page) => page.evaluate(() => {
         const main = document.querySelector('main').getBoundingClientRect();
@@ -171,11 +171,11 @@ try {
           await result.page.locator('#menu-search').fill('creme');
           await result.page.waitForTimeout(250);
         }
-        const a = PNG.sync.read(await before.page.locator('main').screenshot());
-        const b = PNG.sync.read(await after.page.locator('main').screenshot());
-        const comparison = textPixels(a, b);
-        if (comparison.pixels) throw new Error('The filtered menu differs between published versions.');
-        states.push({ page: path, state: 'accent-insensitive search: creme', ...comparison });
+        const filteredBefore = PNG.sync.read(await before.page.locator('main').screenshot());
+        const filteredAfter = PNG.sync.read(await after.page.locator('main').screenshot());
+        const filtered = textPixels(filteredBefore, filteredAfter);
+        if (filtered.pixels) throw new Error('The filtered menu differs between published versions.');
+        states.push({ page: path, state: 'accent-insensitive search: creme', ...filtered });
       }
     } finally { await before.context.close(); await after.context.close(); }
   }

@@ -19,7 +19,7 @@ export function pageBytes(plan: Plan, usage: UsageFileJson): PageBytes[] {
   const byId = new Map(plan.faces.map((f) => [f.id, f]));
   const sets = new Map<string, { role: string; set: Set<number>; bytes: number; name: string }[]>();
   for (const f of plan.faces) if (f.status === 'planned') sets.set(f.id, (f.files ?? []).map((x) => ({ role: x.role, set: new Set(codePointsOf(parseUnicodeRange(x.unicodeRange))), bytes: x.bytes, name: x.name })));
-  return Object.entries(usage.pages).sort(([a], [b]) => (a < b ? -1 : 1)).map(([page, pg]) => {
+  return Object.entries(usage.pages).toSorted(([a], [b]) => (a < b ? -1 : 1)).map(([page, pg]) => {
     let now = 0, after = 0;
     const loaded = new Set<string>();
     const faces: PageBytes['faces'] = {};
@@ -49,7 +49,7 @@ export function pageBytes(plan: Plan, usage: UsageFileJson): PageBytes[] {
   });
 }
 
-const median = (xs: number[]) => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.floor((s.length - 1) / 2)]! : 0; };
+const median = (xs: number[]) => { const s = [...xs].toSorted((a, b) => a - b); return s.length ? s[Math.floor((s.length - 1) / 2)]! : 0; };
 const pct = (a: number, b: number) => (a ? `${Math.round((1 - b / a) * 100)}%` : '0%');
 
 function table(rows: string[][], align: ('l' | 'r')[]): string[] {

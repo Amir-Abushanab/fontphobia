@@ -105,7 +105,7 @@ export function auditFindings(u: UsageJson, crawl: CrawlFacts): Finding[] {
   for (const [fam, s] of bySource) {
     if (s.size < 2) continue;
     const nuxt = s.has('nuxt-fonts') ? `. @nuxt/fonts doesn't see head <link>s or package imports and resolves ${fam} again: add { name: '${fam}', provider: 'none' } to fonts.families in nuxt.config so only the other source loads it (that changes which file pages load; run fontphobia verify after)` : '';
-    out.push({ kind: 'duplicate', text: `${fam} loads from more than one source: ${[...s].sort().join(', ')}${nuxt}` });
+    out.push({ kind: 'duplicate', text: `${fam} loads from more than one source: ${[...s].toSorted().join(', ')}${nuxt}` });
   }
   const dis = new Set<string>();
   for (const pg of Object.values(u.pages)) for (const d of pg.disagreements) dis.add(d);
@@ -141,11 +141,11 @@ export function formatAudit(u: UsageJson, crawl: CrawlFacts): string {
   } else L.push('No web fonts are used.');
   L.push('');
   const pages = Object.entries(u.pages);
-  const bytes = pages.map(([, p]) => p.bytes).sort((a, b) => a - b);
+  const bytes = pages.map(([, p]) => p.bytes).toSorted((a, b) => a - b);
   if (pages.length) {
     const median = bytes[Math.floor((bytes.length - 1) / 2)]!;
     L.push(`Font bytes per page: median ${kb(median)}, max ${kb(bytes[bytes.length - 1]!)}`);
-    const shown = pages.length > 15 ? [...pages].sort(([, a], [, b]) => b.bytes - a.bytes).slice(0, 15) : pages;
+    const shown = pages.length > 15 ? [...pages].toSorted(([, a], [, b]) => b.bytes - a.bytes).slice(0, 15) : pages;
     L.push(...table([
       ['Page', 'Font bytes', 'Files', 'Preloads'],
       ...shown.map(([p, pg]) => [p, kb(pg.bytes), String(pg.fonts.filter((f) => f.status < 400).length), pg.preloads.length ? `${pg.preloads.length}${pg.preloads.some((x) => !x.used) ? ` (${pg.preloads.filter((x) => !x.used).length} unused)` : ''}` : '-']),

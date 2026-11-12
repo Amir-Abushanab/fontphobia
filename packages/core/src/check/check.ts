@@ -93,6 +93,7 @@ export function scriptStrings(js: string): string {
   const out: string[] = [];
   for (const m of js.matchAll(/(["'`])((?:\\[\s\S]|(?!\1)[^\\\n])*)\1/g)) {
     const s = m[2]!;
+    // eslint-disable-next-line no-control-regex -- anything outside ASCII
     if (!/[^\x00-\x7f]|\\u/.test(s)) continue;
     out.push(s.replace(/\\u\{([0-9a-f]+)\}|\\u([0-9a-f]{4})|\\x([0-9a-f]{2})/gi, (_, a?: string, b?: string, c?: string) => ((n) => (n > 0x10ffff ? '\uFFFD' : String.fromCodePoint(n)))(parseInt((a ?? b ?? c)!, 16))));
   }
@@ -131,7 +132,7 @@ export async function checkProject(opts: CheckOptions): Promise<CheckResult> {
   // 1. Sources, outputs and blocks, as built.
   const facts: EntryFacts[] = [];
   let outputs = 0;
-  for (const e of Object.values(manifest.entries).sort((a, b) => (a.id < b.id ? -1 : 1))) {
+  for (const e of Object.values(manifest.entries).toSorted((a, b) => (a.id < b.id ? -1 : 1))) {
     const f: EntryFacts = { e, outputs: [], kept: new Set(), rest: new Set(), families: familyKey(e.family) };
     const src = join(root, e.source.file);
     if (!existsSync(src)) add({ kind: 'source', id: e.id, file: e.source.file, message: `the source font ${e.source.file} is gone` });
@@ -204,8 +205,8 @@ export async function checkProject(opts: CheckOptions): Promise<CheckResult> {
       const t = existsSync(join(root, r.file)) ? readFileSync(join(root, r.file), 'utf8') : '';
       if (!t.includes(r.to)) add({ kind: 'block', file: r.file, message: `${optionsLabel(r)} changed since fontphobia narrowed it; rerun build` });
       if (r.dropped.weights.length) {
-        const all = [...new Set([...(literalProp(r.from, weightKeyOf(r.adapter))?.values ?? []).map(Number)])];
-        const need = weights ? [...new Set([...weights].map((d) => matchWeight(d, all)!))].filter((w) => r.dropped.weights.includes(w)).sort((a, b) => a - b) : r.dropped.weights;
+        const all = [...new Set((literalProp(r.from, weightKeyOf(r.adapter))?.values ?? []).map(Number))];
+        const need = weights ? [...new Set([...weights].map((d) => matchWeight(d, all)!))].filter((w) => r.dropped.weights.includes(w)).toSorted((a, b) => a - b) : r.dropped.weights;
         if (need.length) add({ kind: 'axis', file: r.file, message: `${r.family} ${need.join(', ')} ${need.length > 1 ? 'are' : 'is'} asked for again${weights ? '' : ' (a font-weight is computed)'}, but build dropped ${need.length > 1 ? 'them' : 'it'} from ${optionsLabel(r)}` });
       }
       for (const tag of r.dropped.axes) if (texts.some((x) => new RegExp(`["']${tag}["']\\s+-?\\d`).test(x.text))) add({ kind: 'axis', file: r.file, message: `the code sets '${tag}', which build dropped from ${optionsLabel(r)} (limit-axes)` });
@@ -294,12 +295,12 @@ export async function checkProject(opts: CheckOptions): Promise<CheckResult> {
     }
     for (const [id, m] of scripted) {
       const f = facts.find((x) => x.e.id === id)!;
-      const cps = [...m.cps].filter((c) => !missing.get(id)?.cps.has(c)).sort((a, b) => a - b);
+      const cps = [...m.cps].filter((c) => !missing.get(id)?.cps.has(c)).toSorted((a, b) => a - b);
       if (cps.length) notes.push(`${f.e.family}: strings in ${[...m.files].slice(0, 2).join(', ')}${m.files.size > 2 ? ` and ${m.files.size - 2} more` : ''} have ${show(cps)}, outside its subsets; if any of them render, rerun (allowChars silences the rest)`);
     }
     for (const [id, m] of missing) {
       const f = facts.find((x) => x.e.id === id)!;
-      const cps = [...m.cps].sort((a, b) => a - b);
+      const cps = [...m.cps].toSorted((a, b) => a - b);
       const lazy = cps.every((c) => f.rest.has(c));
       add({
         kind: 'chars', severity: lazy ? 'warning' : 'error', id, file: [...m.files][0],
@@ -344,15 +345,15 @@ export async function checkUsage(root: string, usage: UsageFileJson, o: { strict
   if (!manifest || !Object.keys(manifest.entries).length) return { ok: true, issues: [], command: '', checked: { entries: 0, outputs: 0, styleFiles: 0, textFiles: 0 }, notes: [], noManifest: true };
   const issues: CheckIssue[] = [];
   let outputs = 0;
-  for (const e of Object.values(manifest.entries).sort((a, b) => (a.id < b.id ? -1 : 1))) {
+  for (const e of Object.values(manifest.entries).toSorted((a, b) => (a.id < b.id ? -1 : 1))) {
     const face = usage.faces[e.id];
     if (!face) continue; // not drawn on the crawled pages
     const kept = new Set<number>(), rest = new Set<number>();
     const outs: FontFacts[] = [];
-    for (const o of e.outputs) {
+    for (const output of e.outputs) {
       outputs++;
-      for (const c of rangeSet(o.unicodeRange)) (o.role === 'rest' ? rest : kept).add(c);
-      const p = join(root, o.file);
+      for (const c of rangeSet(output.unicodeRange)) (output.role === 'rest' ? rest : kept).add(c);
+      const p = join(root, output.file);
       if (existsSync(p)) outs.push(await fontFacts(new Uint8Array(readFileSync(p))));
     }
     const missing = [...rangeSet(face.chars)].filter((c) => !kept.has(c));

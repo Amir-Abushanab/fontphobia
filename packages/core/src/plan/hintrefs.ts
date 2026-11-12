@@ -5,12 +5,14 @@
 // extended file. Each non-core file therefore carries the references for its scripts in its cmap,
 // outside its unicode-range, so browsers never draw them from it (M5 notes). From FreeType's
 // src/autofit/afblue.dat and afscript.h.
+/* eslint-disable no-useless-concat -- one string per FreeType blue-zone set, split as in afblue.dat */
 const LATIN = 'THEZOCQS' + 'HEZLOCUS' + 'fijkdbh' + 'uvxzoesc' + 'nrxzoesc' + 'pqgjy' + 'oO0';
 const GREEK = 'ΓΒΕΖΘΟΩ' + 'ΒΔΖΞΘΟ' + 'βθδζλξ' + 'αειοπστω' + 'βγημρφχψ' + 'οΟ';
 const CYRILLIC = 'БВЕПЗОСЭ' + 'БВЕШЗОСЭ' + 'хпншезос' + 'руф' + 'оО';
 const HEBREW = 'בדהחךכםס' + 'בטכםסצ' + 'קךןףץ' + 'ם';
 const ARMENIAN = 'ԱՄՒՍԲԳԴՕ' + 'ՒՈԴՃՇՍՏՕ' + 'եէիմվֆճ' + 'այւսգշրօ' + 'հոճաեւսօ' + 'բըիլղպփւ' + 'օՕ';
 const GEORGIAN = 'გდელოჰ' + 'აზმსშძ' + 'ბვთკჩწ' + 'იოუძღჭ' + 'ო';
+/* eslint-enable no-useless-concat */
 
 const cps = (s: string) => [...new Set([...s].map((c) => c.codePointAt(0)!))];
 const SCRIPTS: { test: RegExp; refs: number[] }[] = [
@@ -30,7 +32,7 @@ export function hintRefs(set: Iterable<number>, cmap: Set<number>): number[] {
   const have = new Set(set);
   const out = new Set<number>(LATIN_REFS);
   for (const s of SCRIPTS) if ([...have].some((c) => s.test.test(String.fromCodePoint(c)))) for (const r of s.refs) out.add(r);
-  return [...out].filter((c) => cmap.has(c) && !have.has(c)).sort((a, b) => a - b);
+  return [...out].filter((c) => cmap.has(c) && !have.has(c)).toSorted((a, b) => a - b);
 }
 
 /**
@@ -61,5 +63,5 @@ export function cmapAliases(set: Iterable<number>, font: { nominalGlyph(cp: numb
   const have = new Set(set);
   const out = new Set<number>();
   for (const cp of have) { const g = font.nominalGlyph(cp); for (const a of g !== undefined ? byGlyph.get(g) ?? [] : []) if (!have.has(a)) out.add(a); }
-  return [...out].sort((a, b) => a - b);
+  return [...out].toSorted((a, b) => a - b);
 }

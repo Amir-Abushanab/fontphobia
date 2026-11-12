@@ -122,7 +122,7 @@ export function buildUsage(visits: Visit[], facts: Map<string, FontFacts>, opts:
   const qFaces = new Set<FaceUsage>();
 
   // Sorted input order makes the output independent of crawl concurrency.
-  const ordered = [...visits].sort((a, b) => (a.page < b.page ? -1 : a.page > b.page ? 1 : a.viewport - b.viewport || a.fontSize - b.fontSize || (a.textScale ?? 0) - (b.textScale ?? 0)));
+  const ordered = [...visits].toSorted((a, b) => (a.page < b.page ? -1 : a.page > b.page ? 1 : a.viewport - b.viewport || a.fontSize - b.fontSize || (a.textScale ?? 0) - (b.textScale ?? 0)));
 
   for (const v of ordered) {
     const vl = label(v);
@@ -242,7 +242,7 @@ export function buildUsage(visits: Visit[], facts: Map<string, FontFacts>, opts:
     };
 
     /** Attribute every character of `text`; returns the face per code point (null for system). */
-    const attributeText = (text: string, st: Parsed, runIndex: number, opts: { declared?: boolean; rule?: string; words?: boolean }) => {
+    const attributeText = (text: string, st: Parsed, runIndex: number, how: { declared?: boolean; rule?: string; words?: boolean }) => {
       const out: (Live | null)[] = [];
       const isInst = installed(runIndex);
       const webFirst = st.stack.length > 0 && families.has(st.stack[0]!.toLowerCase());
@@ -254,17 +254,17 @@ export function buildUsage(visits: Visit[], facts: Map<string, FontFacts>, opts:
           const f = r.face;
           f.usage.chars.add(cp);
           pageChars(f).add(cp);
-          if (opts.rule) { const s = f.usage.inserted.get(opts.rule) ?? new Set<number>(); f.usage.inserted.set(opts.rule, s); s.add(cp); }
-          record(f, st, !!opts.declared);
+          if (how.rule) { const s = f.usage.inserted.get(how.rule) ?? new Set<number>(); f.usage.inserted.set(how.rule, s); s.add(cp); }
+          record(f, st, !!how.declared);
           out.push(f);
         } else {
-          if (!isSpace(ch) && !opts.rule) {
+          if (!isSpace(ch) && !how.rule) {
             if (webFirst) { const s = page.fallback.get(r.system) ?? new Set<number>(); page.fallback.set(r.system, s); s.add(cp); } else page.system.add(cp);
           }
           out.push(null);
         }
       }
-      if (opts.words && !v.private && !opts.rule) addWords(text, out, st);
+      if (how.words && !v.private && !how.rule) addWords(text, out, st);
       return out;
     };
 

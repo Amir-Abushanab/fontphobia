@@ -90,7 +90,7 @@ export function hbSubset(sfnt: Uint8Array, opts: SubsetOptions): Uint8Array {
     if (opts.unicodes === '*') all(u);
     else for (const c of opts.unicodes) w.hb_set_add(u, c);
 
-    for (const [axis, v] of Object.entries(opts.axes ?? {}).sort(([a], [b]) => (a < b ? -1 : 1))) {
+    for (const [axis, v] of Object.entries(opts.axes ?? {}).toSorted(([a], [b]) => (a < b ? -1 : 1))) {
       const ok = typeof v === 'number'
         ? w.hb_subset_input_pin_axis_location(input, face, hbTag(axis), v)
         : w.hb_subset_input_set_axis_range(input, face, hbTag(axis), v.min, v.max, v.default ?? NaN);
@@ -159,7 +159,7 @@ export interface SubsetResult {
 export class ValidationError extends Error {}
 
 function sortedUnicodes(sfnt: Uint8Array): number[] {
-  return [...loadFont(sfnt).face.collectUnicodes()].sort((x, y) => x - y);
+  return [...loadFont(sfnt).face.collectUnicodes()].toSorted((x, y) => x - y);
 }
 
 /** Subset any font container to a validated WOFF2 (§9.1–9.5, without the browser OTS check). */
@@ -185,11 +185,11 @@ function mirrorClosure(sfnt: Uint8Array, cps: number[]): number[] {
 export function validateOutput(source: Uint8Array, decoded: Uint8Array, opts: SubsetOptions): number[] {
   const have = sortedUnicodes(decoded);
   const srcSet = new Set(sortedUnicodes(source));
-  let want = opts.unicodes === '*' ? [...srcSet].sort((x, y) => x - y) : [...new Set(opts.unicodes)].filter((c) => srcSet.has(c)).sort((x, y) => x - y);
+  let want = opts.unicodes === '*' ? [...srcSet].toSorted((x, y) => x - y) : [...new Set(opts.unicodes)].filter((c) => srcSet.has(c)).toSorted((x, y) => x - y);
   const differs = () => have.length !== want.length || have.some((c, i) => c !== want[i]);
   // The output cmap must be exactly the requested set ∩ the source cmap, plus HarfBuzz's bidi mirrors ('>' brings '<').
   // The planner asks for closed sets, so the closure is only worked out when the plain comparison fails.
-  if (opts.unicodes !== '*' && differs()) want = mirrorClosure(source, want).sort((x, y) => x - y);
+  if (opts.unicodes !== '*' && differs()) want = mirrorClosure(source, want).toSorted((x, y) => x - y);
   if (differs()) {
     const hs = new Set(have);
     const missing = want.filter((c) => !hs.has(c)).slice(0, 10);

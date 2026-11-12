@@ -27,7 +27,7 @@ function variationTags(texts: { text: string }[]): Set<string> {
 interface Target { adapter: OptionsRecord['adapter']; file: string; family: string; start: number; end: number; arg: string; weightKey: string; axesKey?: string }
 
 /** Where an option record's call or entry is now: next/font calls and Astro entries, by file. */
-export function optionTargets(root: string): Target[] {
+function optionTargets(root: string): Target[] {
   return [
     ...findGoogleFontCalls(root).map((c) => ({ adapter: 'next-font-google' as const, file: c.file, family: c.family, start: c.start, end: c.end, arg: c.arg, weightKey: 'weight', axesKey: 'axes' })),
     ...findAstroFontsEntries(root).map((e) => ({ adapter: 'astro-fonts' as const, file: e.file, family: e.family, start: e.start, end: e.end, arg: e.arg, weightKey: 'weights' })),
@@ -93,11 +93,11 @@ export function narrowOptions(root: string, usage: UsageFileJson, prev: Manifest
     const earlier = prev?.options?.find((r) => r.file === t.file && r.to === t.arg);
     if (!reps.length) { if (earlier) records.push(earlier); continue; }
     let arg = t.arg;
-    for (const r of [...reps].sort((x, y) => y.start - x.start)) arg = arg.slice(0, r.start) + r.text + arg.slice(r.end);
+    for (const r of [...reps].toSorted((x, y) => y.start - x.start)) arg = arg.slice(0, r.start) + r.text + arg.slice(r.end);
     edits.push({ file: t.file, start: t.start, end: t.end, text: arg, why: `narrow ${t.family} (${t.adapter})` });
     records.push({
       adapter: t.adapter, file: t.file, family: t.family, from: earlier?.from ?? t.arg, to: arg,
-      dropped: { weights: [...new Set([...(earlier?.dropped.weights ?? []), ...dropped.weights])].sort((x, y) => x - y), axes: [...new Set([...(earlier?.dropped.axes ?? []), ...dropped.axes])].sort() },
+      dropped: { weights: [...new Set([...(earlier?.dropped.weights ?? []), ...dropped.weights])].toSorted((x, y) => x - y), axes: [...new Set([...(earlier?.dropped.axes ?? []), ...dropped.axes])].toSorted() },
     });
   }
   // Astro <Font preload />: preload only the weights and styles pages load.
@@ -108,7 +108,7 @@ export function narrowOptions(root: string, usage: UsageFileJson, prev: Manifest
     if (!entry || o.skip?.has(familyKey(entry.family))) continue;
     const faces = Object.values(usage.faces).filter((f) => f.source.adapter === 'astro-fonts' && familyKey(astroFamily(parseFamilyList(f.family)[0] ?? f.family)) === familyKey(entry.family));
     if (!faces.length) continue;
-    const pairs = [...new Set(faces.map((f) => `${(f.descriptors['font-weight'] ?? '400').trim()}|${(f.descriptors['font-style'] ?? 'normal').trim()}`))].sort();
+    const pairs = [...new Set(faces.map((f) => `${(f.descriptors['font-weight'] ?? '400').trim()}|${(f.descriptors['font-style'] ?? 'normal').trim()}`))].toSorted();
     const weights = literalProp(entry.arg, 'weights')?.values ?? ['400'];
     const styles = literalProp(entry.arg, 'styles')?.values ?? ['normal', 'italic'];
     if (weights.every((w) => styles.every((st) => pairs.includes(`${w}|${st}`)))) continue; // pages load every declared face: nothing to filter
@@ -122,5 +122,5 @@ export function narrowOptions(root: string, usage: UsageFileJson, prev: Manifest
   // Earlier narrowings the audit didn't see again stay while their call or tag is unchanged.
   const still = (r: OptionsRecord) => (r.kind === 'preload' ? findAstroFontTags(root).some((x) => x.file === r.file && x.text === r.to) : targets.some((c) => c.file === r.file && c.arg === r.to));
   for (const r of prev?.options ?? []) if (!records.some((x) => x.file === r.file && x.from === r.from) && still(r)) records.push(r);
-  return { edits, records: records.sort((x, y) => (x.file + x.family + (x.kind ?? '') < y.file + y.family + (y.kind ?? '') ? -1 : 1)), suggestions };
+  return { edits, records: records.toSorted((x, y) => (x.file + x.family + (x.kind ?? '') < y.file + y.family + (y.kind ?? '') ? -1 : 1)), suggestions };
 }

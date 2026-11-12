@@ -10,7 +10,8 @@
     "unicode-range",
     "performance",
     "harfbuzz",
-    "cli"
+    "cli",
+    "tanstack-intent"
   ],
   "author": "Amir Abushanab",
   "license": "MIT",
@@ -26,7 +27,8 @@
     "fontphobia": "./dist/cli.mjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "skills"
   ],
   "engines": {
     "node": ">=22"

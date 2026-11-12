@@ -144,7 +144,7 @@ export function nameStrings(buf: Uint8Array): Map<number, string> {
     const cur = best.get(r.nameID);
     if (!cur || score(r) > score(cur)) best.set(r.nameID, r);
   }
-  return new Map([...best].sort((a, b) => a[0] - b[0]).map(([id, r]) => [id, r.value]));
+  return new Map([...best].toSorted((a, b) => a[0] - b[0]).map(([id, r]) => [id, r.value]));
 }
 
 export interface Axis { tag: string; min: number; default: number; max: number; nameID: number; hidden: boolean }

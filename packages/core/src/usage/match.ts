@@ -70,7 +70,7 @@ export function matchFaces<T extends MatchableFace>(familyFaces: T[], want: Want
   let c = keepBest(familyFaces, (f) => stretchScore(f.stretch, want.stretch));
   c = keepBest(c, (f) => styleScore(f.style, want.style));
   c = keepBest(c, (f) => weightScore(f.weight, want.weight));
-  return [...c].reverse();
+  return [...c].toReversed();
 }
 
 /** Parse a computed font-style value ("normal", "italic", "oblique 10deg"). */

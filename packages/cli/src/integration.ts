@@ -18,7 +18,7 @@ export interface FontphobiaCheckOptions {
 }
 
 export interface Logger { info(m: string): void; warn(m: string): void }
-export const consoleLogger: Logger = { info: (m) => console.log(m), warn: (m) => console.warn(m) };
+const consoleLogger: Logger = { info: (m) => console.log(m), warn: (m) => console.warn(m) };
 
 /**
  * Run `check` for the project at `root` against the built site in `outputDir`; throws in error mode.

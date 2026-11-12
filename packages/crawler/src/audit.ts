@@ -71,7 +71,7 @@ export async function launchChrome(args: string[] = []): Promise<Browser> {
   try {
     return await chromium.launch({ headless: true, args, ...(executablePath ? { executablePath } : { channel: 'chrome' }) });
   } catch (e) {
-    throw new Error(`Couldn't start Chrome (${(e as Error).message.split('\n')[0]}). fontphobia uses your installed Google Chrome; install it, or set FONTPHOBIA_CHROME to a Chrome or Chromium binary.`);
+    throw new Error(`Couldn't start Chrome (${(e as Error).message.split('\n')[0]}). fontphobia uses your installed Google Chrome; install it, or set FONTPHOBIA_CHROME to a Chrome or Chromium binary.`, { cause: e });
   }
 }
 
@@ -113,7 +113,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
   const log = o.log ?? (() => {});
   const root = resolve(o.root);
   const project = detectProject(root);
-  const viewports = [...new Set(o.viewports?.length ? o.viewports : DEFAULT_VIEWPORTS)].sort((a, b) => a - b);
+  const viewports = [...new Set(o.viewports?.length ? o.viewports : DEFAULT_VIEWPORTS)].toSorted((a, b) => a - b);
   const concurrency = o.concurrency ?? Math.max(1, Math.min(4, availableParallelism() - 1));
   const maxPages = o.maxPages ?? 500;
   const ignore = (o.ignore ?? []).map(globToRegExp);
@@ -177,7 +177,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     // 3. Discovery at the first viewport: BFS over same-origin links (§7.2).
     const first = viewports.includes(1280) ? 1280 : viewports[viewports.length - 1]!;
     const queued = new Set<string>();
-    let frontier = [...seeds].filter(allowed).sort();
+    let frontier = [...seeds].filter(allowed).toSorted();
     for (const p of frontier) queued.add(p);
     const byPage = new Map<string, { emMq: boolean; textScale: boolean; url: string }>();
     while (frontier.length) {
@@ -203,7 +203,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       });
       missed.sort();
       log(`pages: ${pages.size} (${next.length} more found${missed.length ? `, ${missed.length} failed: ${missed.slice(0, 3).map((p) => `${p} ${failed[p]}`).join('; ')}${missed.length > 3 ? '; …' : ''}` : ''})`);
-      frontier = next.sort();
+      frontier = next.toSorted();
     }
     if (!pages.size) throw new Error(`No page loaded from ${base}: ${Object.entries(failed).slice(0, 5).map(([p, e]) => `${p} ${e}`).join('; ')}`);
     if (queued.size >= maxPages) log(`stopped discovering at ${maxPages} pages (--max-pages)`);
@@ -213,7 +213,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     const tasks: Task[] = [];
     const narrow = viewports[0]!;
     const fontSizes = new Set<number>([16]);
-    for (const [page, info] of [...byPage].sort(([a], [b]) => (a < b ? -1 : 1))) {
+    for (const [page, info] of [...byPage].toSorted(([a], [b]) => (a < b ? -1 : 1))) {
       const priv = isPrivate(page);
       for (const w of viewports) if (w !== first) tasks.push({ page, url: info.url, viewport: w, fontSize: 16, private: priv });
       if (o.fontSizeSweep !== false) {
@@ -237,7 +237,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
 
     // 5. Font facts, usage, sources.
     const facts = new Map<string, FontFacts>();
-    for (const [sha, b] of [...bodies].sort(([a], [c]) => (a < c ? -1 : 1))) {
+    for (const [sha, b] of [...bodies].toSorted(([a], [c]) => (a < c ? -1 : 1))) {
       try { facts.set(sha, await fontFacts(b)); } catch { /* not a font (an HTML 200 for a missing file) */ }
     }
     // Faces fontphobia generated fold back into the original face (§M4 notes).
@@ -274,8 +274,8 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       framework: { id: project.profile.id, name: project.profile.name, tier: project.profile.tier },
       mode, source: o.url ?? (site?.dir !== undefined ? relative(opened.root, site.dir).split(sep).join('/') || '.' : site?.server?.cmd ?? ''), built,
       build: age ? { at: new Date(age.builtAt).toISOString(), output: age.output, newer: age.newer && { file: age.newer.file, at: new Date(age.newer.mtime).toISOString(), count: age.newer.count } } : undefined,
-      pages: [...pages].sort(), failed: Object.fromEntries(Object.entries(failed).sort()), dynamicRoutes, routeSources: fileRoutes.sources,
-      visits: visitsOut.length, cache: cache ? { reused: cache.stats.hits, visited: visitsOut.length - cache.stats.hits, stored: cache.stats.stored } : undefined, viewports, fontSizes: [...fontSizes].sort((a, b) => a - b), durationMs: Date.now() - t0,
+      pages: [...pages].toSorted(), failed: Object.fromEntries(Object.entries(failed).toSorted()), dynamicRoutes, routeSources: fileRoutes.sources,
+      visits: visitsOut.length, cache: cache ? { reused: cache.stats.hits, visited: visitsOut.length - cache.stats.hits, stored: cache.stats.stored } : undefined, viewports, fontSizes: [...fontSizes].toSorted((a, b) => a - b), durationMs: Date.now() - t0,
     };
     const json = usageToJson(usage, {
       fontphobia: o.fontphobiaVersion, harfbuzz: harfbuzzVersion(), chrome, framework: project.profile.id, mode,

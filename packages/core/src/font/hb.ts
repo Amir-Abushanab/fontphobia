@@ -10,8 +10,6 @@ const require = createRequire(import.meta.url);
 
 export const hbTag = (s: string): number =>
   ((s.charCodeAt(0) << 24) | (s.charCodeAt(1) << 16) | (s.charCodeAt(2) << 8) | s.charCodeAt(3)) >>> 0;
-export const hbUntag = (n: number): string =>
-  String.fromCharCode((n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255);
 
 /** Locate a vendored WASM file: next to the bundle when published, in node_modules in dev. */
 function wasmPath(name: string): string {
@@ -51,6 +49,7 @@ export function getSubsetWasm(): SubsetWasm {
   const mod = new WebAssembly.Module(readFileSync(wasmPath('harfbuzz-subset.wasm')));
   const instance = new WebAssembly.Instance(mod, {});
   const exp = instance.exports as unknown as SubsetWasm & { _initialize?: () => void };
+  // eslint-disable-next-line no-underscore-dangle -- the WASM module's export name
   exp._initialize?.();
   subsetWasm = exp;
   return exp;
@@ -67,7 +66,7 @@ export function loadFont(sfnt: Uint8Array): LoadedFont {
 }
 
 export function setVariations(font: hb.Font, coords: Record<string, number> | undefined): void {
-  font.setVariations(Object.entries(coords ?? {}).sort(([a], [b]) => (a < b ? -1 : 1)).map(([t, v]) => new hb.Variation(t, v)));
+  font.setVariations(Object.entries(coords ?? {}).toSorted(([a], [b]) => (a < b ? -1 : 1)).map(([t, v]) => new hb.Variation(t, v)));
 }
 
 export const harfbuzzVersion = (): string => hb.versionString();

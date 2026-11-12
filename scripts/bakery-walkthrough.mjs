@@ -22,7 +22,7 @@ export function refreshWalkthrough(repo, results, report) {
 
   // Both families use one byte scale; total split size can exceed the original.
   const scale = Math.max(...results.faces.map((face) => Math.max(face.source.bytes, face.outputs.reduce((sum, output) => sum + output.bytes, 0))));
-  const bars = [...results.faces].sort((a, b) => b.family.localeCompare(a.family)).map((face) => {
+  const bars = [...results.faces].toSorted((a, b) => b.family.localeCompare(a.family)).map((face) => {
     const original = face.source.bytes / scale * 100;
     const total = face.outputs.reduce((sum, output) => sum + output.bytes, 0);
     const parts = face.outputs.map((output) => `<div class="${output.role}" style="width:${output.bytes / total * 100}%"></div>`).join('');
