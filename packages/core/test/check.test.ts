@@ -15,11 +15,13 @@ async function built(name: string, allow: string[] = []) {
   const root = join(tmp, name);
   cpSync(join(repo, 'fixtures/sites/static-css'), root, { recursive: true });
   mkdirSync(join(root, 'fonts'));
-  for (const f of ['InterVariable.ttf', 'DejaVuSans.ttf', 'Inter-Regular-hinted.woff2']) cpSync(join(repo, 'fixtures/fonts', f), join(root, 'fonts', f));
+  for (const f of ['InterVariable.ttf', 'DejaVuSans.ttf', 'Inter-Regular-hinted.woff2'])
+    cpSync(join(repo, 'fixtures/fonts', f), join(root, 'fonts', f));
   await buildProject(root, usage, { allow }, { version: '1.2.3', write: true });
   return root;
 }
-const kinds = async (root: string) => (await checkProject({ root, usage })).issues.map((i) => `${i.kind}: ${i.message}`);
+const kinds = async (root: string) =>
+  (await checkProject({ root, usage })).issues.map((i) => `${i.kind}: ${i.message}`);
 
 describe('check (§12)', () => {
   it('passes right after a build, and names the command to run', async () => {
@@ -38,7 +40,9 @@ describe('check (§12)', () => {
     // Cyrillic: Inter has it, but it's only in the rest file.
     const about = join(root, 'about/index.html');
     writeFileSync(about, readFileSync(about, 'utf8').replace('Only ASCII here', 'Only ASCII here, Жизнь'));
-    expect((await kinds(root)).join('\n')).toMatch(/^chars: Inter: Ж \(U\+0416\).* would load the rest file \(in about\/index\.html\)/m);
+    expect((await kinds(root)).join('\n')).toMatch(
+      /^chars: Inter: Ж \(U\+0416\).* would load the rest file \(in about\/index\.html\)/m,
+    );
     // It still renders (the rest file has it): a warning, which fails only with strict.
     const lazy = await checkProject({ root, usage });
     expect(lazy.issues.map((i) => i.severity)).toEqual(['warning']);
@@ -46,13 +50,18 @@ describe('check (§12)', () => {
     expect(formatCheck(lazy)).toMatch(/renders as built, but this downloads more than it should/);
     expect((await checkProject({ root, usage, strict: true })).ok).toBe(false);
 
-    appendFileSync(join(root, 'styles.css'), "\n@font-face { font-family: 'New'; src: url('./fonts/Inter-Regular-hinted.woff2') format('woff2'); }\n.alt { font-family: Inter; font-feature-settings: 'ss02'; }\n");
+    appendFileSync(
+      join(root, 'styles.css'),
+      "\n@font-face { font-family: 'New'; src: url('./fonts/Inter-Regular-hinted.woff2') format('woff2'); }\n.alt { font-family: Inter; font-feature-settings: 'ss02'; }\n",
+    );
     const k = (await kinds(root)).join('\n');
     expect(k).toMatch(/^face: an @font-face for New in styles\.css was added$/m);
     expect(k).toMatch(/^feature: styles\.css turns on 'ss02', which Inter's subsets don't keep$/m);
 
     const src = join(root, 'fonts/DejaVuSans.ttf');
-    const b = readFileSync(src); b[b.length - 1] = b[b.length - 1]! ^ 1; writeFileSync(src, b);
+    const b = readFileSync(src);
+    b[b.length - 1] = b[b.length - 1]! ^ 1;
+    writeFileSync(src, b);
     expect((await kinds(root)).join('\n')).toMatch(/^source: fonts\/DejaVuSans\.ttf changed since the build$/m);
   }, 300_000);
 
@@ -70,11 +79,17 @@ describe('check (§12)', () => {
     const root = await built('axes', ['limit-axes']);
     expect(await kinds(root)).toEqual([]);
     appendFileSync(join(root, 'styles.css'), '\n.lighter { font-family: Inter; font-weight: 150; }\n');
-    expect((await kinds(root)).join('\n')).toMatch(/^axis: styles\.css asks for wght 150, outside Inter's subsets \(\d+–\d+; limit-axes\)$/m);
+    expect((await kinds(root)).join('\n')).toMatch(
+      /^axis: styles\.css asks for wght 150, outside Inter's subsets \(\d+–\d+; limit-axes\)$/m,
+    );
   }, 300_000);
 
   it('reads rendered text from HTML and string literals from scripts', () => {
-    expect(htmlText('<p>a&amp;b &#x2192; &mdash;</p><script>"ж"</script><img alt="Ω"><style>.q::before{content:"\\201C"}</style>')).toMatch(/a&b → —.*Ω.*“/s);
+    expect(
+      htmlText(
+        '<p>a&amp;b &#x2192; &mdash;</p><script>"ж"</script><img alt="Ω"><style>.q::before{content:"\\201C"}</style>',
+      ),
+    ).toMatch(/a&b → —.*Ω.*“/s);
     expect(htmlText('<script>const s = "ж"</script>')).not.toContain('ж');
     expect(scriptStrings('const a = "ünï", b = \'\\u00e9\', c = `ok`;')).toBe('ünï é');
   });

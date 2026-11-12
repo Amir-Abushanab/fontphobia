@@ -11,7 +11,8 @@ module.exports = {
     {
       name: 'no-unresolvable',
       severity: 'error',
-      comment: "Imports must resolve. scripts/build-bakery.mjs is excepted: it loads pngjs through packages/crawler with createRequire.",
+      comment:
+        'Imports must resolve. scripts/build-bakery.mjs is excepted: it loads pngjs through packages/crawler with createRequire.',
       from: { pathNot: '^scripts/build-bakery\\.mjs$' },
       to: { couldNotResolve: true },
     },
@@ -21,7 +22,10 @@ module.exports = {
       comment:
         "Every runtime import must be declared in its own package.json. pnpm's store and the workspace root can make an undeclared import resolve here and fail for everyone who installs the published tarball.",
       from: { path: '^packages/' },
-      to: { dependencyTypes: ['npm-no-pkg', 'npm-unknown'], dependencyTypesNot: ['npm', 'npm-dev', 'npm-peer', 'npm-optional'] },
+      to: {
+        dependencyTypes: ['npm-no-pkg', 'npm-unknown'],
+        dependencyTypesNot: ['npm', 'npm-dev', 'npm-peer', 'npm-optional'],
+      },
     },
     {
       name: 'no-orphans',
@@ -43,14 +47,16 @@ module.exports = {
     {
       name: 'core-has-no-browser',
       severity: 'error',
-      comment: 'packages/core is font I/O, subsetting, planning, build and check. It never drives a browser and never depends on the packages above it.',
+      comment:
+        'packages/core is font I/O, subsetting, planning, build and check. It never drives a browser and never depends on the packages above it.',
       from: { path: '^packages/core/src' },
       to: { path: '^packages/(crawler|cli)/|(^|/)node_modules/playwright-core/' },
     },
     {
       name: 'crawler-does-not-reach-the-cli',
       severity: 'error',
-      comment: 'packages/crawler builds on core. The CLI and the integrations build on both, never the other way round.',
+      comment:
+        'packages/crawler builds on core. The CLI and the integrations build on both, never the other way round.',
       from: { path: '^packages/crawler/src' },
       to: { path: '^packages/cli/' },
     },

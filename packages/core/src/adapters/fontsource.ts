@@ -31,7 +31,30 @@ export interface FontsourcePackage {
 
 const SPEC = /^@fontsource(?:-variable)?\/[a-z0-9][\w.-]*(?:\/[\w./-]+)?$/i;
 const CODE_EXT = /\.(m?[jt]sx?|cjs|astro|vue|svelte|mdx|css|scss|less|pcss)$/i;
-const SKIP = new Set(['node_modules', '.git', '.fontphobia', 'dist', 'build', 'out', '_site', '.output', '.next', '.nuxt', '.svelte-kit', '.astro', '.vercel', '.netlify', '.turbo', '.cache', 'coverage', '.angular', '.wrangler', '.docusaurus', '.tanstack', '.nitro']);
+const SKIP = new Set([
+  'node_modules',
+  '.git',
+  '.fontphobia',
+  'dist',
+  'build',
+  'out',
+  '_site',
+  '.output',
+  '.next',
+  '.nuxt',
+  '.svelte-kit',
+  '.astro',
+  '.vercel',
+  '.netlify',
+  '.turbo',
+  '.cache',
+  'coverage',
+  '.angular',
+  '.wrangler',
+  '.docusaurus',
+  '.tanstack',
+  '.nitro',
+]);
 
 /** Every import of a fontsource package in the repo's code and styles. */
 export function findFontsourceImports(root: string): FontsourceImport[] {
@@ -39,10 +62,16 @@ export function findFontsourceImports(root: string): FontsourceImport[] {
   const files = listFiles(root, (r) => CODE_EXT.test(r), { skip: (_rel, n) => SKIP.has(n) || n.startsWith('.') });
   for (const file of files) {
     let text: string;
-    try { if (statSync(join(root, file)).size > 1_000_000) continue; text = readFileSync(join(root, file), 'utf8'); } catch { continue; }
+    try {
+      if (statSync(join(root, file)).size > 1_000_000) continue;
+      text = readFileSync(join(root, file), 'utf8');
+    } catch {
+      continue;
+    }
     if (!text.includes('@fontsource')) continue;
     // import '…', import x from '…', @import '…', @import url('…'), require('…'), import('…')
-    const re = /(?:\bimport\s*(?:[\w*{}\s,$]+\s+from\s*)?|@import\s+(?:url\(\s*)?|\brequire\s*\(\s*|\bimport\s*\(\s*)(["'])([^"'\n]+)\1/g;
+    const re =
+      /(?:\bimport\s*(?:[\w*{}\s,$]+\s+from\s*)?|@import\s+(?:url\(\s*)?|\brequire\s*\(\s*|\bimport\s*\(\s*)(["'])([^"'\n]+)\1/g;
     for (const m of text.matchAll(re)) {
       const spec = m[2]!;
       if (!SPEC.test(spec)) continue;
@@ -71,7 +100,13 @@ export function resolveFontsource(root: string, importer: string, specifier: str
   }
 }
 
-export interface FontsourceRule { start: number; end: number; text: string; url: string; file: string }
+export interface FontsourceRule {
+  start: number;
+  end: number;
+  text: string;
+  url: string;
+  file: string;
+}
 
 /** The package CSS's @font-face rules, with the slice file each loads (repo path). */
 export function fontsourceRules(root: string, pkg: FontsourcePackage): FontsourceRule[] {
@@ -79,15 +114,33 @@ export function fontsourceRules(root: string, pkg: FontsourcePackage): Fontsourc
   return parseStylesheet(pkg.text).fontFaces.flatMap((r) => {
     const url = r.src.find((s) => s.url)?.url;
     if (!url) return [];
-    return [{ start: r.start, end: r.end, text: pkg.text.slice(r.start, r.end), url, file: posix.normalize(posix.join(cssDir, url.split(/[?#]/)[0]!)) }];
+    return [
+      {
+        start: r.start,
+        end: r.end,
+        text: pkg.text.slice(r.start, r.end),
+        url,
+        file: posix.normalize(posix.join(cssDir, url.split(/[?#]/)[0]!)),
+      },
+    ];
   });
 }
 
 /** Same file, whichever node_modules path names it (pnpm links). */
 export function sameFile(root: string, a: string, b: string): boolean {
   if (a === b) return true;
-  try { return realpathSync(join(root, a)) === realpathSync(join(root, b)); } catch { return false; }
+  try {
+    return realpathSync(join(root, a)) === realpathSync(join(root, b));
+  } catch {
+    return false;
+  }
 }
 
 /** `@fontsource-variable/inter/wght.css` → `fontsource-variable-inter-wght`. */
-export const ejectName = (specifier: string) => specifier.replace(/^@/, '').replace(/\.css$/, '').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
+export const ejectName = (specifier: string) =>
+  specifier
+    .replace(/^@/, '')
+    .replace(/\.css$/, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase();

@@ -6,11 +6,24 @@ import postcssLess from 'postcss-less';
 import selectorParser from 'postcss-selector-parser';
 import { parseUnicodeRange, type Range } from './unicode-range.ts';
 import {
-  familyKey, parseFamilyList, parseStretchDescriptor, parseStyle, parseWeightDescriptor, splitTop, unquote,
-  type FeatureValues, type Interval, type StyleValue,
+  familyKey,
+  parseFamilyList,
+  parseStretchDescriptor,
+  parseStyle,
+  parseWeightDescriptor,
+  splitTop,
+  unquote,
+  type FeatureValues,
+  type Interval,
+  type StyleValue,
 } from './values.ts';
 
-export interface SrcEntry { url?: string; local?: string; format?: string; tech?: string }
+export interface SrcEntry {
+  url?: string;
+  local?: string;
+  format?: string;
+  tech?: string;
+}
 
 export interface FontFaceRule {
   family: string;
@@ -31,7 +44,18 @@ export interface FontFaceRule {
   computed: boolean;
 }
 
-export interface CounterStyle { name: string; system: string; symbols: string[]; additive: string[]; prefix?: string; suffix?: string; pad?: string; negative?: string; fallback?: string; extends?: string }
+export interface CounterStyle {
+  name: string;
+  system: string;
+  symbols: string[];
+  additive: string[];
+  prefix?: string;
+  suffix?: string;
+  pad?: string;
+  negative?: string;
+  fallback?: string;
+  extends?: string;
+}
 
 /** A style rule that sets font values, with dynamic pseudo-classes stripped from its selectors. */
 export interface DeclaredRule {
@@ -41,7 +65,10 @@ export interface DeclaredRule {
   wrappers: string[];
 }
 
-export interface Keyframes { name: string; frames: Record<string, string>[] }
+export interface Keyframes {
+  name: string;
+  frames: Record<string, string>[];
+}
 
 export interface Stylesheet {
   fontFaces: FontFaceRule[];
@@ -61,18 +88,80 @@ export interface Stylesheet {
 export type Syntax = 'css' | 'scss' | 'less';
 
 const FONT_PROPS = new Set([
-  'font', 'font-family', 'font-weight', 'font-style', 'font-stretch', 'font-width', 'font-variation-settings', 'font-feature-settings',
-  'font-variant', 'font-variant-ligatures', 'font-variant-caps', 'font-variant-numeric', 'font-variant-east-asian',
-  'font-variant-position', 'font-variant-alternates', 'font-kerning', 'font-optical-sizing', 'font-size', 'letter-spacing',
+  'font',
+  'font-family',
+  'font-weight',
+  'font-style',
+  'font-stretch',
+  'font-width',
+  'font-variation-settings',
+  'font-feature-settings',
+  'font-variant',
+  'font-variant-ligatures',
+  'font-variant-caps',
+  'font-variant-numeric',
+  'font-variant-east-asian',
+  'font-variant-position',
+  'font-variant-alternates',
+  'font-kerning',
+  'font-optical-sizing',
+  'font-size',
+  'letter-spacing',
 ]);
 
 const STATE_PSEUDOS = new Set([
-  ':hover', ':focus', ':focus-visible', ':focus-within', ':active', ':visited', ':target', ':target-within', ':checked', ':disabled',
-  ':enabled', ':indeterminate', ':invalid', ':valid', ':user-invalid', ':user-valid', ':placeholder-shown', ':popover-open', ':open',
-  ':autofill', ':-webkit-autofill', ':default', ':in-range', ':out-of-range', ':read-only', ':read-write', ':required', ':optional',
-  ':playing', ':paused', ':current', ':past', ':future', ':fullscreen', ':modal', ':picture-in-picture',
+  ':hover',
+  ':focus',
+  ':focus-visible',
+  ':focus-within',
+  ':active',
+  ':visited',
+  ':target',
+  ':target-within',
+  ':checked',
+  ':disabled',
+  ':enabled',
+  ':indeterminate',
+  ':invalid',
+  ':valid',
+  ':user-invalid',
+  ':user-valid',
+  ':placeholder-shown',
+  ':popover-open',
+  ':open',
+  ':autofill',
+  ':-webkit-autofill',
+  ':default',
+  ':in-range',
+  ':out-of-range',
+  ':read-only',
+  ':read-write',
+  ':required',
+  ':optional',
+  ':playing',
+  ':paused',
+  ':current',
+  ':past',
+  ':future',
+  ':fullscreen',
+  ':modal',
+  ':picture-in-picture',
 ]);
-const PSEUDO_ELEMENTS = new Set(['::before', '::after', '::marker', '::first-letter', '::first-line', '::placeholder', '::file-selector-button', '::backdrop', '::selection', ':before', ':after', ':first-letter', ':first-line']);
+const PSEUDO_ELEMENTS = new Set([
+  '::before',
+  '::after',
+  '::marker',
+  '::first-letter',
+  '::first-line',
+  '::placeholder',
+  '::file-selector-button',
+  '::backdrop',
+  '::selection',
+  ':before',
+  ':after',
+  ':first-letter',
+  ':first-line',
+]);
 
 export function splitSelector(selector: string): DeclaredRule['selectors'] {
   const out: DeclaredRule['selectors'] = [];
@@ -83,8 +172,13 @@ export function splitSelector(selector: string): DeclaredRule['selectors'] {
         let pseudo: string | undefined;
         sel.walkPseudos((p) => {
           const v = p.value.toLowerCase();
-          if (PSEUDO_ELEMENTS.has(v)) { pseudo = v.replace(/^:+/, '::'); p.remove(); }
-          else if (STATE_PSEUDOS.has(v) && !p.nodes.length) { states.push(v); p.remove(); }
+          if (PSEUDO_ELEMENTS.has(v)) {
+            pseudo = v.replace(/^:+/, '::');
+            p.remove();
+          } else if (STATE_PSEUDOS.has(v) && !p.nodes.length) {
+            states.push(v);
+            p.remove();
+          }
         });
         let base = sel.toString().trim();
         if (!base || /[>+~]$/.test(base)) base = (base + ' *').trim().replace(/^\*$/, '*');
@@ -92,7 +186,9 @@ export function splitSelector(selector: string): DeclaredRule['selectors'] {
         out.push({ base, pseudo, states });
       });
     }).processSync(selector);
-  } catch { /* unparseable selector: never matches */ }
+  } catch {
+    /* unparseable selector: never matches */
+  }
   return out;
 }
 
@@ -117,24 +213,47 @@ function parseSrc(value: string): { src: SrcEntry[]; computed: boolean } {
 
 function wrappersOf(node: ChildNode): string[] {
   const w: string[] = [];
-  for (let p: Container | undefined = node.parent as Container | undefined; p && p.type !== 'root'; p = p.parent as Container | undefined) {
-    if (p.type === 'atrule') { const a = p as AtRule; w.unshift(`@${a.name}${a.params ? ' ' + a.params : ''}`); }
-    else if (p.type === 'rule') w.unshift((p as Rule).selector);
+  for (
+    let p: Container | undefined = node.parent as Container | undefined;
+    p && p.type !== 'root';
+    p = p.parent as Container | undefined
+  ) {
+    if (p.type === 'atrule') {
+      const a = p as AtRule;
+      w.unshift(`@${a.name}${a.params ? ' ' + a.params : ''}`);
+    } else if (p.type === 'rule') w.unshift((p as Rule).selector);
   }
   return w;
 }
 
 const declsOf = (c: Container): Record<string, string> => {
   const d: Record<string, string> = {};
-  c.each((n) => { if (n.type === 'decl') d[(n as Declaration).prop.toLowerCase()] = (n as Declaration).value; });
+  c.each((n) => {
+    if (n.type === 'decl') d[(n as Declaration).prop.toLowerCase()] = (n as Declaration).value;
+  });
   return d;
 };
 
 export function parseStylesheet(text: string, opts: { syntax?: Syntax } = {}): Stylesheet {
-  const sheet: Stylesheet = { fontFaces: [], featureValues: new Map(), counterStyles: [], declared: [], keyframes: [], textTransforms: [], firstLine: [], emMediaQueries: false, errors: [] };
+  const sheet: Stylesheet = {
+    fontFaces: [],
+    featureValues: new Map(),
+    counterStyles: [],
+    declared: [],
+    keyframes: [],
+    textTransforms: [],
+    firstLine: [],
+    emMediaQueries: false,
+    errors: [],
+  };
   let root: Root;
   try {
-    root = opts.syntax === 'scss' ? postcssScss.parse(text) : opts.syntax === 'less' ? (postcssLess.parse!(text) as unknown as Root) : postcss.parse(text);
+    root =
+      opts.syntax === 'scss'
+        ? postcssScss.parse(text)
+        : opts.syntax === 'less'
+          ? (postcssLess.parse!(text) as unknown as Root)
+          : postcss.parse(text);
   } catch (e) {
     sheet.errors.push((e as Error).message);
     return sheet;
@@ -147,9 +266,16 @@ export function parseStylesheet(text: string, opts: { syntax?: Syntax } = {}): S
       if (!family) return;
       const { src, computed } = parseSrc(d.src ?? '');
       let unicodeRange: Range[] = [[0, 0x10ffff]];
-      try { if (d['unicode-range']) unicodeRange = parseUnicodeRange(d['unicode-range']); } catch { /* invalid: browsers drop the descriptor */ }
+      try {
+        if (d['unicode-range']) unicodeRange = parseUnicodeRange(d['unicode-range']);
+      } catch {
+        /* invalid: browsers drop the descriptor */
+      }
       sheet.fontFaces.push({
-        family, src, unicodeRange, computed,
+        family,
+        src,
+        unicodeRange,
+        computed,
         weight: parseWeightDescriptor(d['font-weight']),
         style: parseStyle(d['font-style']),
         stretch: parseStretchDescriptor(d['font-stretch'] ?? d['font-width']),
@@ -168,7 +294,8 @@ export function parseStylesheet(text: string, opts: { syntax?: Syntax } = {}): S
           const t = (block as AtRule).name.toLowerCase();
           const m = byType.get(t) ?? new Map<string, number[]>();
           byType.set(t, m);
-          for (const [k, v] of Object.entries(declsOf(block as AtRule))) m.set(k, v.trim().split(/\s+/).map(Number).filter(Number.isFinite));
+          for (const [k, v] of Object.entries(declsOf(block as AtRule)))
+            m.set(k, v.trim().split(/\s+/).map(Number).filter(Number.isFinite));
         });
       }
     } else if (name === 'counter-style') {
@@ -188,7 +315,12 @@ export function parseStylesheet(text: string, opts: { syntax?: Syntax } = {}): S
       });
     } else if (name === 'keyframes' || name === '-webkit-keyframes') {
       const frames: Record<string, string>[] = [];
-      a.each((r) => { if (r.type === 'rule') { const d = declsOf(r as Rule); if (Object.keys(d).some((k) => FONT_PROPS.has(k))) frames.push(d); } });
+      a.each((r) => {
+        if (r.type === 'rule') {
+          const d = declsOf(r as Rule);
+          if (Object.keys(d).some((k) => FONT_PROPS.has(k))) frames.push(d);
+        }
+      });
       if (frames.length) sheet.keyframes.push({ name: unquote(a.params.trim()), frames });
     } else if (name === 'media' && /\d(?:\.\d+)?r?em\b/.test(a.params)) sheet.emMediaQueries = true;
   });
@@ -197,12 +329,20 @@ export function parseStylesheet(text: string, opts: { syntax?: Syntax } = {}): S
     const d = declsOf(r);
     const tt = d['text-transform']?.toLowerCase();
     if (tt && /full-width|full-size-kana/.test(tt)) {
-      for (const s of splitSelector(r.selector)) sheet.textTransforms.push({ selector: s.base, value: tt.includes('full-width') ? 'full-width' : 'full-size-kana' });
+      for (const s of splitSelector(r.selector))
+        sheet.textTransforms.push({
+          selector: s.base,
+          value: tt.includes('full-width') ? 'full-width' : 'full-size-kana',
+        });
     }
-    const fontDecls = Object.fromEntries(Object.entries(d).filter(([k]) => FONT_PROPS.has(k) || k === 'animation' || k === 'animation-name'));
+    const fontDecls = Object.fromEntries(
+      Object.entries(d).filter(([k]) => FONT_PROPS.has(k) || k === 'animation' || k === 'animation-name'),
+    );
     if (!Object.keys(fontDecls).length) return;
     const selectors = splitSelector(r.selector);
-    for (const s of selectors) if (s.pseudo === '::first-line' && Object.keys(fontDecls).some((k) => k.startsWith('font'))) sheet.firstLine.push(s.base);
+    for (const s of selectors)
+      if (s.pseudo === '::first-line' && Object.keys(fontDecls).some((k) => k.startsWith('font')))
+        sheet.firstLine.push(s.base);
     sheet.declared.push({ selectors, decls: fontDecls, wrappers: wrappersOf(r) });
   });
   return sheet;

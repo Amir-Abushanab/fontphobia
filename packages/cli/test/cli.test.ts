@@ -34,11 +34,15 @@ test('numeric-looking option values stay strings', () => {
 });
 
 test('check --allow-chars with a number does not crash', () => {
-  const r = spawnSync(process.execPath, [cli, 'check', '--allow-chars', '123', '--mode', 'warn', '--cwd', tmp], { encoding: 'utf8' });
+  const r = spawnSync(process.execPath, [cli, 'check', '--allow-chars', '123', '--mode', 'warn', '--cwd', tmp], {
+    encoding: 'utf8',
+  });
   expect(r.stderr).toBe('');
   expect(r.stdout).toMatch(/nothing to check/);
 });
 
 test('bad arguments exit non-zero with a message', () => {
-  expect(() => execFileSync(process.execPath, [cli, 'subset', font, '-o', join(tmp, 'x.ttf')], { stdio: 'pipe' })).toThrow(/must end in .woff2/);
+  expect(() =>
+    execFileSync(process.execPath, [cli, 'subset', font, '-o', join(tmp, 'x.ttf')], { stdio: 'pipe' }),
+  ).toThrow(/must end in .woff2/);
 });

@@ -11,7 +11,7 @@ short of most of the font. The glyphs are found by **glyph name** (the `post` ta
 2. **Ruled out the usual suspects.** `loca` format, table order and alignment, bounding boxes, `maxp`,
    OS/2 and Chrome's font sanitizer (OTS) made no difference.
 3. **Blanked other glyphs inside the original font**, every table otherwise untouched. That
-   reproduced it, so the rendering depended on which *other* glyphs were present.
+   reproduced it, so the rendering depended on which _other_ glyphs were present.
 4. **Delta debugging** shrank the needed set to exactly two glyphs: `X` and `o`. No other pair works
    (`H`, `x`, `O` don't).
 5. **Fontsource's latin-ext slice confirmed it.** That slice keeps both glyphs with no character

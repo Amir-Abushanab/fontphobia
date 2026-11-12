@@ -18,25 +18,49 @@ function proj(file: string, text: string): string {
 }
 const load = (d: string) => loadConfig(d, selfUrl(pathToFileURL(configTs).href));
 const json = (c: unknown) => proj('fontphobia.config.json', JSON.stringify(c));
-const bad = (c: unknown, msg: string | RegExp) => it(`rejects ${JSON.stringify(c).slice(0, 60)}`, async () => { await expect(load(json(c))).rejects.toThrow(msg); });
+const bad = (c: unknown, msg: string | RegExp) =>
+  it(`rejects ${JSON.stringify(c).slice(0, 60)}`, async () => {
+    await expect(load(json(c))).rejects.toThrow(msg);
+  });
 
 // The resolve hook is registered once per process, so configs that import 'fontphobia' load in a child.
 function loadInChild(d: string): { config: unknown; file?: string } | { error: string } {
   const script = join(tmp, `child${n++}.ts`);
   const self = JSON.stringify(pathToFileURL(configTs).href);
-  writeFileSync(script, `import { loadConfig, selfUrl } from ${self};
-try { process.stdout.write(JSON.stringify(await loadConfig(process.argv[2]!, selfUrl(${self})))); } catch (e) { process.stdout.write(JSON.stringify({ error: (e as Error).message })); }`);
+  writeFileSync(
+    script,
+    `import { loadConfig, selfUrl } from ${self};
+try { process.stdout.write(JSON.stringify(await loadConfig(process.argv[2]!, selfUrl(${self})))); } catch (e) { process.stdout.write(JSON.stringify({ error: (e as Error).message })); }`,
+  );
   return JSON.parse(execFileSync(process.execPath, [script, d], { encoding: 'utf8' }));
 }
 
 describe('loadConfig formats', () => {
-  it('returns {} without a config', async () => { expect(await load(proj('x.txt', ''))).toEqual({ config: {} }); });
-  it('reads .json', async () => { expect(await load(json({ dist: 'out', check: { mode: 'warn' } }))).toEqual({ config: { dist: 'out', check: { mode: 'warn' } }, file: 'fontphobia.config.json' }); });
-  it('reads .mjs', async () => { expect((await load(proj('fontphobia.config.mjs', 'export default { dist: "x" }'))).config).toEqual({ dist: 'x' }); });
-  it('reads .ts', async () => { expect((await load(proj('fontphobia.config.ts', 'const c: { dist: string } = { dist: "t" }; export default c'))).config).toEqual({ dist: 't' }); });
+  it('returns {} without a config', async () => {
+    expect(await load(proj('x.txt', ''))).toEqual({ config: {} });
+  });
+  it('reads .json', async () => {
+    expect(await load(json({ dist: 'out', check: { mode: 'warn' } }))).toEqual({
+      config: { dist: 'out', check: { mode: 'warn' } },
+      file: 'fontphobia.config.json',
+    });
+  });
+  it('reads .mjs', async () => {
+    expect((await load(proj('fontphobia.config.mjs', 'export default { dist: "x" }'))).config).toEqual({ dist: 'x' });
+  });
+  it('reads .ts', async () => {
+    expect(
+      (await load(proj('fontphobia.config.ts', 'const c: { dist: string } = { dist: "t" }; export default c'))).config,
+    ).toEqual({ dist: 't' });
+  });
   for (const f of ['fontphobia.config.ts', 'fontphobia.config.mjs']) {
     it(`${f} importing defineConfig from 'fontphobia' loads with the self URL`, () => {
-      const r = loadInChild(proj(f, `import { defineConfig } from 'fontphobia'\nexport default defineConfig({ dist: 'd', check: { mode: 'warn' } })`));
+      const r = loadInChild(
+        proj(
+          f,
+          `import { defineConfig } from 'fontphobia'\nexport default defineConfig({ dist: 'd', check: { mode: 'warn' } })`,
+        ),
+      );
       expect(r).toEqual({ config: { dist: 'd', check: { mode: 'warn' } }, file: f });
     });
   }
@@ -44,14 +68,29 @@ describe('loadConfig formats', () => {
     const r = loadInChild(proj('fontphobia.config.mjs', 'export default { coreThreshhold: 1 }'));
     expect(r).toEqual({ error: 'fontphobia.config.mjs: unknown key "coreThreshhold"; did you mean "coreThreshold"?' });
   });
-  it('names the file on malformed JSON', async () => { await expect(load(proj('fontphobia.config.json', '{ nope'))).rejects.toThrow(/^fontphobia\.config\.json: /); });
+  it('names the file on malformed JSON', async () => {
+    await expect(load(proj('fontphobia.config.json', '{ nope'))).rejects.toThrow(/^fontphobia\.config\.json: /);
+  });
 });
 
 describe('loadConfig validation', () => {
   it('accepts the README example', async () => {
     const c = {
-      dist: 'dist', build: 'pnpm build', start: 'node server.js', pages: ['/', '/blog/**'], ignore: ['/admin/**'], auth: { storageState: '.auth.json' }, viewports: [360, 768, 1280, 1920], locales: ['en', 'fr'],
-      maxPages: 500, coreThreshold: 0.5, remainder: true, allow: [], rename: { 'Source Serif 4': 'SrcSerif Subset' }, licenses: { allow: [] }, check: { mode: 'error', strict: false, allowChars: '' },
+      dist: 'dist',
+      build: 'pnpm build',
+      start: 'node server.js',
+      pages: ['/', '/blog/**'],
+      ignore: ['/admin/**'],
+      auth: { storageState: '.auth.json' },
+      viewports: [360, 768, 1280, 1920],
+      locales: ['en', 'fr'],
+      maxPages: 500,
+      coreThreshold: 0.5,
+      remainder: true,
+      allow: [],
+      rename: { 'Source Serif 4': 'SrcSerif Subset' },
+      licenses: { allow: [] },
+      check: { mode: 'error', strict: false, allowChars: '' },
       verify: { browsers: ['chromium'], hinting: false, viewports: [360, 1280], dprs: [1, 2] },
     };
     expect((await load(json(c))).config).toEqual(c);

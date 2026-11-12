@@ -4,20 +4,54 @@ import type { CounterStyle, FontFaceRule, Keyframes } from '../css/stylesheet.ts
 
 /** Computed styles requested from DOMSnapshot, in this order (§7.3). */
 export const STYLE_PROPS = [
-  'font-family', 'font-weight', 'font-style', 'font-stretch', 'font-size',
-  'font-variation-settings', 'font-feature-settings', 'font-variant-ligatures', 'font-variant-caps', 'font-variant-numeric',
-  'font-variant-east-asian', 'font-variant-position', 'font-variant-alternates', 'font-kerning', 'font-optical-sizing', 'font-synthesis',
-  'letter-spacing', 'text-transform', 'hyphens', 'hyphenate-character', 'text-overflow', '-webkit-line-clamp', 'text-emphasis-style',
-  '-webkit-text-security', 'writing-mode', '-webkit-locale', 'list-style-type', 'content', 'animation-name',
+  'font-family',
+  'font-weight',
+  'font-style',
+  'font-stretch',
+  'font-size',
+  'font-variation-settings',
+  'font-feature-settings',
+  'font-variant-ligatures',
+  'font-variant-caps',
+  'font-variant-numeric',
+  'font-variant-east-asian',
+  'font-variant-position',
+  'font-variant-alternates',
+  'font-kerning',
+  'font-optical-sizing',
+  'font-synthesis',
+  'letter-spacing',
+  'text-transform',
+  'hyphens',
+  'hyphenate-character',
+  'text-overflow',
+  '-webkit-line-clamp',
+  'text-emphasis-style',
+  '-webkit-text-security',
+  'writing-mode',
+  '-webkit-locale',
+  'list-style-type',
+  'content',
+  'animation-name',
 ] as const;
 export type StyleProp = (typeof STYLE_PROPS)[number];
 /** One computed style, as values in STYLE_PROPS order. */
 export type StyleRow = string[];
 
 export type RunKind =
-  | 'text' | 'before' | 'after' | 'marker' | 'first-letter' | 'first-line'
-  | 'value' | 'placeholder' | 'option' | 'textarea' | 'password'
-  | 'full-width' | 'full-size-kana';
+  | 'text'
+  | 'before'
+  | 'after'
+  | 'marker'
+  | 'first-letter'
+  | 'first-line'
+  | 'value'
+  | 'placeholder'
+  | 'option'
+  | 'textarea'
+  | 'password'
+  | 'full-width'
+  | 'full-size-kana';
 
 export interface Run {
   text: string;
@@ -62,7 +96,12 @@ export interface FontResponse {
   initiator?: string;
 }
 
-export interface Preload { href: string; crossorigin: string | null; type?: string; media?: string }
+export interface Preload {
+  href: string;
+  crossorigin: string | null;
+  type?: string;
+  media?: string;
+}
 
 export interface PlatformFontsHit {
   runs: number[];

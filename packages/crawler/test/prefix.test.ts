@@ -7,7 +7,18 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildProject, globToRegExp, type UsageFileJson } from '@fontphobia/core';
-import { audit, launchChrome, matchesPage, pageKey, pageUrl, serveStatic, sitePath, underBase, verify, type StaticServer } from '../src/index.ts';
+import {
+  audit,
+  launchChrome,
+  matchesPage,
+  pageKey,
+  pageUrl,
+  serveStatic,
+  sitePath,
+  underBase,
+  verify,
+  type StaticServer,
+} from '../src/index.ts';
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const tmp = mkdtempSync(join(tmpdir(), 'fontphobia-prefix-'));
@@ -31,7 +42,10 @@ describe('pageUrl: page keys and seeds under a base path', () => {
   });
 
   it('never reads a scheme or another host out of a path', () => {
-    for (const [base, pre] of [[sub, 'https://h.example/fontphobia'], [root, 'http://127.0.0.1:4173']] as const) {
+    for (const [base, pre] of [
+      [sub, 'https://h.example/fontphobia'],
+      [root, 'http://127.0.0.1:4173'],
+    ] as const) {
       expect(pageUrl('/Special:Search', base)).toBe(`${pre}/Special:Search`);
       expect(pageUrl('/std::vector', base)).toBe(`${pre}/std::vector`);
       expect(pageUrl('/https://example.org/x', base)).toBe(`${pre}/https://example.org/x`);
@@ -42,8 +56,14 @@ describe('pageUrl: page keys and seeds under a base path', () => {
   });
 
   it('round-trips the keys the browser reports', () => {
-    for (const u of ['https://h.example/fontphobia/', 'https://h.example/fontphobia/Special:Notes/', 'https://h.example/fontphobia/a%20b/?x=%C3%A9']) expect(pageUrl(pageKey(u), sub)).toBe(u);
-    for (const u of ['http://127.0.0.1:4173/', 'http://127.0.0.1:4173/Special:Notes/', 'http://127.0.0.1:4173/a?x=1']) expect(pageUrl(pageKey(u), root)).toBe(u);
+    for (const u of [
+      'https://h.example/fontphobia/',
+      'https://h.example/fontphobia/Special:Notes/',
+      'https://h.example/fontphobia/a%20b/?x=%C3%A9',
+    ])
+      expect(pageUrl(pageKey(u), sub)).toBe(u);
+    for (const u of ['http://127.0.0.1:4173/', 'http://127.0.0.1:4173/Special:Notes/', 'http://127.0.0.1:4173/a?x=1'])
+      expect(pageUrl(pageKey(u), root)).toBe(u);
   });
 
   it('matches globs by the full path or the path under the base, and knows what is outside the base', () => {
@@ -67,12 +87,17 @@ describe('pageUrl: page keys and seeds under a base path', () => {
 });
 
 let chrome = true;
-try { await (await launchChrome()).close(); } catch (e) {
+try {
+  await (await launchChrome()).close();
+} catch (e) {
   if (process.env.CI) throw e;
   chrome = false;
 }
 
-const page = (title: string, links: string[]) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${title}</title>
+const page = (
+  title: string,
+  links: string[],
+) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${title}</title>
 <style>@font-face { font-family: Inter; src: url("/sub/fonts/InterVariable.ttf"); } body { font-family: Inter, sans-serif; }</style></head>
 <body><h1>${title}</h1>${links.map((l) => `<a href="${l}">${l}</a>`).join(' ')}</body></html>`;
 
@@ -81,7 +106,14 @@ describe.skipIf(!chrome)('audit and verify of a site served under /sub/', () => 
   // A file name can't contain ':' on Windows, so the page with one is left out there (the pageUrl tests above cover such paths everywhere).
   const colon = process.platform === 'win32' ? [] : ['Special:Notes'];
   const files: Record<string, string> = {
-    'index.html': page('Home', ['./about/', 'about/team/', ...colon.map((d) => `./${d}/`), 'bakery/a/', '/elsewhere/', '/sub/about/']),
+    'index.html': page('Home', [
+      './about/',
+      'about/team/',
+      ...colon.map((d) => `./${d}/`),
+      'bakery/a/',
+      '/elsewhere/',
+      '/sub/about/',
+    ]),
     'about/index.html': page('About us', ['../', 'team/']),
     'about/team/index.html': page('The team', ['../../']),
     ...Object.fromEntries(colon.map((d) => [`${d}/index.html`, page('Special notes', ['../'])])),
@@ -92,13 +124,26 @@ describe.skipIf(!chrome)('audit and verify of a site served under /sub/', () => 
   let server: StaticServer;
   const logs: string[] = [];
   beforeAll(async () => {
-    for (const [f, html] of Object.entries(files)) { mkdirSync(dirname(join(site, f)), { recursive: true }); writeFileSync(join(site, f), html); }
+    for (const [f, html] of Object.entries(files)) {
+      mkdirSync(dirname(join(site, f)), { recursive: true });
+      writeFileSync(join(site, f), html);
+    }
     mkdirSync(join(site, 'fonts'));
     cpSync(join(repo, 'fixtures/fonts/InterVariable.ttf'), join(site, 'fonts/InterVariable.ttf'));
     server = await serveStatic(site, { base: '/sub/' });
   });
-  afterAll(async () => { await server?.close(); });
-  const opts = () => ({ root: site, url: server.url, fontphobiaVersion: 'test', viewports: [1280], fontSizeSweep: false, cache: false, log: (m: string) => logs.push(m) });
+  afterAll(async () => {
+    await server?.close();
+  });
+  const opts = () => ({
+    root: site,
+    url: server.url,
+    fontphobiaVersion: 'test',
+    viewports: [1280],
+    fontSizeSweep: false,
+    cache: false,
+    log: (m: string) => logs.push(m),
+  });
 
   it('visits every page once, keys them with the prefix, and skips links outside it', async () => {
     const r = await audit({ ...opts(), ignore: ['/bakery/**'] });
@@ -113,7 +158,9 @@ describe.skipIf(!chrome)('audit and verify of a site served under /sub/', () => 
     const r = await audit({ ...opts(), pages: ['/', '/about/**', '/missing/'] });
     expect(r.crawl.pages).toEqual(['/sub/', '/sub/about/', '/sub/about/team/']);
     expect(r.crawl.failed).toEqual({ '/sub/missing/': 'HTTP 404' });
-    expect(logs).toContainEqual(expect.stringMatching(/^pages: \d+ \(\d+ more found, 1 failed: \/sub\/missing\/ HTTP 404\)$/));
+    expect(logs).toContainEqual(
+      expect.stringMatching(/^pages: \d+ \(\d+ more found, 1 failed: \/sub\/missing\/ HTTP 404\)$/),
+    );
   }, 120_000);
 });
 
@@ -124,16 +171,35 @@ describe.skipIf(!chrome)('verify against a --url with a path', () => {
   beforeAll(async () => {
     cpSync(join(repo, 'fixtures/sites/static-css'), root, { recursive: true });
     mkdirSync(join(root, 'fonts'));
-    for (const f of ['InterVariable.ttf', 'DejaVuSans.ttf', 'Inter-Regular-hinted.woff2']) cpSync(join(repo, 'fixtures/fonts', f), join(root, 'fonts', f));
+    for (const f of ['InterVariable.ttf', 'DejaVuSans.ttf', 'Inter-Regular-hinted.woff2'])
+      cpSync(join(repo, 'fixtures/fonts', f), join(root, 'fonts', f));
     await buildProject(root, usage, {}, { version: '1', write: true });
     server = await serveStatic(root, { base: '/sub/' });
   }, 120_000);
-  afterAll(async () => { await server?.close(); });
-  const loaded = (r: Awaited<ReturnType<typeof verify>>) => r.browser!.comparisons.map((c) => `${c.page} ${c.class === 'failed' ? `failed: ${c.causes.join('; ')}` : 'loaded'}`).toSorted();
+  afterAll(async () => {
+    await server?.close();
+  });
+  const loaded = (r: Awaited<ReturnType<typeof verify>>) =>
+    r
+      .browser!.comparisons.map(
+        (c) => `${c.page} ${c.class === 'failed' ? `failed: ${c.causes.join('; ')}` : 'loaded'}`,
+      )
+      .toSorted();
 
   it('verifies a usage.json recorded under the same prefix', async () => {
-    const prefixed: UsageFileJson = { ...usage, pages: Object.fromEntries(Object.entries(usage.pages).map(([k, v]) => [`/sub${k}`, v])) };
-    const r = await verify({ root, usage: prefixed, url: server.url, viewports: [1280], dprs: [1], ignore: ['/edge.html'], pages: ['/about/'] });
+    const prefixed: UsageFileJson = {
+      ...usage,
+      pages: Object.fromEntries(Object.entries(usage.pages).map(([k, v]) => [`/sub${k}`, v])),
+    };
+    const r = await verify({
+      root,
+      usage: prefixed,
+      url: server.url,
+      viewports: [1280],
+      dprs: [1],
+      ignore: ['/edge.html'],
+      pages: ['/about/'],
+    });
     expect(loaded(r)).toEqual(['/sub/ loaded', '/sub/about/ loaded']);
   }, 300_000);
 

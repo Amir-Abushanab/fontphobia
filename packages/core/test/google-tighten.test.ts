@@ -4,7 +4,15 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync, appendFileSync } from
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { buildProject, checkProject, createOverlay, readManifest, revertProject, type UsageFaceJson, type UsageFileJson } from '../src/index.ts';
+import {
+  buildProject,
+  checkProject,
+  createOverlay,
+  readManifest,
+  revertProject,
+  type UsageFaceJson,
+  type UsageFileJson,
+} from '../src/index.ts';
 import { desiredWeights, matchWeight, neededWeights, parseCss2, tightenCss2 } from '../src/adapters/google-url.ts';
 
 const tmp = mkdtempSync(join(tmpdir(), 'fontphobia-google-'));
@@ -15,7 +23,17 @@ const G = 'https://fonts.googleapis.com/css2';
 describe('css2 URLs', () => {
   it('parses families, axes and tuples, and refuses what it can’t rewrite', () => {
     const p = parseCss2(`${G}?family=Open+Sans:ital,wght@0,400;1,700&family=Lora&display=swap`)!;
-    expect(p.families.map((f) => [f.name, f.axes, f.tuples])).toEqual([['Open Sans', ['ital', 'wght'], [['0', '400'], ['1', '700']]], ['Lora', [], []]]);
+    expect(p.families.map((f) => [f.name, f.axes, f.tuples])).toEqual([
+      [
+        'Open Sans',
+        ['ital', 'wght'],
+        [
+          ['0', '400'],
+          ['1', '700'],
+        ],
+      ],
+      ['Lora', [], []],
+    ]);
     expect(parseCss2(`${G}?family=Inter&text=Hello`)).toBeUndefined();
     expect(parseCss2('https://fonts.googleapis.com/css?family=Roboto:400,700')).toBeUndefined();
     expect(parseCss2(`${G}?family=Inter:wght@4x0`)).toBeUndefined();
@@ -28,34 +46,83 @@ describe('css2 URLs', () => {
   });
 
   it('collects the weights the code can ask for, closed under bolder', () => {
-    const d = desiredWeights([{ text: '.a { font-weight: 300 } .b { font: italic 600 1rem/1 X } <p class="font-medium">' }])!;
+    const d = desiredWeights([
+      { text: '.a { font-weight: 300 } .b { font: italic 600 1rem/1 X } <p class="font-medium">' },
+    ])!;
     expect([...d].toSorted((a, b) => a - b)).toEqual([300, 400, 500, 600, 700, 900]);
     expect(desiredWeights([{ text: '.a { font-weight: var(--w) }' }])).toBeUndefined();
-    expect([...desiredWeights([{ text: '@font-face { font-family: X; font-weight: 100 900; }' }])!].toSorted((a, b) => a - b)).toEqual([400, 700, 900]);
+    expect(
+      [...desiredWeights([{ text: '@font-face { font-family: X; font-weight: 100 900; }' }])!].toSorted(
+        (a, b) => a - b,
+      ),
+    ).toEqual([400, 700, 900]);
     expect(desiredWeights([{ text: 'style={{ fontWeight: props.w }}' }])).toBeUndefined();
-    expect([...desiredWeights([{ text: '.a { font-weight: lighter }' }])!].toSorted((a, b) => a - b)).toEqual([100, 400, 700, 900]);
+    expect([...desiredWeights([{ text: '.a { font-weight: lighter }' }])!].toSorted((a, b) => a - b)).toEqual([
+      100, 400, 700, 900,
+    ]);
   });
 
   it('drops unused families and unmatched static weights, never ranges or ital', () => {
     const sheet = `${G}?family=Inter:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Lora&family=Fraunces:wght@100..900&display=swap`;
-    const t = tightenCss2({ sheet, loaded: [{ family: 'Inter', rendered: { wght: [400] } }, { family: 'Fraunces', rendered: { wght: [700] } }], named: () => [], weights: new Set([400, 700, 900]) })!;
+    const t = tightenCss2({
+      sheet,
+      loaded: [
+        { family: 'Inter', rendered: { wght: [400] } },
+        { family: 'Fraunces', rendered: { wght: [700] } },
+      ],
+      named: () => [],
+      weights: new Set([400, 700, 900]),
+    })!;
     expect(t.url).toBe(`${G}?family=Inter:ital,wght@0,400;0,700;1,400&family=Fraunces:wght@100..900&display=swap`);
     expect(t.families).toEqual(['Lora']);
     expect(t.weights).toEqual({ Inter: [300, 500] });
     // A family the code names stays even if no crawled page loaded it.
-    expect(tightenCss2({ sheet: `${G}?family=Inter&family=Lora`, loaded: [{ family: 'Inter', rendered: {} }], named: (f) => (f === 'Lora' ? ['src/a.css'] : []), weights: undefined })).toBeUndefined();
+    expect(
+      tightenCss2({
+        sheet: `${G}?family=Inter&family=Lora`,
+        loaded: [{ family: 'Inter', rendered: {} }],
+        named: (f) => (f === 'Lora' ? ['src/a.css'] : []),
+        weights: undefined,
+      }),
+    ).toBeUndefined();
     // Computed weights: none dropped.
-    expect(tightenCss2({ sheet: `${G}?family=Inter:wght@300;400`, loaded: [{ family: 'Inter', rendered: {} }], named: () => [], weights: undefined })).toBeUndefined();
+    expect(
+      tightenCss2({
+        sheet: `${G}?family=Inter:wght@300;400`,
+        loaded: [{ family: 'Inter', rendered: {} }],
+        named: () => [],
+        weights: undefined,
+      }),
+    ).toBeUndefined();
   });
 
   it('drops a default-only axis with limit-axes, and keeps it when a use differs or the code sets it', () => {
     const sheet = `${G}?family=Inter:opsz,wght@14..32,100..900`;
-    const base = { sheet, named: () => [], weights: new Set([400, 700]), axisDefaults: new Map([['inter', { opsz: 14, wght: 400 }]]) };
-    expect(tightenCss2({ ...base, loaded: [{ family: 'Inter', rendered: { opsz: [14], wght: [400] } }] })!.url).toBe(`${G}?family=Inter:wght@100..900`);
+    const base = {
+      sheet,
+      named: () => [],
+      weights: new Set([400, 700]),
+      axisDefaults: new Map([['inter', { opsz: 14, wght: 400 }]]),
+    };
+    expect(tightenCss2({ ...base, loaded: [{ family: 'Inter', rendered: { opsz: [14], wght: [400] } }] })!.url).toBe(
+      `${G}?family=Inter:wght@100..900`,
+    );
     expect(tightenCss2({ ...base, loaded: [{ family: 'Inter', rendered: { opsz: [14, 16] } }] })).toBeUndefined();
-    expect(tightenCss2({ ...base, loaded: [{ family: 'Inter', rendered: { opsz: [14] } }], variationTags: new Map([['*', new Set(['opsz'])]]) })).toBeUndefined();
+    expect(
+      tightenCss2({
+        ...base,
+        loaded: [{ family: 'Inter', rendered: { opsz: [14] } }],
+        variationTags: new Map([['*', new Set(['opsz'])]]),
+      }),
+    ).toBeUndefined();
     // A pinned value isn't the default.
-    expect(tightenCss2({ ...base, sheet: `${G}?family=Inter:opsz,wght@32,100..900`, loaded: [{ family: 'Inter', rendered: {} }] })).toBeUndefined();
+    expect(
+      tightenCss2({
+        ...base,
+        sheet: `${G}?family=Inter:opsz,wght@32,100..900`,
+        loaded: [{ family: 'Inter', rendered: {} }],
+      }),
+    ).toBeUndefined();
   });
 
   it('says which dropped weights a site asks for again', () => {
@@ -67,22 +134,68 @@ describe('css2 URLs', () => {
 });
 
 const face = (family: string, weight: string, sheet: string, loaded: boolean): UsageFaceJson => ({
-  family: `'${family}'`, descriptors: { 'font-family': `'${family}'`, 'font-weight': weight, 'font-style': 'normal', src: `url(https://fonts.gstatic.com/s/${family.toLowerCase()}/v1/${weight}.woff2) format('woff2')` },
-  source: { adapter: 'google-fonts' }, sheet, files: loaded ? [{ url: `https://fonts.gstatic.com/s/${family.toLowerCase()}/v1/${weight}.woff2`, sha256: '0'.repeat(64), bytes: 1000 }] : [],
-  chars: 'Hello', count: 5, inserted: {}, contexts: [], rendered: loaded ? { weight: [Number(weight)], style: ['normal'], axes: {} } : {}, declared: {}, features: [], locales: ['en'], pages: loaded ? ['/'] : [],
+  family: `'${family}'`,
+  descriptors: {
+    'font-family': `'${family}'`,
+    'font-weight': weight,
+    'font-style': 'normal',
+    src: `url(https://fonts.gstatic.com/s/${family.toLowerCase()}/v1/${weight}.woff2) format('woff2')`,
+  },
+  source: { adapter: 'google-fonts' },
+  sheet,
+  files: loaded
+    ? [
+        {
+          url: `https://fonts.gstatic.com/s/${family.toLowerCase()}/v1/${weight}.woff2`,
+          sha256: '0'.repeat(64),
+          bytes: 1000,
+        },
+      ]
+    : [],
+  chars: 'Hello',
+  count: 5,
+  inserted: {},
+  contexts: [],
+  rendered: loaded ? { weight: [Number(weight)], style: ['normal'], axes: {} } : {},
+  declared: {},
+  features: [],
+  locales: ['en'],
+  pages: loaded ? ['/'] : [],
 });
 
-function usageFor(sheet: string, families: Record<string, string[]>): UsageFileJson & { unloaded: Record<string, unknown> } {
-  const faces: Record<string, UsageFaceJson> = {}, unloaded: Record<string, unknown> = {};
-  for (const [fam, ws] of Object.entries(families)) for (const w of ws) {
-    const loaded = fam === 'Inter' && w === '400';
-    const f = face(fam, w, sheet, loaded);
-    if (loaded) faces[`${fam.toLowerCase()}-${w}-normal`] = f;
-    else unloaded[`${fam.toLowerCase()}-${w}-normal`] = { family: f.family, descriptors: f.descriptors, sheet, urls: [] };
-  }
+function usageFor(
+  sheet: string,
+  families: Record<string, string[]>,
+): UsageFileJson & { unloaded: Record<string, unknown> } {
+  const faces: Record<string, UsageFaceJson> = {},
+    unloaded: Record<string, unknown> = {};
+  for (const [fam, ws] of Object.entries(families))
+    for (const w of ws) {
+      const loaded = fam === 'Inter' && w === '400';
+      const f = face(fam, w, sheet, loaded);
+      if (loaded) faces[`${fam.toLowerCase()}-${w}-normal`] = f;
+      else
+        unloaded[`${fam.toLowerCase()}-${w}-normal`] = {
+          family: f.family,
+          descriptors: f.descriptors,
+          sheet,
+          urls: [],
+        };
+    }
   return {
-    version: 1, meta: { fontphobia: '1', harfbuzz: '1', chrome: '150.0.0.0', framework: 'static', mode: 'static', viewports: [1280], fontSizes: [16] },
-    faces, pages: { '/': { faces: { 'inter-400-normal': '1280' }, bytes: 1000, fonts: [] } }, unloaded,
+    version: 1,
+    meta: {
+      fontphobia: '1',
+      harfbuzz: '1',
+      chrome: '150.0.0.0',
+      framework: 'static',
+      mode: 'static',
+      viewports: [1280],
+      fontSizes: [16],
+    },
+    faces,
+    pages: { '/': { faces: { 'inter-400-normal': '1280' }, bytes: 1000, fonts: [] } },
+    unloaded,
   };
 }
 
@@ -99,7 +212,9 @@ describe('build, check and revert with tighten', () => {
     // Default: measured and reported, nothing edited.
     const def = await buildProject(root, u, {}, { version: '1', write: true });
     expect(def.edits).toEqual([]);
-    expect(def.suggestions.map((x) => x.kind === 'google' && [x.families, x.weights])).toEqual([[['Lora'], { Inter: [300, 500] }]]);
+    expect(def.suggestions.map((x) => x.kind === 'google' && [x.families, x.weights])).toEqual([
+      [['Lora'], { Inter: [300, 500] }],
+    ]);
     expect(def.suggestions[0]!.kind === 'google' && def.suggestions[0]!.cssBytes).toBeGreaterThan(100);
     expect(readFileSync(join(root, 'index.html'), 'utf8')).toBe(html);
     expect(readManifest(root)).toBeUndefined();
@@ -111,7 +226,14 @@ describe('build, check and revert with tighten', () => {
     expect(readFileSync(join(root, 'index.html'), 'utf8')).toBe(html);
 
     const r = await buildProject(root, u, tighten, { version: '1', write: true });
-    expect(r.manifest.google).toEqual([{ from: sheet, to: want, files: ['index.html'], dropped: { families: ['Lora'], weights: { Inter: [300, 500] }, axes: {} } }]);
+    expect(r.manifest.google).toEqual([
+      {
+        from: sheet,
+        to: want,
+        files: ['index.html'],
+        dropped: { families: ['Lora'], weights: { Inter: [300, 500] }, axes: {} },
+      },
+    ]);
     expect(readFileSync(join(root, 'index.html'), 'utf8')).toContain(want.replace(/&/g, '&amp;'));
     // verify's "before" loads the original URL in its place.
     expect(createOverlay(r.manifest).originalSheet(want)).toBe(sheet);

@@ -2,7 +2,11 @@ import { expect, test } from 'vitest';
 import { formatUnicodeRange, inRanges, parseUnicodeRange, rangesFromCodePoints } from '../src/index.ts';
 
 test('parses singles, ranges and wildcards, then merges', () => {
-  expect(parseUnicodeRange('U+0025-00FF, u+4??, U+20')).toEqual([[0x20, 0x20], [0x25, 0xff], [0x400, 0x4ff]]);
+  expect(parseUnicodeRange('U+0025-00FF, u+4??, U+20')).toEqual([
+    [0x20, 0x20],
+    [0x25, 0xff],
+    [0x400, 0x4ff],
+  ]);
   expect(parseUnicodeRange('U+20-7E, U+7F, U+80-9F')).toEqual([[0x20, 0x9f]]);
   expect(() => parseUnicodeRange('U+ZZ')).toThrow();
   expect(() => parseUnicodeRange('U+110000')).toThrow();

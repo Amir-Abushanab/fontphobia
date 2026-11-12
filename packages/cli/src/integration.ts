@@ -17,7 +17,10 @@ export interface FontphobiaCheckOptions {
   allowChars?: string;
 }
 
-export interface Logger { info(m: string): void; warn(m: string): void }
+export interface Logger {
+  info(m: string): void;
+  warn(m: string): void;
+}
 const consoleLogger: Logger = { info: (m) => console.log(m), warn: (m) => console.warn(m) };
 
 /**
@@ -26,14 +29,24 @@ const consoleLogger: Logger = { info: (m) => console.log(m), warn: (m) => consol
  * transpilers (Vite's config loader, Docusaurus's jiti in a vm context) that can't load the font
  * engine, and a process boundary is the one thing they all leave alone.
  */
-export async function postBuildCheck(root: string, outputDir: string | undefined, o: FontphobiaCheckOptions = {}, log: Logger = consoleLogger): Promise<void> {
+export async function postBuildCheck(
+  root: string,
+  outputDir: string | undefined,
+  o: FontphobiaCheckOptions = {},
+  log: Logger = consoleLogger,
+): Promise<void> {
   // Next to this file: check-runtime.mjs when bundled (dist/), check-runtime.ts in the source tree.
   const built = fileURLToPath(new URL('./check-runtime.mjs', import.meta.url));
   const script = existsSync(built) ? built : fileURLToPath(new URL('./check-runtime.ts', import.meta.url));
   const r = await new Promise<{ code: number; out: string }>((resolve) => {
-    execFile(process.execPath, [script, JSON.stringify({ root, outputDir, o })], { maxBuffer: 16 << 20 }, (err, stdout, stderr) => {
-      resolve({ code: err ? (typeof err.code === 'number' ? err.code : 1) : 0, out: (stdout + stderr).trimEnd() });
-    });
+    execFile(
+      process.execPath,
+      [script, JSON.stringify({ root, outputDir, o })],
+      { maxBuffer: 16 << 20 },
+      (err, stdout, stderr) => {
+        resolve({ code: err ? (typeof err.code === 'number' ? err.code : 1) : 0, out: (stdout + stderr).trimEnd() });
+      },
+    );
   });
   const lines = r.out.split('\n');
   const level = lines[0] === 'warn' ? 'warn' : 'info';

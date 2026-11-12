@@ -11,8 +11,17 @@ import { basename, join, resolve } from 'node:path';
 export interface VitePluginLike {
   name: string;
   enforce?: 'pre' | 'post';
-  config?: (config: { root?: string; build?: { assetsInlineLimit?: number | ((file: string, content: Buffer) => boolean | undefined) } }, env: { command: string }) => unknown;
-  transformIndexHtml?: { order: 'post'; handler: (html: string) => { tag: string; attrs?: Record<string, string>; children: string; injectTo: 'body' }[] };
+  config?: (
+    config: {
+      root?: string;
+      build?: { assetsInlineLimit?: number | ((file: string, content: Buffer) => boolean | undefined) };
+    },
+    env: { command: string },
+  ) => unknown;
+  transformIndexHtml?: {
+    order: 'post';
+    handler: (html: string) => { tag: string; attrs?: Record<string, string>; children: string; injectTo: 'body' }[];
+  };
 }
 
 export interface FontphobiaViteOptions {
@@ -23,12 +32,20 @@ export interface FontphobiaViteOptions {
 }
 
 export const OUTPUT_NAME = /\.(core|ext|rest)\.[0-9a-f]{8}\.woff2$/;
-interface ManifestLike { entries: Record<string, { family: string; outputs: { role: string; file: string; unicodeRange: string }[] }> }
+interface ManifestLike {
+  entries: Record<string, { family: string; outputs: { role: string; file: string; unicodeRange: string }[] }>;
+}
 
 function readManifest(root: string): ManifestLike | undefined {
   // .fontphobia/manifest.json, or 0.1.x's fontphobia.manifest.json (no core import: this loads with Vite's config).
-  const f = [join(root, '.fontphobia', 'manifest.json'), join(root, 'fontphobia.manifest.json')].find((x) => existsSync(x)) ?? join(root, '.fontphobia', 'manifest.json');
-  try { return existsSync(f) ? (JSON.parse(readFileSync(f, 'utf8')) as ManifestLike) : undefined; } catch { return undefined; }
+  const f =
+    [join(root, '.fontphobia', 'manifest.json'), join(root, 'fontphobia.manifest.json')].find((x) => existsSync(x)) ??
+    join(root, '.fontphobia', 'manifest.json');
+  try {
+    return existsSync(f) ? (JSON.parse(readFileSync(f, 'utf8')) as ManifestLike) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Is this one of fontphobia's output files (by the manifest, or by its `<stem>.<role>.<hash8>.woff2` name)? */
@@ -45,10 +62,12 @@ export function devWarningScript(root: string): string | undefined {
   const fams: Record<string, [number, number][]> = {};
   for (const e of Object.values(m.entries)) {
     const r = (fams[e.family.toLowerCase()] ??= []);
-    for (const o of e.outputs) if (o.role !== 'rest') for (const part of o.unicodeRange.split(',')) {
-      const [a, b] = part.trim().replace(/^U\+/i, '').split('-');
-      if (a) r.push([parseInt(a, 16), parseInt(b ?? a, 16)]);
-    }
+    for (const o of e.outputs)
+      if (o.role !== 'rest')
+        for (const part of o.unicodeRange.split(',')) {
+          const [a, b] = part.trim().replace(/^U\+/i, '').split('-');
+          if (a) r.push([parseInt(a, 16), parseInt(b ?? a, 16)]);
+        }
   }
   for (const r of Object.values(fams)) r.sort((x, y) => x[0] - y[0]);
   return `(() => {

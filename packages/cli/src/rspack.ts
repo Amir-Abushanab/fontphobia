@@ -13,7 +13,9 @@ interface CompilerLike {
 
 export class FontphobiaPlugin {
   private o: FontphobiaCheckOptions & { root?: string };
-  constructor(o: FontphobiaCheckOptions & { root?: string } = {}) { this.o = o; }
+  constructor(o: FontphobiaCheckOptions & { root?: string } = {}) {
+    this.o = o;
+  }
   apply(compiler: CompilerLike) {
     compiler.options.module.rules.push({ test: OUTPUT_NAME, type: 'asset/resource' });
     if (compiler.options.mode === 'development') return;

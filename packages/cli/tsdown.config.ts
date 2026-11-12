@@ -3,8 +3,20 @@ import { thirdPartyNotices } from './scripts/third-party-notices.mjs';
 
 export default defineConfig({
   entry: {
-    cli: 'src/cli.ts', index: 'src/index.ts', vite: 'src/vite.ts', astro: 'src/astro.ts', nuxt: 'src/nuxt.ts', 'react-router': 'src/react-router.ts',
-    vitepress: 'src/vitepress.ts', docusaurus: 'src/docusaurus.ts', eleventy: 'src/eleventy.ts', next: 'src/next.ts', rsbuild: 'src/rsbuild.ts', rspack: 'src/rspack.ts', webpack: 'src/webpack.ts', 'check-runtime': 'src/check-runtime.ts',
+    cli: 'src/cli.ts',
+    index: 'src/index.ts',
+    vite: 'src/vite.ts',
+    astro: 'src/astro.ts',
+    nuxt: 'src/nuxt.ts',
+    'react-router': 'src/react-router.ts',
+    vitepress: 'src/vitepress.ts',
+    docusaurus: 'src/docusaurus.ts',
+    eleventy: 'src/eleventy.ts',
+    next: 'src/next.ts',
+    rsbuild: 'src/rsbuild.ts',
+    rspack: 'src/rspack.ts',
+    webpack: 'src/webpack.ts',
+    'check-runtime': 'src/check-runtime.ts',
   },
   format: 'esm',
   platform: 'node',

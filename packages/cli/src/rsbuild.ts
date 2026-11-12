@@ -14,8 +14,12 @@ export default function fontphobia(o: FontphobiaCheckOptions = {}) {
   return {
     name: 'fontphobia',
     setup(api: RsbuildApi) {
-      api.modifyRspackConfig((config) => { ((config.module ??= {}).rules ??= []).push({ test: OUTPUT_NAME, type: 'asset/resource' }); });
-      api.onAfterBuild(async () => { await postBuildCheck(api.context.rootPath, api.context.distPath, o); });
+      api.modifyRspackConfig((config) => {
+        ((config.module ??= {}).rules ??= []).push({ test: OUTPUT_NAME, type: 'asset/resource' });
+      });
+      api.onAfterBuild(async () => {
+        await postBuildCheck(api.context.rootPath, api.context.distPath, o);
+      });
     },
   };
 }

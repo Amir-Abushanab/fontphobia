@@ -5,24 +5,24 @@
       "entry": ["scripts/*.mjs"],
       "project": ["scripts/**/*.mjs"],
       // scripts/build-bakery.mjs resolves these through packages/crawler, which declares them.
-      "ignoreDependencies": ["pngjs", "pixelmatch"]
+      "ignoreDependencies": ["pngjs", "pixelmatch"],
     },
     "packages/core": {
       // scripts/cldr.mjs regenerates src/data/cldr-*.json and is run by hand; nothing imports it.
       "entry": ["scripts/*.mjs"],
       "project": ["src/**/*.ts", "scripts/**/*.mjs"],
       // scripts/cldr.mjs finds these with require.resolve, which knip does not follow.
-      "ignoreDependencies": ["cldr-core", "cldr-misc-full"]
+      "ignoreDependencies": ["cldr-core", "cldr-misc-full"],
     },
     "packages/crawler": {
-      "project": ["src/**/*.ts"]
+      "project": ["src/**/*.ts"],
     },
     "packages/cli": {
       "project": ["src/**/*.ts", "scripts/**/*.mjs"],
       // The CLI's own source never imports it: the bundled crawler does, and it stays external,
       // so the published package has to depend on it.
-      "ignoreDependencies": ["playwright-core"]
-    }
+      "ignoreDependencies": ["playwright-core"],
+    },
   },
   "include": [
     "files",
@@ -34,6 +34,6 @@
     "binaries",
     "exports",
     "types",
-    "nsExports"
-  ]
+    "nsExports",
+  ],
 }

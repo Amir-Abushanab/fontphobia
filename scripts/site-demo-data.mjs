@@ -11,7 +11,12 @@ for (const entry of Object.values(manifest.entries)) {
   faces.push({
     family: entry.family,
     source: { url: entry.source.file, bytes: source.file.bytes, ranges: parseUnicodeRange(source.unicodes.ranges) },
-    outputs: entry.outputs.map(({ role, bytes, url, unicodeRange }) => ({ role, bytes, url, ranges: parseUnicodeRange(unicodeRange) })),
+    outputs: entry.outputs.map(({ role, bytes, url, unicodeRange }) => ({
+      role,
+      bytes,
+      url,
+      ranges: parseUnicodeRange(unicodeRange),
+    })),
   });
 }
 const data = {
@@ -27,6 +32,9 @@ let html = readFileSync(index, 'utf8');
 if (html.includes('<script id="font-data"')) {
   html = html.replace(/<script id="font-data" type="application\/json">[\s\S]*?<\/script>/, () => embedded);
 } else {
-  html = html.replace(/<script\b[^>]*\bsrc="demo\.js(?:\?[^"]*)?"[^>]*><\/script>/, (script) => `${embedded}\n${script}`);
+  html = html.replace(
+    /<script\b[^>]*\bsrc="demo\.js(?:\?[^"]*)?"[^>]*><\/script>/,
+    (script) => `${embedded}\n${script}`,
+  );
 }
 writeFileSync(index, html);

@@ -31,7 +31,8 @@ const LATIN_REFS = cps(LATIN);
 export function hintRefs(set: Iterable<number>, cmap: Set<number>): number[] {
   const have = new Set(set);
   const out = new Set<number>(LATIN_REFS);
-  for (const s of SCRIPTS) if ([...have].some((c) => s.test.test(String.fromCodePoint(c)))) for (const r of s.refs) out.add(r);
+  for (const s of SCRIPTS)
+    if ([...have].some((c) => s.test.test(String.fromCodePoint(c)))) for (const r of s.refs) out.add(r);
   return [...out].filter((c) => cmap.has(c) && !have.has(c)).toSorted((a, b) => a - b);
 }
 
@@ -47,9 +48,15 @@ export function macosReferenceGlyphs(font: { glyphFromName(name: string): number
 }
 
 /** Glyph → every source code point that maps to it. */
-export function reverseCmap(font: { nominalGlyph(cp: number): number | undefined }, cmap: Iterable<number>): Map<number, number[]> {
+export function reverseCmap(
+  font: { nominalGlyph(cp: number): number | undefined },
+  cmap: Iterable<number>,
+): Map<number, number[]> {
   const out = new Map<number, number[]>();
-  for (const cp of cmap) { const g = font.nominalGlyph(cp); if (g !== undefined) (out.get(g) ?? out.set(g, []).get(g)!).push(cp); }
+  for (const cp of cmap) {
+    const g = font.nominalGlyph(cp);
+    if (g !== undefined) (out.get(g) ?? out.set(g, []).get(g)!).push(cp);
+  }
   return out;
 }
 
@@ -59,9 +66,16 @@ export function reverseCmap(font: { nominalGlyph(cp: number): number | undefined
  * ʼ (U+02BC), a "non-base" modifier letter, which turns off its blue-zone snapping. A file that maps
  * the glyph from U+2019 alone hints it differently (M5 notes).
  */
-export function cmapAliases(set: Iterable<number>, font: { nominalGlyph(cp: number): number | undefined }, byGlyph: Map<number, number[]>): number[] {
+export function cmapAliases(
+  set: Iterable<number>,
+  font: { nominalGlyph(cp: number): number | undefined },
+  byGlyph: Map<number, number[]>,
+): number[] {
   const have = new Set(set);
   const out = new Set<number>();
-  for (const cp of have) { const g = font.nominalGlyph(cp); for (const a of g !== undefined ? byGlyph.get(g) ?? [] : []) if (!have.has(a)) out.add(a); }
+  for (const cp of have) {
+    const g = font.nominalGlyph(cp);
+    for (const a of g !== undefined ? (byGlyph.get(g) ?? []) : []) if (!have.has(a)) out.add(a);
+  }
   return [...out].toSorted((a, b) => a - b);
 }

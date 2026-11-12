@@ -18,7 +18,8 @@ export function parseUnicodeRange(value: string): Range[] {
       out.push([v, v]);
     } else throw new Error(`Bad unicode-range part ${JSON.stringify(raw.trim())}`);
   }
-  for (const [a, b] of out) if (a > b || b > 0x10ffff) throw new Error(`Bad unicode-range U+${a.toString(16)}-${b.toString(16)}`);
+  for (const [a, b] of out)
+    if (a > b || b > 0x10ffff) throw new Error(`Bad unicode-range U+${a.toString(16)}-${b.toString(16)}`);
   return mergeRanges(out);
 }
 
@@ -42,7 +43,8 @@ export function* codePointsOf(ranges: Range[]): Generator<number> {
 }
 
 export function inRanges(ranges: Range[], cp: number): boolean {
-  let lo = 0, hi = ranges.length - 1;
+  let lo = 0,
+    hi = ranges.length - 1;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
     const [a, b] = ranges[mid]!;
@@ -55,5 +57,7 @@ export function inRanges(ranges: Range[], cp: number): boolean {
 
 const hex = (n: number) => n.toString(16).toUpperCase();
 export function formatUnicodeRange(ranges: Range[]): string {
-  return mergeRanges(ranges).map(([a, b]) => (a === b ? `U+${hex(a)}` : `U+${hex(a)}-${hex(b)}`)).join(', ');
+  return mergeRanges(ranges)
+    .map(([a, b]) => (a === b ? `U+${hex(a)}` : `U+${hex(a)}-${hex(b)}`))
+    .join(', ');
 }

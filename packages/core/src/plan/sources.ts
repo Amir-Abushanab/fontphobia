@@ -16,17 +16,22 @@ export interface ResolveOptions {
   searchDirs?: string[];
 }
 
-export async function resolveSources(root: string, usage: UsageFileJson, opts: ResolveOptions = {}): Promise<Map<string, SourceFont>> {
+export async function resolveSources(
+  root: string,
+  usage: UsageFileJson,
+  opts: ResolveOptions = {},
+): Promise<Map<string, SourceFont>> {
   const out = new Map<string, SourceFont>();
   let index: Map<string, string> | undefined;
   const bySha = (h: string) => {
     if (!index) {
       index = new Map();
-      for (const d of opts.searchDirs ?? []) for (const rel of listFiles(d, (r) => FONT.test(r))) {
-        const abs = join(d, rel);
-        const k = sha(readFileSync(abs));
-        if (!index.has(k)) index.set(k, abs);
-      }
+      for (const d of opts.searchDirs ?? [])
+        for (const rel of listFiles(d, (r) => FONT.test(r))) {
+          const abs = join(d, rel);
+          const k = sha(readFileSync(abs));
+          if (!index.has(k)) index.set(k, abs);
+        }
     }
     return index.get(h);
   };
@@ -37,11 +42,19 @@ export async function resolveSources(root: string, usage: UsageFileJson, opts: R
       const p = resolve(root, f.source.fontFile);
       if (existsSync(p) && (!want.size || want.has(sha(readFileSync(p))))) abs = p;
     }
-    if (!abs) for (const h of want) { abs = bySha(h!); if (abs) break; }
+    if (!abs)
+      for (const h of want) {
+        abs = bySha(h!);
+        if (abs) break;
+      }
     if (!abs) continue;
     const bytes = new Uint8Array(readFileSync(abs));
-    const rel = abs.startsWith(root + sep) ? relative(root, abs).split(sep).join('/') : f.source.fontFile ?? abs;
-    out.set(id, { bytes, file: rel, license: detectLicense(await toSfnt(bytes), abs, abs.startsWith(root + sep) ? root : join(abs, '..')) });
+    const rel = abs.startsWith(root + sep) ? relative(root, abs).split(sep).join('/') : (f.source.fontFile ?? abs);
+    out.set(id, {
+      bytes,
+      file: rel,
+      license: detectLicense(await toSfnt(bytes), abs, abs.startsWith(root + sep) ? root : join(abs, '..')),
+    });
   }
   return out;
 }

@@ -11,12 +11,18 @@ export interface MatchableFace {
   unicodeRange: Range[];
 }
 
-export interface Wanted { weight: number; style: StyleValue; stretch: number }
+export interface Wanted {
+  weight: number;
+  style: StyleValue;
+  stretch: number;
+}
 
 type Score = [tier: number, dist: number];
 const better = (a: Score, b: Score) => a[0] - b[0] || a[1] - b[1];
 
-function nearest([lo, hi]: Interval, d: number): number { return d < lo ? lo : d > hi ? hi : d; }
+function nearest([lo, hi]: Interval, d: number): number {
+  return d < lo ? lo : d > hi ? hi : d;
+}
 
 function weightScore(i: Interval, d: number): Score {
   const p = nearest(i, d);
@@ -39,14 +45,22 @@ function stretchScore(i: Interval, d: number): Score {
 
 /** Lower is better: italic wants italic > oblique > normal; normal wants normal > oblique > italic. */
 function styleScore(f: StyleValue, want: StyleValue): Score {
-  if (want.kind === 'italic') return f.kind === 'italic' ? [0, 0] : f.kind === 'oblique' ? [1, Math.abs(14 - nearest([f.min, f.max], 14))] : [2, 0];
+  if (want.kind === 'italic')
+    return f.kind === 'italic'
+      ? [0, 0]
+      : f.kind === 'oblique'
+        ? [1, Math.abs(14 - nearest([f.min, f.max], 14))]
+        : [2, 0];
   if (want.kind === 'oblique') {
     const a = want.min;
     if (f.kind === 'oblique') return [0, Math.abs(a - nearest([f.min, f.max], a))];
     return f.kind === 'italic' ? [1, 0] : [2, 0];
   }
   if (f.kind === 'normal') return [0, 0];
-  if (f.kind === 'oblique') { const p = nearest([f.min, f.max], 0); return p === 0 ? [0, 0] : [1, Math.abs(p)]; }
+  if (f.kind === 'oblique') {
+    const p = nearest([f.min, f.max], 0);
+    return p === 0 ? [0, 0] : [1, Math.abs(p)];
+  }
   return [2, 0];
 }
 
@@ -56,7 +70,10 @@ function keepBest<T>(xs: T[], score: (x: T) => Score): T[] {
   for (const x of xs) {
     const s = score(x);
     const c = best ? better(s, best) : -1;
-    if (c < 0) { best = s; out = [x]; } else if (c === 0) out.push(x);
+    if (c < 0) {
+      best = s;
+      out = [x];
+    } else if (c === 0) out.push(x);
   }
   return out;
 }
@@ -77,7 +94,11 @@ export function matchFaces<T extends MatchableFace>(familyFaces: T[], want: Want
 export function computedStyle(v: string): StyleValue {
   const s = v.trim().toLowerCase();
   if (s === 'italic') return { kind: 'italic' };
-  if (s.startsWith('oblique')) { const a = parseFloat(s.slice(7)); const n = Number.isFinite(a) ? a : 14; return { kind: 'oblique', min: n, max: n }; }
+  if (s.startsWith('oblique')) {
+    const a = parseFloat(s.slice(7));
+    const n = Number.isFinite(a) ? a : 14;
+    return { kind: 'oblique', min: n, max: n };
+  }
   return { kind: 'normal' };
 }
 
@@ -90,8 +111,12 @@ export type Attribution<T> = { face: T } | { system: string };
  * `isInstalled` says it's present (default: always).
  */
 export function attribute<T extends MatchableFace>(
-  stack: string[], cp: number, want: Wanted, families: Map<string, T[]>,
-  covers: (face: T, cp: number) => boolean, isInstalled: (family: string) => boolean = () => true,
+  stack: string[],
+  cp: number,
+  want: Wanted,
+  families: Map<string, T[]>,
+  covers: (face: T, cp: number) => boolean,
+  isInstalled: (family: string) => boolean = () => true,
 ): Attribution<T> {
   for (const fam of stack) {
     const faces = families.get(fam.toLowerCase());

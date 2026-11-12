@@ -19,29 +19,66 @@ export interface FontphobiaAstroOptions {
   allowChars?: string;
 }
 
-interface Logger { info(m: string): void; warn(m: string): void; error(m: string): void }
+interface Logger {
+  info(m: string): void;
+  warn(m: string): void;
+  error(m: string): void;
+}
 
 export default function fontphobia(o: FontphobiaAstroOptions = {}) {
   let root = process.cwd();
   return {
     name: 'fontphobia',
     hooks: {
-      'astro:config:setup': ({ config, command, updateConfig, injectScript }: { config: { root: URL }; command: string; updateConfig: (c: unknown) => void; injectScript: (stage: 'page', code: string) => void }) => {
+      'astro:config:setup': ({
+        config,
+        command,
+        updateConfig,
+        injectScript,
+      }: {
+        config: { root: URL };
+        command: string;
+        updateConfig: (c: unknown) => void;
+        injectScript: (stage: 'page', code: string) => void;
+      }) => {
         root = fileURLToPath(config.root);
         updateConfig({ vite: { plugins: [vitePlugin({ root, devWarnings: false })] } });
-        if (command === 'dev') { const s = devWarningScript(root); if (s) injectScript('page', s); }
+        if (command === 'dev') {
+          const s = devWarningScript(root);
+          if (s) injectScript('page', s);
+        }
       },
       'astro:build:done': async ({ dir, logger }: { dir: URL; logger: Logger }) => {
         // Options given to the integration win; the rest come from fontphobia.config's `check` (as in check-runtime).
         const fromConfig = (await loadConfig(root, selfUrl(import.meta.url))).config.check ?? {};
-        const c = { ...fromConfig, ...Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) } as FontphobiaAstroOptions;
+        const c = {
+          ...fromConfig,
+          ...Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)),
+        } as FontphobiaAstroOptions;
         const usageFile = join(root, '.fontphobia', 'usage.json');
-        const usage = existsSync(usageFile) ? (JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson) : undefined;
-        const r = await checkProject({ root, outputDir: fileURLToPath(dir), usage, allowChars: c.allowChars, strict: c.strict });
+        const usage = existsSync(usageFile)
+          ? (JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson)
+          : undefined;
+        const r = await checkProject({
+          root,
+          outputDir: fileURLToPath(dir),
+          usage,
+          allowChars: c.allowChars,
+          strict: c.strict,
+        });
         const text = formatCheck(r).replace(/^fontphobia: /, '');
-        if (r.noManifest) { logger.warn(text); return; }
-        if (!r.issues.length) { logger.info(text); return; }
-        if (r.ok) { logger.warn(text); return; }
+        if (r.noManifest) {
+          logger.warn(text);
+          return;
+        }
+        if (!r.issues.length) {
+          logger.info(text);
+          return;
+        }
+        if (r.ok) {
+          logger.warn(text);
+          return;
+        }
         if (c.mode === 'warn') logger.warn(text);
         else throw new Error(`fontphobia: ${text}`);
       },

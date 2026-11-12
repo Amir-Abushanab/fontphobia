@@ -11,7 +11,9 @@ interface NuxtLike {
 
 export default function fontphobiaNuxt(o: FontphobiaCheckOptions = {}, nuxt: NuxtLike) {
   const root = nuxt.options.rootDir;
-  nuxt.hook('vite:extendConfig', ((config: { plugins?: unknown[] }) => { (config.plugins ??= []).push(vitePlugin({ root, devWarnings: false })); }) as never);
+  nuxt.hook('vite:extendConfig', ((config: { plugins?: unknown[] }) => {
+    (config.plugins ??= []).push(vitePlugin({ root, devWarnings: false }));
+  }) as never);
   if (nuxt.options.dev) {
     const s = devWarningScript(root);
     if (s) (nuxt.options.app.head.script ??= []).push({ innerHTML: s, tagPosition: 'bodyClose' });

@@ -37,12 +37,19 @@ function encodeWoff1(sfnt: Uint8Array): Uint8Array {
   const out = new Uint8Array(size);
   const dv = view(out);
   out.set([0x77, 0x4f, 0x46, 0x46]);
-  dv.setUint32(4, flavor); dv.setUint32(8, size); dv.setUint16(12, entries.length);
+  dv.setUint32(4, flavor);
+  dv.setUint32(8, size);
+  dv.setUint16(12, entries.length);
   let off = 44 + 20 * entries.length;
   entries.forEach((e, i) => {
     const r = 44 + i * 20;
-    out.set([...e.tag].map((c) => c.charCodeAt(0)), r);
-    dv.setUint32(r + 4, off); dv.setUint32(r + 8, e.data.byteLength); dv.setUint32(r + 12, e.orig.byteLength);
+    out.set(
+      [...e.tag].map((c) => c.charCodeAt(0)),
+      r,
+    );
+    dv.setUint32(r + 4, off);
+    dv.setUint32(r + 8, e.data.byteLength);
+    dv.setUint32(r + 12, e.orig.byteLength);
     out.set(e.data, off);
     off += (e.data.byteLength + 3) & ~3;
   });
@@ -52,6 +59,7 @@ function encodeWoff1(sfnt: Uint8Array): Uint8Array {
 test('decodes WOFF 1.0', async () => {
   const sfnt = hbSubset(fixture('DejaVuSans.ttf'), { unicodes: ASCII });
   const decoded = await toSfnt(encodeWoff1(sfnt));
-  const a = readSfnt(sfnt).tables, b = readSfnt(decoded).tables;
+  const a = readSfnt(sfnt).tables,
+    b = readSfnt(decoded).tables;
   for (const [tag, data] of a) if (tag !== 'head') expect(b.get(tag), tag).toEqual(data);
 });

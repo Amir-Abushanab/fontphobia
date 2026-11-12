@@ -6,7 +6,11 @@ import { postBuildCheck, type FontphobiaCheckOptions } from './integration.ts';
 export default function fontphobiaDocusaurus(context: { siteDir: string }, o: FontphobiaCheckOptions = {}) {
   return {
     name: 'fontphobia',
-    configureWebpack() { return { module: { rules: [{ test: OUTPUT_NAME, type: 'asset/resource' }] } }; },
-    async postBuild({ outDir }: { outDir: string }) { await postBuildCheck(context.siteDir, outDir, o); },
+    configureWebpack() {
+      return { module: { rules: [{ test: OUTPUT_NAME, type: 'asset/resource' }] } };
+    },
+    async postBuild({ outDir }: { outDir: string }) {
+      await postBuildCheck(context.siteDir, outDir, o);
+    },
   };
 }

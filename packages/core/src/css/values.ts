@@ -4,7 +4,9 @@
 /** Split on a separator outside quotes and parentheses. */
 export function splitTop(s: string, sep = ','): string[] {
   const out: string[] = [];
-  let depth = 0, quote = '', cur = '';
+  let depth = 0,
+    quote = '',
+    cur = '';
   for (let i = 0; i < s.length; i++) {
     const c = s[i]!;
     if (quote) {
@@ -13,10 +15,18 @@ export function splitTop(s: string, sep = ','): string[] {
       else if (c === quote) quote = '';
       continue;
     }
-    if (c === '"' || c === "'") { quote = c; cur += c; continue; }
+    if (c === '"' || c === "'") {
+      quote = c;
+      cur += c;
+      continue;
+    }
     if (c === '(') depth++;
     else if (c === ')') depth--;
-    if (depth === 0 && (sep === ' ' ? /\s/.test(c) : c === sep)) { if (cur.trim() || sep !== ' ') out.push(cur.trim()); cur = ''; continue; }
+    if (depth === 0 && (sep === ' ' ? /\s/.test(c) : c === sep)) {
+      if (cur.trim() || sep !== ' ') out.push(cur.trim());
+      cur = '';
+      continue;
+    }
     cur += c;
   }
   if (cur.trim() || (sep !== ' ' && out.length)) out.push(cur.trim());
@@ -27,21 +37,38 @@ export function splitTop(s: string, sep = ','): string[] {
 export function unquote(s: string): string {
   s = s.trim();
   if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) s = s.slice(1, -1);
-  return s.replace(/\\([0-9a-f]{1,6}\s?|.)/gi, (_, e: string) => (/^[0-9a-f]/i.test(e) && e.trim().length ? String.fromCodePoint(parseInt(e, 16)) : e));
+  return s.replace(/\\([0-9a-f]{1,6}\s?|.)/gi, (_, e: string) =>
+    /^[0-9a-f]/i.test(e) && e.trim().length ? String.fromCodePoint(parseInt(e, 16)) : e,
+  );
 }
 
 export const GENERIC_FAMILIES = new Set([
-  'serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui', 'ui-serif', 'ui-sans-serif', 'ui-monospace',
-  'ui-rounded', 'math', 'emoji', 'fangsong', '-apple-system', 'blinkmacsystemfont',
+  'serif',
+  'sans-serif',
+  'monospace',
+  'cursive',
+  'fantasy',
+  'system-ui',
+  'ui-serif',
+  'ui-sans-serif',
+  'ui-monospace',
+  'ui-rounded',
+  'math',
+  'emoji',
+  'fangsong',
+  '-apple-system',
+  'blinkmacsystemfont',
 ]);
 
 /** "Inter Variable", Inter, sans-serif → ['Inter Variable', 'Inter', 'sans-serif']. Unquoted names collapse whitespace. */
 export function parseFamilyList(value: string): string[] {
-  return splitTop(value).map((f) => {
-    const q = /^["']/.test(f.trim());
-    const u = unquote(f);
-    return q ? u : u.replace(/\s+/g, ' ');
-  }).filter(Boolean);
+  return splitTop(value)
+    .map((f) => {
+      const q = /^["']/.test(f.trim());
+      const u = unquote(f);
+      return q ? u : u.replace(/\s+/g, ' ');
+    })
+    .filter(Boolean);
 }
 
 /** CSS family names match ASCII case-insensitively. */
@@ -60,8 +87,15 @@ export function parseWeightDescriptor(v: string | undefined): Interval {
 }
 
 export const STRETCH_KW: Record<string, number> = {
-  'ultra-condensed': 50, 'extra-condensed': 62.5, condensed: 75, 'semi-condensed': 87.5, normal: 100,
-  'semi-expanded': 112.5, expanded: 125, 'extra-expanded': 150, 'ultra-expanded': 200,
+  'ultra-condensed': 50,
+  'extra-condensed': 62.5,
+  condensed: 75,
+  'semi-condensed': 87.5,
+  normal: 100,
+  'semi-expanded': 112.5,
+  expanded: 125,
+  'extra-expanded': 150,
+  'ultra-expanded': 200,
 };
 const stretchValue = (x: string): number => STRETCH_KW[x] ?? (x.endsWith('%') ? Number(x.slice(0, -1)) : NaN);
 export function parseStretchDescriptor(v: string | undefined): Interval {
@@ -99,7 +133,8 @@ export function parseStyle(v: string | undefined): StyleValue {
 export const formatStyle = (s: StyleValue): string =>
   s.kind === 'oblique' ? (s.min === s.max ? `oblique ${s.min}deg` : `oblique ${s.min}deg ${s.max}deg`) : s.kind;
 
-export const formatInterval = (i: Interval, unit = ''): string => (i[0] === i[1] ? `${i[0]}${unit}` : `${i[0]}${unit} ${i[1]}${unit}`);
+export const formatInterval = (i: Interval, unit = ''): string =>
+  i[0] === i[1] ? `${i[0]}${unit}` : `${i[0]}${unit} ${i[1]}${unit}`;
 
 /** `"tnum", "ss01" 2, "liga" off` → [['tnum', 1], ['ss01', 2], ['liga', 0]]. `normal` → []. */
 export function parseFeatureSettings(v: string | undefined): [string, number][] {
@@ -140,26 +175,64 @@ export interface VariantStyle {
 }
 
 const LIGATURES: Record<string, [string, number][]> = {
-  'common-ligatures': [['liga', 1], ['clig', 1]], 'no-common-ligatures': [['liga', 0], ['clig', 0]],
-  'discretionary-ligatures': [['dlig', 1]], 'no-discretionary-ligatures': [['dlig', 0]],
-  'historical-ligatures': [['hlig', 1]], 'no-historical-ligatures': [['hlig', 0]],
-  contextual: [['calt', 1]], 'no-contextual': [['calt', 0]],
-  none: [['liga', 0], ['clig', 0], ['dlig', 0], ['hlig', 0], ['calt', 0]],
+  'common-ligatures': [
+    ['liga', 1],
+    ['clig', 1],
+  ],
+  'no-common-ligatures': [
+    ['liga', 0],
+    ['clig', 0],
+  ],
+  'discretionary-ligatures': [['dlig', 1]],
+  'no-discretionary-ligatures': [['dlig', 0]],
+  'historical-ligatures': [['hlig', 1]],
+  'no-historical-ligatures': [['hlig', 0]],
+  contextual: [['calt', 1]],
+  'no-contextual': [['calt', 0]],
+  none: [
+    ['liga', 0],
+    ['clig', 0],
+    ['dlig', 0],
+    ['hlig', 0],
+    ['calt', 0],
+  ],
 };
 const CAPS: Record<string, string[]> = {
-  'small-caps': ['smcp'], 'all-small-caps': ['c2sc', 'smcp'], 'petite-caps': ['pcap'], 'all-petite-caps': ['c2pc', 'pcap'],
-  unicase: ['unic'], 'titling-caps': ['titl'],
+  'small-caps': ['smcp'],
+  'all-small-caps': ['c2sc', 'smcp'],
+  'petite-caps': ['pcap'],
+  'all-petite-caps': ['c2pc', 'pcap'],
+  unicase: ['unic'],
+  'titling-caps': ['titl'],
 };
 const NUMERIC: Record<string, string> = {
-  'lining-nums': 'lnum', 'oldstyle-nums': 'onum', 'proportional-nums': 'pnum', 'tabular-nums': 'tnum',
-  'diagonal-fractions': 'frac', 'stacked-fractions': 'afrc', ordinal: 'ordn', 'slashed-zero': 'zero',
+  'lining-nums': 'lnum',
+  'oldstyle-nums': 'onum',
+  'proportional-nums': 'pnum',
+  'tabular-nums': 'tnum',
+  'diagonal-fractions': 'frac',
+  'stacked-fractions': 'afrc',
+  ordinal: 'ordn',
+  'slashed-zero': 'zero',
 };
 const EAST_ASIAN: Record<string, string> = {
-  jis78: 'jp78', jis83: 'jp83', jis90: 'jp90', jis04: 'jp04', simplified: 'smpl', traditional: 'trad',
-  'full-width': 'fwid', 'proportional-width': 'pwid', ruby: 'ruby',
+  jis78: 'jp78',
+  jis83: 'jp83',
+  jis90: 'jp90',
+  jis04: 'jp04',
+  simplified: 'smpl',
+  traditional: 'trad',
+  'full-width': 'fwid',
+  'proportional-width': 'pwid',
+  ruby: 'ruby',
 };
 const ALT_TYPES: Record<string, string> = {
-  stylistic: 'stylistic', styleset: 'styleset', 'character-variant': 'character-variant', swash: 'swash', ornaments: 'ornaments', annotation: 'annotation',
+  stylistic: 'stylistic',
+  styleset: 'styleset',
+  'character-variant': 'character-variant',
+  swash: 'swash',
+  ornaments: 'ornaments',
+  annotation: 'annotation',
 };
 
 /** The small-caps family of values, which browsers synthesize when the font lacks the feature (§7.4). */
@@ -170,7 +243,12 @@ export const capsFeatures = (caps: string | undefined): string[] => CAPS[(caps ?
  * font-variant-* first, then font-feature-settings overrides. letter-spacing ≠ 0 turns off
  * optional ligatures in Chrome. Returns tag → value (0 means explicitly off).
  */
-export function featuresOf(style: VariantStyle & { fontFeatureSettings?: string }, family: string | undefined, fv?: FeatureValues, descriptorFeatures?: string): Map<string, number> {
+export function featuresOf(
+  style: VariantStyle & { fontFeatureSettings?: string },
+  family: string | undefined,
+  fv?: FeatureValues,
+  descriptorFeatures?: string,
+): Map<string, number> {
   const out = new Map<string, number>();
   for (const [t, v] of parseFeatureSettings(descriptorFeatures)) out.set(t, v);
   const words = (s: string | undefined) => (s && s.trim() !== 'normal' ? splitTop(s.trim(), ' ') : []);
@@ -184,7 +262,10 @@ export function featuresOf(style: VariantStyle & { fontFeatureSettings?: string 
   if (pos === 'sub') out.set('subs', 1);
   else if (pos === 'super') out.set('sups', 1);
   for (const w of words(style.fontVariantAlternates)) {
-    if (w === 'historical-forms') { out.set('hist', 1); continue; }
+    if (w === 'historical-forms') {
+      out.set('hist', 1);
+      continue;
+    }
     const m = w.match(/^([a-z-]+)\((.*)\)$/);
     if (!m || !ALT_TYPES[m[1]!]) continue;
     const names = splitTop(m[2]!).map((n) => unquote(n));
@@ -193,29 +274,45 @@ export function featuresOf(style: VariantStyle & { fontFeatureSettings?: string 
       const idx = lookup(n);
       if (!idx?.length) continue;
       switch (m[1]) {
-        case 'stylistic': out.set('salt', idx[0]!); break;
-        case 'swash': out.set('swsh', idx[0]!); out.set('cswh', idx[0]!); break;
-        case 'ornaments': out.set('ornm', idx[0]!); break;
-        case 'annotation': out.set('nalt', idx[0]!); break;
-        case 'styleset': for (const i of idx) if (i >= 1 && i <= 20) out.set(`ss${String(i).padStart(2, '0')}`, 1); break;
-        case 'character-variant': if (idx[0]! >= 1 && idx[0]! <= 99) out.set(`cv${String(idx[0]).padStart(2, '0')}`, idx[1] ?? 1); break;
+        case 'stylistic':
+          out.set('salt', idx[0]!);
+          break;
+        case 'swash':
+          out.set('swsh', idx[0]!);
+          out.set('cswh', idx[0]!);
+          break;
+        case 'ornaments':
+          out.set('ornm', idx[0]!);
+          break;
+        case 'annotation':
+          out.set('nalt', idx[0]!);
+          break;
+        case 'styleset':
+          for (const i of idx) if (i >= 1 && i <= 20) out.set(`ss${String(i).padStart(2, '0')}`, 1);
+          break;
+        case 'character-variant':
+          if (idx[0]! >= 1 && idx[0]! <= 99) out.set(`cv${String(idx[0]).padStart(2, '0')}`, idx[1] ?? 1);
+          break;
       }
     }
   }
   if ((style.fontKerning ?? 'auto').trim() === 'none') out.set('kern', 0);
   const ls = (style.letterSpacing ?? 'normal').trim();
-  if (ls !== 'normal' && parseFloat(ls) !== 0) for (const t of ['liga', 'clig', 'dlig', 'hlig', 'calt']) if (!out.has(t)) out.set(t, 0);
+  if (ls !== 'normal' && parseFloat(ls) !== 0)
+    for (const t of ['liga', 'clig', 'dlig', 'hlig', 'calt']) if (!out.has(t)) out.set(t, 0);
   for (const [t, v] of parseFeatureSettings(style.fontFeatureSettings)) out.set(t, v);
   return out;
 }
 
 /** Canonical "tag=value" list, sorted. */
 export const formatSettings = (m: Map<string, number> | [string, number][]): string =>
-  [...m].toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([t, v]) => `${t}=${v}`).join(',');
+  [...m]
+    .toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([t, v]) => `${t}=${v}`)
+    .join(',');
 
 /** CSS relative weights (CSS Fonts 4 §2.2 table). */
 export function relativeWeight(kw: 'bolder' | 'lighter', parent: number): number {
   if (kw === 'bolder') return parent < 350 ? 400 : parent < 550 ? 700 : parent < 900 ? 900 : parent;
   return parent < 100 ? parent : parent < 550 ? 100 : parent < 750 ? 400 : 700;
 }
-

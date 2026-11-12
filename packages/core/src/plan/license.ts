@@ -34,7 +34,13 @@ function reservedNames(text: string): string[] {
   for (const m of text.matchAll(/(?<![“"'‘])\bReserved\s+Font\s+Names?(?!\s*\()[ \t]*:?/gi)) {
     let rest = text.slice(m.index + m[0].length, m.index + m[0].length + 400);
     // Quoted or <bracketed> names may start on the next line; unquoted ones start with a capital or digit on this one.
-    for (let n; (n = /^(?:\s*[“"'‘]([^”"'’\n]+)[”"'’]|\s*<([^>\n]+)>|[ \t]*([\p{Lu}\d][^,;&()<>“”"‘’\n]*?)(?=[ \t]+and[ \t]|[ \t]*[,;&()]|\.(?:\s|$)|[ \t]*(?:\r?\n|$)))/u.exec(rest));) {
+    for (
+      let n;
+      (n =
+        /^(?:\s*[“"'‘]([^”"'’\n]+)[”"'’]|\s*<([^>\n]+)>|[ \t]*([\p{Lu}\d][^,;&()<>“”"‘’\n]*?)(?=[ \t]+and[ \t]|[ \t]*[,;&()]|\.(?:\s|$)|[ \t]*(?:\r?\n|$)))/u.exec(
+          rest,
+        ));
+    ) {
       const name = (n[1] ?? n[2] ?? n[3])!.trim();
       if (name && name.length <= 64) out.add(name);
       const joiner = /^[ \t]*(?:,[ \t]*(?:and\b|&)?|and\b|&)/.exec(rest.slice(n[0].length));
@@ -58,10 +64,18 @@ const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
  * <Name> starts the font's file name or family (longest first), then `OFL*.txt`, then, only when `generic`, LICENSE/COPYING.
  */
 function licenseFiles(names: string[], keys: string[], generic: boolean): string[] {
-  const named: [number, string][] = [], ofl: string[] = [], plain: string[] = [];
+  const named: [number, string][] = [],
+    ofl: string[] = [],
+    plain: string[] = [];
   for (const n of names) {
-    if (/^(LICEN[CS]E|COPYING)(\.(txt|md))?$/i.test(n)) { if (generic) plain.push(n); continue; }
-    if (/^OFL.*\.txt$/i.test(n)) { ofl.push(n); continue; }
+    if (/^(LICEN[CS]E|COPYING)(\.(txt|md))?$/i.test(n)) {
+      if (generic) plain.push(n);
+      continue;
+    }
+    if (/^OFL.*\.txt$/i.test(n)) {
+      ofl.push(n);
+      continue;
+    }
     const m = /^(.+?)[-_ ](?:LICEN[CS]E(?:\.(?:txt|md))?|OFL.*\.txt)$/i.exec(n) ?? /^(.+?)OFL.*\.txt$/i.exec(n);
     if (!m) continue;
     const k = norm(m[1]!);
@@ -69,7 +83,11 @@ function licenseFiles(names: string[], keys: string[], generic: boolean): string
     else if (k && keys.some((x) => x.startsWith(k))) named.push([k.length, n]);
   }
   const by = (a: string, b: string) => a.length - b.length || (a < b ? -1 : a > b ? 1 : 0);
-  return [...named.toSorted((a, b) => b[0] - a[0] || by(a[1], b[1])).map((x) => x[1]), ...ofl.toSorted(by), ...plain.toSorted(by)];
+  return [
+    ...named.toSorted((a, b) => b[0] - a[0] || by(a[1], b[1])).map((x) => x[1]),
+    ...ofl.toSorted(by),
+    ...plain.toSorted(by),
+  ];
 }
 
 /**
@@ -78,20 +96,45 @@ function licenseFiles(names: string[], keys: string[], generic: boolean): string
  * (node_modules/<pkg>, node_modules/@scope/<pkg>). At a project or workspace root only font-specific files count: its
  * LICENSE and package.json are the project's. In node_modules, LICENSE and package.json's `license` are the font's.
  */
-function licenseFileNear(file: string, root: string, family?: string): { text: string; from: string; pkgLicense?: string } | undefined {
+function licenseFileNear(
+  file: string,
+  root: string,
+  family?: string,
+): { text: string; from: string; pkgLicense?: string } | undefined {
   const keys = [basename(file).replace(/\.[^.]+$/, ''), family ?? ''].map(norm).filter(Boolean);
-  const parts = file.split(sep), nm = parts.lastIndexOf('node_modules');
+  const parts = file.split(sep),
+    nm = parts.lastIndexOf('node_modules');
   const end = nm + (parts[nm + 1]?.startsWith('@') ? 3 : 2);
   const pkgRoot = nm >= 0 && end < parts.length ? parts.slice(0, end).join(sep) : undefined;
   let dir = dirname(file);
   for (let i = 0; i < 8; i++) {
     let names: string[] = [];
-    try { names = readdirSync(dir); } catch { /* none */ }
+    try {
+      names = readdirSync(dir);
+    } catch {
+      /* none */
+    }
     const inPkg = pkgRoot !== undefined && (dir === pkgRoot || dir.startsWith(pkgRoot + sep));
     const top = !inPkg && (dir === root || names.includes('package.json'));
     const lic = licenseFiles(names, keys, !top)[0];
-    const pkg = inPkg && names.includes('package.json') ? (() => { try { return JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).license as string | undefined; } catch { return undefined; } })() : undefined;
-    if (lic || pkg) return { text: lic ? readFileSync(join(dir, lic), 'utf8') : '', from: relative(root, join(dir, lic ?? 'package.json')).split(sep).join('/'), pkgLicense: typeof pkg === 'string' ? pkg : undefined };
+    const pkg =
+      inPkg && names.includes('package.json')
+        ? (() => {
+            try {
+              return JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).license as string | undefined;
+            } catch {
+              return undefined;
+            }
+          })()
+        : undefined;
+    if (lic || pkg)
+      return {
+        text: lic ? readFileSync(join(dir, lic), 'utf8') : '',
+        from: relative(root, join(dir, lic ?? 'package.json'))
+          .split(sep)
+          .join('/'),
+        pkgLicense: typeof pkg === 'string' ? pkg : undefined,
+      };
     if (inPkg ? dir === pkgRoot : top || !dir.startsWith(root + sep)) break;
     dir = dirname(dir);
   }
@@ -103,17 +146,29 @@ export function detectLicense(sfnt: Uint8Array, file?: string, root?: string): L
   const fromName = [names.get(13), names.get(14)].filter(Boolean).join('\n');
   const copyright = names.get(0) ?? '';
   const near = file && root ? licenseFileNear(file, root, names.get(16) ?? names.get(1)) : undefined;
-  const sources: [string, string][] = [[fromName, 'name table'], [near?.text ?? '', near?.from ?? ''], [near?.pkgLicense ?? '', near?.from ?? '']];
+  const sources: [string, string][] = [
+    [fromName, 'name table'],
+    [near?.text ?? '', near?.from ?? ''],
+    [near?.pkgLicense ?? '', near?.from ?? ''],
+  ];
   for (const [text, from] of sources) {
     if (!text) continue;
     const hit = KNOWN.find(([re]) => re.test(text));
     if (!hit) continue;
     const all = `${copyright}\n${fromName}\n${near?.text ?? ''}`;
     const reserved = new Set(reservedNames(all));
-    if (hit[1] === 'Bitstream-Vera') { reserved.add('Bitstream'); reserved.add('Vera'); }
+    if (hit[1] === 'Bitstream-Vera') {
+      reserved.add('Bitstream');
+      reserved.add('Vera');
+    }
     return { id: hit[1], open: true, reserved: [...reserved].toSorted(), from };
   }
-  return { id: 'unknown', open: false, reserved: reservedNames(`${copyright}\n${fromName}`), from: fromName ? 'name table' : near?.from ?? 'none' };
+  return {
+    id: 'unknown',
+    open: false,
+    reserved: reservedNames(`${copyright}\n${fromName}`),
+    from: fromName ? 'name table' : (near?.from ?? 'none'),
+  };
 }
 
 /** Why the face can't be subset, or undefined when it can (§11). */
@@ -121,7 +176,8 @@ export function licenseRefusal(sfnt: Uint8Array, lic: License, allowed: boolean)
   const fs = parseOs2(sfnt)?.fsType;
   if (fs?.noSubsetting) return 'OS/2 fsType forbids subsetting (bit 8)';
   if (fs?.embedding === 'restricted') return 'OS/2 fsType is restricted-license embedding (bit 1)';
-  if (!lic.open && !allowed) return `license not recognized as open (${lic.from}); add the family to licenses.allow if you have the rights to modify it`;
+  if (!lic.open && !allowed)
+    return `license not recognized as open (${lic.from}); add the family to licenses.allow if you have the rights to modify it`;
   return undefined;
 }
 
@@ -141,7 +197,12 @@ export function deriveName(family: string, reserved: string[]): string | undefin
  * The internal rename (§11), decided from the font's own family, which is where a reserved name has to go, whatever the
  * CSS calls it. `rename` config matches the CSS family or the font's. The CSS font-family never changes.
  */
-export function renameFor(sfnt: Uint8Array, cssFamily: string, reserved: string[], rename: Record<string, string> = {}): { from: string; to: string } | undefined {
+export function renameFor(
+  sfnt: Uint8Array,
+  cssFamily: string,
+  reserved: string[],
+  rename: Record<string, string> = {},
+): { from: string; to: string } | undefined {
   const own = fontFamily(sfnt) ?? cssFamily;
   const pick = (k: string) => (Object.hasOwn(rename, k) ? rename[k] : undefined);
   const to = pick(cssFamily) ?? pick(own) ?? deriveName(own, reserved);

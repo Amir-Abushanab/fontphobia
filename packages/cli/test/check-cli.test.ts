@@ -13,17 +13,40 @@ let n = 0;
 const dir = (files: Record<string, string> = {}) => {
   const d = join(tmp, `p${n++}`);
   mkdirSync(d);
-  for (const [f, t] of Object.entries(files)) { mkdirSync(join(d, f, '..'), { recursive: true }); writeFileSync(join(d, f), t); }
+  for (const [f, t] of Object.entries(files)) {
+    mkdirSync(join(d, f, '..'), { recursive: true });
+    writeFileSync(join(d, f), t);
+  }
   return d;
 };
-const run = (...a: string[]) => { const r = spawnSync(process.execPath, [cli, ...a], { encoding: 'utf8' }); return { code: r.status, out: r.stdout, err: r.stderr }; };
-const integration = (root: string) => { const r = spawnSync(process.execPath, [runtime, JSON.stringify({ root, o: {} })], { encoding: 'utf8' }); return { code: r.status, out: r.stdout }; };
+const run = (...a: string[]) => {
+  const r = spawnSync(process.execPath, [cli, ...a], { encoding: 'utf8' });
+  return { code: r.status, out: r.stdout, err: r.stderr };
+};
+const integration = (root: string) => {
+  const r = spawnSync(process.execPath, [runtime, JSON.stringify({ root, o: {} })], { encoding: 'utf8' });
+  return { code: r.status, out: r.stdout };
+};
 
 // A manifest whose source font is gone: check fails with an error, no browser or build needed.
-const STALE = JSON.stringify({ version: 1, fontphobia: '0.0.0', harfbuzz: 'x', chrome: 'x', entries: { gone: {
-  id: 'gone', adapter: 'css', family: 'Gone', stylesheet: 'gone.css', declaration: '@font-face{font-family:Gone;src:url(gone.ttf)}',
-  source: { file: 'fonts/gone.ttf', sha256: '0'.repeat(64), bytes: 1 }, outputs: [], plan: { features: [], axes: {}, descriptors: {}, hinting: true, optIns: [] },
-} } });
+const STALE = JSON.stringify({
+  version: 1,
+  fontphobia: '0.0.0',
+  harfbuzz: 'x',
+  chrome: 'x',
+  entries: {
+    gone: {
+      id: 'gone',
+      adapter: 'css',
+      family: 'Gone',
+      stylesheet: 'gone.css',
+      declaration: '@font-face{font-family:Gone;src:url(gone.ttf)}',
+      source: { file: 'fonts/gone.ttf', sha256: '0'.repeat(64), bytes: 1 },
+      outputs: [],
+      plan: { features: [], axes: {}, descriptors: {}, hinting: true, optIns: [] },
+    },
+  },
+});
 const NOTHING = 'fontphobia: nothing to check: no .fontphobia/manifest.json here (run fontphobia to build the subsets)';
 
 describe('check CLI', () => {
@@ -49,12 +72,18 @@ describe('check CLI', () => {
     expect(r.out.trim()).toBe(NOTHING);
     expect(r.code).toBe(0);
   });
-  it('--json carries noManifest', () => { expect(JSON.parse(run('check', '--json', '--mode', 'warn', '--cwd', dir()).out).noManifest).toBe(true); });
+  it('--json carries noManifest', () => {
+    expect(JSON.parse(run('check', '--json', '--mode', 'warn', '--cwd', dir()).out).noManifest).toBe(true);
+  });
 });
 
 describe('check-runtime as the integrations run it', () => {
   it('reads a config that imports defineConfig: a broken one is an error', () => {
-    const r = integration(dir({ 'fontphobia.config.mjs': `import { defineConfig } from 'fontphobia'\nexport default defineConfig({ coreThreshhold: 1 })` }));
+    const r = integration(
+      dir({
+        'fontphobia.config.mjs': `import { defineConfig } from 'fontphobia'\nexport default defineConfig({ coreThreshhold: 1 })`,
+      }),
+    );
     expect(r.code).toBe(1);
     expect(r.out).toMatch(/^error\nfontphobia\.config\.mjs: unknown key "coreThreshhold"/);
   });
@@ -63,7 +92,12 @@ describe('check-runtime as the integrations run it', () => {
     const fail = integration(dir(files));
     expect(fail.code).toBe(1);
     expect(fail.out).toContain('fonts/gone.ttf');
-    const r = integration(dir({ ...files, 'fontphobia.config.ts': `import { defineConfig } from 'fontphobia'\nexport default defineConfig({ check: { mode: 'warn' } })` }));
+    const r = integration(
+      dir({
+        ...files,
+        'fontphobia.config.ts': `import { defineConfig } from 'fontphobia'\nexport default defineConfig({ check: { mode: 'warn' } })`,
+      }),
+    );
     expect(r.out).toMatch(/^warn\n/);
     expect(r.out).toContain('fonts/gone.ttf');
     expect(r.code).toBe(0);

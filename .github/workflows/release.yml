@@ -28,7 +28,7 @@ on:
     # package CHANGELOG, so this is the one path filter that picks out those pushes, and it keeps
     # every other push out of this workflow's concurrency group (see below).
     paths:
-      - "packages/**/CHANGELOG.md"
+      - 'packages/**/CHANGELOG.md'
   # Manual catch-up. It publishes whatever version npm lacks from the dispatched ref's CURRENT
   # tree, which may already hold changes meant for the next version; to redo a cancelled or
   # failed publish, re-run that run instead (a re-run keeps its original commit).
@@ -112,4 +112,4 @@ jobs:
           # (see preflight): then this does nothing.
           publish-script: ${{ needs.preflight.outputs.publish }}
         env:
-          NPM_CONFIG_PROVENANCE: "true"
+          NPM_CONFIG_PROVENANCE: 'true'

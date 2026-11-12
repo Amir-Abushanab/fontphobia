@@ -37,7 +37,8 @@ function axes(a: AxisUse) {
   if (a.stretch.size && !(a.stretch.size === 1 && a.stretch.has(100))) out.stretch = sortedNums(a.stretch);
   if (a.style.size) out.style = [...a.style].toSorted(str);
   if (a.size.size) out.size = sortedNums(a.size);
-  if (a.axes.size) out.axes = Object.fromEntries([...a.axes].toSorted(([x], [y]) => str(x, y)).map(([t, v]) => [t, sortedNums(v)]));
+  if (a.axes.size)
+    out.axes = Object.fromEntries([...a.axes].toSorted(([x], [y]) => str(x, y)).map(([t, v]) => [t, sortedNums(v)]));
   return out;
 }
 
@@ -47,12 +48,24 @@ function face(u: FaceUsage, source: FaceSource | undefined) {
     descriptors: u.descriptors,
     sheet: u.sheet,
     source: source ?? { adapter: 'unknown' },
-    files: [...u.files].toSorted(([a], [b]) => str(a, b)).map(([url, f]) => ({ url, sha256: f.sha256, bytes: f.bytes })),
+    files: [...u.files]
+      .toSorted(([a], [b]) => str(a, b))
+      .map(([url, f]) => ({ url, sha256: f.sha256, bytes: f.bytes })),
     chars: charsToRanges(u.chars),
     count: u.chars.size,
-    inserted: Object.fromEntries([...u.inserted].filter(([, s]) => s.size).toSorted(([a], [b]) => str(a, b)).map(([k, s]) => [k, charsToRanges(s)])),
-    contexts: [...u.contexts.values()].toSorted((a, b) => str(a.features, b.features))
-      .map((c) => ({ features: c.features, axes: Object.fromEntries([...c.axes].toSorted(([x], [y]) => str(x, y))), words: [...c.words].toSorted(str) })),
+    inserted: Object.fromEntries(
+      [...u.inserted]
+        .filter(([, s]) => s.size)
+        .toSorted(([a], [b]) => str(a, b))
+        .map(([k, s]) => [k, charsToRanges(s)]),
+    ),
+    contexts: [...u.contexts.values()]
+      .toSorted((a, b) => str(a.features, b.features))
+      .map((c) => ({
+        features: c.features,
+        axes: Object.fromEntries([...c.axes].toSorted(([x], [y]) => str(x, y))),
+        words: [...c.words].toSorted(str),
+      })),
     rendered: axes(u.rendered),
     declared: axes(u.declared),
     features: [...u.features].toSorted(str),
@@ -64,23 +77,53 @@ function face(u: FaceUsage, source: FaceSource | undefined) {
   };
 }
 
-export function usageToJson(usage: Usage, meta: UsageMeta, sources: Map<string, FaceSource> = new Map(), extra: Record<string, unknown> = {}) {
+export function usageToJson(
+  usage: Usage,
+  meta: UsageMeta,
+  sources: Map<string, FaceSource> = new Map(),
+  extra: Record<string, unknown> = {},
+) {
   return {
     version: USAGE_VERSION,
     meta,
-    faces: Object.fromEntries([...usage.faces].toSorted(([a], [b]) => str(a, b)).map(([id, u]) => [id, face(u, sources.get(id))])),
-    pages: Object.fromEntries([...usage.pages].toSorted(([a], [b]) => str(a, b)).map(([p, u]) => [p, {
-      private: u.private || undefined,
-      visits: [...u.visits].toSorted((a, b) => parseInt(a) - parseInt(b) || str(a, b)),
-      faces: Object.fromEntries([...u.faces].toSorted(([a], [b]) => str(a, b)).map(([id, s]) => [id, charsToRanges(s)])),
-      fonts: [...u.fonts].toSorted(([a], [b]) => str(a, b)).map(([url, f]) => ({ url, status: f.status, bytes: f.bytes, transfer: f.transfer, sha256: f.sha256, faces: [...f.faces].toSorted(str), initiator: f.initiator })),
-      bytes: [...u.fonts.values()].filter((f) => f.status < 400).reduce((n, f) => n + f.bytes, 0),
-      preloads: [...u.preloads].toSorted(([a], [b]) => str(a, b)).map(([href, pre]) => ({ href, crossorigin: pre.crossorigin, type: pre.type, used: pre.used })),
-      fallback: Object.fromEntries([...u.fallback].toSorted(([a], [b]) => str(a, b)).map(([fam, s]) => [fam, charsToRanges(s)])),
-      system: u.system.size ? charsToRanges(u.system) : undefined,
-      disagreements: [...u.disagreements].toSorted(str),
-      notes: [...u.notes].toSorted(str),
-    }])),
+    faces: Object.fromEntries(
+      [...usage.faces].toSorted(([a], [b]) => str(a, b)).map(([id, u]) => [id, face(u, sources.get(id))]),
+    ),
+    pages: Object.fromEntries(
+      [...usage.pages]
+        .toSorted(([a], [b]) => str(a, b))
+        .map(([p, u]) => [
+          p,
+          {
+            private: u.private || undefined,
+            visits: [...u.visits].toSorted((a, b) => parseInt(a) - parseInt(b) || str(a, b)),
+            faces: Object.fromEntries(
+              [...u.faces].toSorted(([a], [b]) => str(a, b)).map(([id, s]) => [id, charsToRanges(s)]),
+            ),
+            fonts: [...u.fonts]
+              .toSorted(([a], [b]) => str(a, b))
+              .map(([url, f]) => ({
+                url,
+                status: f.status,
+                bytes: f.bytes,
+                transfer: f.transfer,
+                sha256: f.sha256,
+                faces: [...f.faces].toSorted(str),
+                initiator: f.initiator,
+              })),
+            bytes: [...u.fonts.values()].filter((f) => f.status < 400).reduce((n, f) => n + f.bytes, 0),
+            preloads: [...u.preloads]
+              .toSorted(([a], [b]) => str(a, b))
+              .map(([href, pre]) => ({ href, crossorigin: pre.crossorigin, type: pre.type, used: pre.used })),
+            fallback: Object.fromEntries(
+              [...u.fallback].toSorted(([a], [b]) => str(a, b)).map(([fam, s]) => [fam, charsToRanges(s)]),
+            ),
+            system: u.system.size ? charsToRanges(u.system) : undefined,
+            disagreements: [...u.disagreements].toSorted(str),
+            notes: [...u.notes].toSorted(str),
+          },
+        ]),
+    ),
     unloaded: Object.fromEntries([...usage.unloaded].toSorted(([a], [b]) => str(a, b))),
     ...extra,
   };
@@ -92,7 +135,10 @@ export function canonicalJson(value: unknown): string {
     if (Array.isArray(v)) return v.map(norm);
     if (v && typeof v === 'object') {
       const o: Record<string, unknown> = {};
-      for (const k of Object.keys(v).toSorted(str)) { const x = (v as Record<string, unknown>)[k]; if (x !== undefined) o[k] = norm(x); }
+      for (const k of Object.keys(v).toSorted(str)) {
+        const x = (v as Record<string, unknown>)[k];
+        if (x !== undefined) o[k] = norm(x);
+      }
       return o;
     }
     return v;

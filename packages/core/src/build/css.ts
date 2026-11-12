@@ -7,7 +7,8 @@ import postcssLess from 'postcss-less';
 import { styleBlocks, type Syntax } from '../css/stylesheet.ts';
 import { splitTop, unquote } from '../css/values.ts';
 
-export const beginMarker = (id: string, version: string) => `/* fontphobia:begin ${id} ${version} (generated; rerun \`fontphobia build\`) */`;
+export const beginMarker = (id: string, version: string) =>
+  `/* fontphobia:begin ${id} ${version} (generated; rerun \`fontphobia build\`) */`;
 export const endMarker = (id: string) => `/* fontphobia:end ${id} */`;
 
 /** The span of entry `id`'s block in `text`, markers included. */
@@ -38,7 +39,8 @@ export function syntaxOf(file: string, text?: string, at = 0): Syntax {
 
 const SYNTAX = { scss: postcssScss, less: postcssLess } as const;
 /** Parse stylesheet text in its syntax (Sass and Less allow `//` comments inside @font-face). */
-export const parseCss = (text: string, syntax: Syntax = 'css'): Root => (syntax === 'css' ? postcss.parse(text) : (SYNTAX[syntax].parse!(text) as Root));
+export const parseCss = (text: string, syntax: Syntax = 'css'): Root =>
+  syntax === 'css' ? postcss.parse(text) : (SYNTAX[syntax].parse!(text) as Root);
 
 export interface BlockFile {
   url: string;
@@ -56,29 +58,48 @@ export interface BlockFile {
  * The marked block replacing `declaration`. `sourceUrl` is the src url that points at the source font;
  * its quoting and format() are kept, with woff2 replacing the container.
  */
-export function cssBlock(o: { id: string; version: string; declaration: string; sourceUrl: string; files: BlockFile[]; descriptors?: Record<string, string>; indent: string; eol: string; syntax?: Syntax }): string {
+export function cssBlock(o: {
+  id: string;
+  version: string;
+  declaration: string;
+  sourceUrl: string;
+  files: BlockFile[];
+  descriptors?: Record<string, string>;
+  indent: string;
+  eol: string;
+  syntax?: Syntax;
+}): string {
   const root = parseCss(o.declaration, o.syntax);
   const rule = root.first as AtRule | undefined;
-  if (!rule || rule.type !== 'atrule' || rule.name.toLowerCase() !== 'font-face') throw new Error('Not an @font-face rule');
+  if (!rule || rule.type !== 'atrule' || rule.name.toLowerCase() !== 'font-face')
+    throw new Error('Not an @font-face rule');
   const srcDecl = rule.nodes?.find((n) => n.type === 'decl' && n.prop.toLowerCase() === 'src');
   if (!srcDecl || srcDecl.type !== 'decl') throw new Error('@font-face has no src');
   const parts = splitTop(srcDecl.value);
   const locals = parts.filter((p) => /^\s*local\(/i.test(p) && !/url\(/i.test(p)).map((p) => p.trim());
-  const main = parts.find((p) => { const m = p.match(/url\(\s*(["']?)(.*?)\1\s*\)/i); return m && unquote(m[2]!) === o.sourceUrl; });
+  const main = parts.find((p) => {
+    const m = p.match(/url\(\s*(["']?)(.*?)\1\s*\)/i);
+    return m && unquote(m[2]!) === o.sourceUrl;
+  });
   const q = main?.match(/url\(\s*(["'])/i)?.[1] ?? '';
   const fq = main?.match(/format\(\s*(["'])/i)?.[1] ?? q ?? "'";
   const fmt = /variations/i.test(main?.match(/format\(([^)]*)\)/i)?.[1] ?? '') ? 'woff2-variations' : 'woff2';
   const tech = main?.match(/tech\([^)]*\)/i)?.[0];
   const rules = o.files.map((f) => {
     const r = rule.clone();
-    const src = [...locals, `url(${q}${f.url}${q}) format(${fq || "'"}${fmt}${fq || "'"})${tech ? ' ' + tech : ''}`].join(', ');
+    const src = [
+      ...locals,
+      `url(${q}${f.url}${q}) format(${fq || "'"}${fmt}${fq || "'"})${tech ? ' ' + tech : ''}`,
+    ].join(', ');
     let hasRange = false;
     r.walkDecls((d) => {
       const p = d.prop.toLowerCase();
       if (p === 'src') d.value = src;
       else if (p === 'font-family' && f.family) d.value = `'${f.family}'`;
-      else if (p === 'unicode-range') { if (f.unicodeRange !== undefined) d.value = f.unicodeRange; hasRange = true; }
-      else if (o.descriptors?.[p] !== undefined) d.value = o.descriptors[p]!;
+      else if (p === 'unicode-range') {
+        if (f.unicodeRange !== undefined) d.value = f.unicodeRange;
+        hasRange = true;
+      } else if (o.descriptors?.[p] !== undefined) d.value = o.descriptors[p]!;
     });
     if (!hasRange && f.unicodeRange !== undefined) r.append({ prop: 'unicode-range', value: f.unicodeRange });
     return (o.syntax && o.syntax !== 'css' ? r.toString(SYNTAX[o.syntax]) : r.toString()).replace(/\r?\n/g, o.eol);
