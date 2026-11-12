@@ -58,7 +58,7 @@ function shape(font: hb.Font, text: string, features: string[]): Shaped {
 export async function adobeFaceFacts(face: { family: string; descriptors: Record<string, string>; contexts: { features: string; words: string[] }[] }, bytes: Uint8Array, ids: { kit: string; id: string }): Promise<AdobeFaceFacts> {
   const sfnt = await toSfnt(bytes);
   const { face: hf, font } = loadFont(sfnt);
-  const tags = [...new Set([...hf.getTableFeatureTags('GSUB'), ...hf.getTableFeatureTags('GPOS')])].sort();
+  const tags = [...new Set([...hf.getTableFeatureTags('GSUB'), ...hf.getTableFeatureTags('GPOS')])].toSorted();
   const extra = tags.filter((t) => !KEEP.has(t));
   const off = extra.map((t) => `-${t}`);
   const needs = new Set<string>();
@@ -75,7 +75,7 @@ export async function adobeFaceFacts(face: { family: string; descriptors: Record
   for (const w of needs) { const base = shape(font, w, []); for (const t of extra) if (!used.has(t) && shape(font, w, [`-${t}`]) !== base) used.add(t); }
   return {
     kit: ids.kit, id: ids.id, family: face.family.replace(/^["']|["']$/g, ''), fvd: fvdOf(face.descriptors), bytes: bytes.byteLength,
-    cmap: hf.collectUnicodes().length, extraFeatures: extra, needsFeatures: [...needs].sort(), usedFeatures: [...used].sort(), words,
+    cmap: hf.collectUnicodes().length, extraFeatures: extra, needsFeatures: [...needs].toSorted(), usedFeatures: [...used].toSorted(), words,
   };
 }
 
@@ -96,14 +96,14 @@ export interface AdobeUsage {
 /** Findings for each kit: one line of measurements, then one per kit setting worth changing. */
 export function adobeFindings(u: AdobeUsage, facts: AdobeFaceFacts[]): { kind: string; text: string }[] {
   const out: { kind: string; text: string }[] = [];
-  const kits = [...new Set([...Object.values(u.faces), ...Object.values(u.unloaded)].map((f) => f.sheet).filter(isTypekitSheet))].sort();
+  const kits = [...new Set([...Object.values(u.faces), ...Object.values(u.unloaded)].map((f) => f.sheet).filter(isTypekitSheet))].toSorted();
   for (const kit of kits) {
     const name = kit.replace(/^.*\/([a-z0-9]+)\.css.*$/i, '$1');
     const faces = Object.entries(u.faces).filter(([, f]) => f.sheet === kit);
     const perPage = Object.values(u.pages).map((p) => p.fonts.filter((f) => f.status < 400 && /^(https?:\/\/use\.typekit\.net)?\/af\//.test(f.url)).reduce((s, f) => s + f.bytes, 0));
     const max = Math.max(0, ...perPage);
     out.push({ kind: 'adobe-fonts', text: `kit ${name}: ${faces.length} face(s) used, up to ${(max / 1024).toFixed(1)} KB of kit fonts per page. Adobe's license doesn't allow subsetting or self-hosting, so fontphobia changes nothing here; these are settings to change on fonts.adobe.com (Web Projects → ${name})` });
-    const unused = Object.values(u.unloaded).filter((f) => f.sheet === kit).map((f) => `${f.family.replace(/^["']|["']$/g, '')} ${fvdOf(f.descriptors)}`).sort();
+    const unused = Object.values(u.unloaded).filter((f) => f.sheet === kit).map((f) => `${f.family.replace(/^["']|["']$/g, '')} ${fvdOf(f.descriptors)}`).toSorted();
     if (unused.length) out.push({ kind: 'adobe-fonts', text: `kit ${name}: no page uses ${unused.join(', ')}; \`fontphobia apply-kit\` removes those no weight in the code would match, through Adobe's API (keeping, say, a bold style that <strong> would use). Unused styles never download, so this mainly shrinks the kit CSS` });
     const kf = facts.filter((f) => f.kit === kit);
     const needing = kf.filter((f) => f.needsFeatures.length);

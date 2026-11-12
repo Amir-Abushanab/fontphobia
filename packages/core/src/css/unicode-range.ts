@@ -23,7 +23,7 @@ export function parseUnicodeRange(value: string): Range[] {
 }
 
 export function mergeRanges(ranges: Range[]): Range[] {
-  const s = [...ranges].sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+  const s = [...ranges].toSorted((x, y) => x[0] - y[0] || x[1] - y[1]);
   const out: Range[] = [];
   for (const [a, b] of s) {
     const last = out[out.length - 1];

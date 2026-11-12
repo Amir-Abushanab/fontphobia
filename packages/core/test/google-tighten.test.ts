@@ -29,11 +29,11 @@ describe('css2 URLs', () => {
 
   it('collects the weights the code can ask for, closed under bolder', () => {
     const d = desiredWeights([{ text: '.a { font-weight: 300 } .b { font: italic 600 1rem/1 X } <p class="font-medium">' }])!;
-    expect([...d].sort((a, b) => a - b)).toEqual([300, 400, 500, 600, 700, 900]);
+    expect([...d].toSorted((a, b) => a - b)).toEqual([300, 400, 500, 600, 700, 900]);
     expect(desiredWeights([{ text: '.a { font-weight: var(--w) }' }])).toBeUndefined();
-    expect([...desiredWeights([{ text: '@font-face { font-family: X; font-weight: 100 900; }' }])!].sort((a, b) => a - b)).toEqual([400, 700, 900]);
+    expect([...desiredWeights([{ text: '@font-face { font-family: X; font-weight: 100 900; }' }])!].toSorted((a, b) => a - b)).toEqual([400, 700, 900]);
     expect(desiredWeights([{ text: 'style={{ fontWeight: props.w }}' }])).toBeUndefined();
-    expect([...desiredWeights([{ text: '.a { font-weight: lighter }' }])!].sort((a, b) => a - b)).toEqual([100, 400, 700, 900]);
+    expect([...desiredWeights([{ text: '.a { font-weight: lighter }' }])!].toSorted((a, b) => a - b)).toEqual([100, 400, 700, 900]);
   });
 
   it('drops unused families and unmatched static weights, never ranges or ital', () => {

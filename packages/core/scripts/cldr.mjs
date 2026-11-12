@@ -12,7 +12,7 @@ const root = join(dirname(req.resolve('cldr-misc-full/package.json')), 'main');
 const core = dirname(req.resolve('cldr-core/package.json'));
 const json = (p) => JSON.parse(readFileSync(p, 'utf8'));
 const version = json(join(root, '..', 'package.json')).version;
-const locales = readdirSync(root).sort();
+const locales = readdirSync(root).toSorted();
 
 const quotes = {};
 for (const loc of locales) {
@@ -35,7 +35,7 @@ function parseSet(s) {
       else if (n === 'U') { chars.push({ ch: String.fromCodePoint(parseInt(body.slice(i + 2, i + 10), 16)) }); i += 10; }
       else { chars.push({ ch: String.fromCodePoint(body.codePointAt(i + 1)) }); i += 1 + String.fromCodePoint(body.codePointAt(i + 1)).length; }
     } else if (c === '{') { const e = body.indexOf('}', i); chars.push({ ch: body.slice(i + 1, e) }); i = e + 1; }
-    else if (c === '-' && chars.length) chars.push({ range: true }), i++;
+    else if (c === '-' && chars.length) { chars.push({ range: true }); i++; }
     else if (/\s/.test(c)) i++;
     else { const ch = String.fromCodePoint(body.codePointAt(i)); chars.push({ ch }); i += ch.length; }
   }
@@ -62,6 +62,7 @@ const regionOf = (loc) => {
 const currencyOf = (region) => {
   for (const e of currencies[region] ?? []) {
     const [code, v] = Object.entries(e)[0];
+    // eslint-disable-next-line no-underscore-dangle -- CLDR's own key names
     if (!v._to && v._tender !== 'false') return code;
   }
 };
@@ -71,6 +72,7 @@ for (const loc of locales) {
   const c = json(join(root, loc, 'characters.json')).main[loc].characters;
   const s = new Set();
   for (const k of ['exemplarCharacters', 'auxiliary', 'punctuation', 'numbers']) for (const cp of parseSet(c[k])) s.add(cp);
+  // eslint-disable-next-line no-useless-spread -- a snapshot: the loop adds to the set
   for (const cp of [...s]) {
     const ch = String.fromCodePoint(cp);
     for (const x of [ch.toLocaleUpperCase(loc === 'root' ? undefined : loc), ch.normalize('NFD')]) for (const y of x) s.add(y.codePointAt(0));
@@ -86,7 +88,7 @@ for (const loc of locales) {
       } catch { /* Node's ICU lacks this locale */ }
     }
   }
-  sets[loc] = [...s].filter((cp) => cp >= 0x20).sort((a, b) => a - b);
+  sets[loc] = [...s].filter((cp) => cp >= 0x20).toSorted((a, b) => a - b);
 }
 
 const ranges = (cps) => {
@@ -112,6 +114,6 @@ for (const loc of locales) {
   if (!index.has(r)) { index.set(r, distinct.length); distinct.push(r); }
   exemplars[loc] = index.get(r);
 }
-const parentMap = Object.fromEntries(Object.entries(parents).filter(([k]) => locales.includes(k)).sort());
+const parentMap = Object.fromEntries(Object.entries(parents).filter(([k]) => locales.includes(k)).toSorted());
 writeFileSync(new URL('../src/data/cldr-exemplars.json', import.meta.url), JSON.stringify({ cldr: version, parents: parentMap, sets: distinct, exemplars }, null, 0) + '\n');
 console.log(locales.length, 'locales;', Object.keys(exemplars).length, 'stored;', distinct.length, 'distinct sets');

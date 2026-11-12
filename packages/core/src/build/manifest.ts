@@ -121,8 +121,8 @@ export interface Manifest {
   options?: OptionsRecord[];
   /** adobe-fonts --apply-kit (§6.6): each kit's families before the first change (revert sends them back) and as applied. */
   /**
-   * `document.fonts.load/check(font)` calls given the page's text as their second argument, so they
-   * wait for the files the page uses rather than the core file alone (`from` is the original call).
+   * `document.fonts.load/check(font)` calls rewritten to wait for the browser's own font loads, so
+   * they wait for the files the page uses rather than the core file alone (`from` is the original call).
    */
   fontChecks?: { file: string; from: string; to: string }[];
   kits?: { kit: string; previous: { id: string; variations: string[]; subset: string }[]; applied: { id: string; variations: string[]; subset: string }[] }[];

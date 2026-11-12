@@ -52,7 +52,7 @@ export function parseCss2(sheet: string): Css2Url | undefined {
 const first = (v: string) => Number(v.split('..')[0]);
 /** Google wants tuples sorted (axis by axis, by their first value). */
 function sortTuples(t: string[][]): string[][] {
-  return [...new Map(t.map((x) => [x.join(','), x])).values()].sort((a, b) => { for (let i = 0; i < a.length; i++) { const d = first(a[i]!) - first(b[i]!); if (d) return d; } return 0; });
+  return [...new Map(t.map((x) => [x.join(','), x])).values()].toSorted((a, b) => { for (let i = 0; i < a.length; i++) { const d = first(a[i]!) - first(b[i]!); if (d) return d; } return 0; });
 }
 
 export function formatFamily(f: Css2Family, nameRaw: string): string {
@@ -62,7 +62,7 @@ export function formatFamily(f: Css2Family, nameRaw: string): string {
 /** CSS font matching for weights (CSS Fonts 4 §5.2) among static weights. */
 export function matchWeight(d: number, avail: number[]): number | undefined {
   if (avail.includes(d)) return d;
-  const up = avail.filter((w) => w > d).sort((a, b) => a - b), down = avail.filter((w) => w < d).sort((a, b) => b - a);
+  const up = avail.filter((w) => w > d).toSorted((a, b) => a - b), down = avail.filter((w) => w < d).toSorted((a, b) => b - a);
   if (d >= 400 && d <= 500) return up.find((w) => w <= 500) ?? down[0] ?? up[0];
   return d < 400 ? down[0] ?? up[0] : up[0] ?? down[0];
 }
@@ -111,7 +111,7 @@ export function desiredWeights(texts: { text: string }[], seen: number[] = []): 
     for (const m of text.matchAll(/\bfontWeight\s*[:=]\s*([^,;}\n]+)/g)) if (!add(m[1]!)) return undefined;
     for (const m of text.matchAll(/(?:^|[;{\s])font\s*:\s*([^;}\n]+)/g)) for (const t of m[1]!.split(/\s+/)) {
       if (/^[1-9]\d\d$/.test(t) || t === 'bold' || t === 'bolder' || t === 'lighter') add(t);
-      if (/^var\(/.test(t)) return undefined;
+      if (t.startsWith('var(')) return undefined;
     }
     for (const m of text.matchAll(/["']wght["']\s+(\d+(?:\.\d+)?)/g)) d.add(Number(m[1]));
     for (const m of text.matchAll(/(?:^|[\s"'`:])font-(thin|extralight|light|normal|medium|semibold|bold|extrabold|black)(?=$|[\s"'`])/g)) d.add(TW[m[1]!]!);
@@ -119,6 +119,7 @@ export function desiredWeights(texts: { text: string }[], seen: number[] = []): 
   }
   for (let size = 0; size !== d.size;) {
     size = d.size;
+    // eslint-disable-next-line no-useless-spread -- a snapshot: the loop adds to the set
     for (const w of [...d]) { d.add(relativeWeight('bolder', w)); if (lighter) d.add(relativeWeight('lighter', w)); }
   }
   return d;
@@ -165,7 +166,7 @@ export function tightenCss2(o: TightenInput): Tightened | undefined {
     // Axes every use leaves at the default (limit-axes).
     const defaults = o.axisDefaults?.get(key);
     if (defaults && loaded.length) {
-      for (const tag of [...g.axes]) {
+      for (const tag of g.axes) {
         if (tag === 'wght' || tag === 'ital' || defaults[tag] === undefined) continue;
         const i = g.axes.indexOf(tag);
         if (!g.tuples.every((t) => t[i]!.includes('..'))) continue; // a pinned value isn't the default
@@ -190,7 +191,7 @@ export function tightenCss2(o: TightenInput): Tightened | undefined {
       const dropped = g.tuples.filter((t) => !keep.has(`${styleOf(t)}|${Number(t[wi])}`));
       if (dropped.length) {
         g = { ...g, tuples: g.tuples.filter((t) => keep.has(`${styleOf(t)}|${Number(t[wi])}`)) };
-        out.weights[f.name] = [...new Set(dropped.map((t) => Number(t[wi])))].sort((a, b) => a - b);
+        out.weights[f.name] = [...new Set(dropped.map((t) => Number(t[wi])))].toSorted((a, b) => a - b);
       }
     }
     next.push(`family=${g.axes.length === f.axes.length && g.tuples.length === f.tuples.length ? f.raw : formatFamily(g, nameRaw)}`);
@@ -212,5 +213,5 @@ export function neededWeights(from: string, family: string, dropped: number[], w
     const avail = f.tuples.filter((t) => (ii >= 0 ? t[ii]! : '0') === s).map((t) => Number(t[wi]));
     for (const d of weights) { const w = matchWeight(d, avail); if (w !== undefined && dropped.includes(w)) out.add(w); }
   }
-  return [...out].sort((a, b) => a - b);
+  return [...out].toSorted((a, b) => a - b);
 }

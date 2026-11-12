@@ -4,3 +4,12 @@ minimumReleaseAgeExclude:
   - '@vitest/mocker@5.1.0'
   - '@vitest/spy@5.1.0'
   - vitest@5.1.0
+
+# Supply-chain cooldown: never install a version published less than 7 days ago (10080 minutes),
+# transitive dependencies included. Compromised releases are typically yanked within hours to
+# days, so a week's lag lets the ecosystem find them first, at the cost of adopting fixes a week
+# late. Without it, pnpm resolves anything inside a range however fresh (its built-in default is
+# one day, non-strict). Setting it explicitly makes it strict, and `pnpm install --frozen-lockfile`
+# re-checks every lockfile entry against it, so a lockfile resolved without it fails until it is
+# re-resolved. The standalone fixtures under fixtures/ set the same value in their own files.
+minimumReleaseAge: 10080

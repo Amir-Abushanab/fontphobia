@@ -19,7 +19,7 @@ export async function verify(o: Omit<VerifyOptions, 'manifest' | 'staticResult'>
   return { static: { ...st, outputs: st.outputs.size }, browser, ok: st.ok && (browser?.ok ?? true) };
 }
 
-const median = (xs: number[]) => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.floor((s.length - 1) / 2)]! : 0; };
+const median = (xs: number[]) => { const s = [...xs].toSorted((a, b) => a - b); return s.length ? s[Math.floor((s.length - 1) / 2)]! : 0; };
 const where = (c: Comparison) => `${c.page} @${c.viewport}px DPR ${c.dpr}${c.browser !== 'chromium' ? ` ${c.browser}` : ''}`;
 
 function lines(r: VerifyResult, root: string, md: boolean): string[] {

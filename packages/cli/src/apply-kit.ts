@@ -1,6 +1,6 @@
 // `fontphobia apply-kit` (§6.6): the kit settings the Typekit API can change, after a confirmation.
 // TYPEKIT_TOKEN from fonts.adobe.com/account/tokens. TYPEKIT_API / TYPEKIT_CSS override the endpoints (tests).
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   checkLiveKit, desiredWeights, getKit, getPublishedKit, sameFamilies, isTypekitSheet, kitIdOf, writeManifest, MANIFEST_FILE, MANIFEST_VERSION, plannedFamilies, planKit, readManifest, repoText, setKitFamilies,
@@ -66,7 +66,7 @@ export async function applyKit(root: string, usage: UsageFileJson, o: { yes?: bo
     await setKitFamilies(a, p.kit, applied, { expectDraft: p.families });
     const earlier = m.kits?.find((k) => k.kit === p.kit);
     const previous = earlier?.previous ?? p.families.map((f) => ({ id: f.id, variations: f.variations, subset: f.subset }));
-    m.kits = [...(m.kits ?? []).filter((k) => k.kit !== p.kit), { kit: p.kit, previous, applied }].sort((x, y) => (x.kit < y.kit ? -1 : 1));
+    m.kits = [...(m.kits ?? []).filter((k) => k.kit !== p.kit), { kit: p.kit, previous, applied }].toSorted((x, y) => (x.kit < y.kit ? -1 : 1));
     o.log(`kit ${p.kit}: published.`);
   }
   writeManifest(root, m);

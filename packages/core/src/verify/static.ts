@@ -94,7 +94,7 @@ export async function verifyStatic(root: string, usage: UsageFileJson, manifest:
   const findings: VerifyFinding[] = [];
   const shaping: ShapingResult[] = [];
   const outputs = new Map<string, { entry: string; woff2: Uint8Array }>();
-  for (const e of Object.values(manifest.entries).sort((a, b) => (a.id < b.id ? -1 : 1))) {
+  for (const e of Object.values(manifest.entries).toSorted((a, b) => (a.id < b.id ? -1 : 1))) {
     const add = (kind: VerifyFindingKind, severity: VerifyFinding['severity'], message: string) => findings.push({ id: e.id, kind, severity, message });
     const srcPath = join(root, e.source.file);
     if (!existsSync(srcPath)) { add('source', 'regression', `the source font ${e.source.file} is gone; verify needs it as the reference`); continue; }
@@ -144,7 +144,7 @@ export async function verifyStatic(root: string, usage: UsageFileJson, manifest:
     const r: ShapingResult = { id: e.id, words: words.length, cases: cases.length, identical: 0, rounding: 0, regressions: 0, examples: [] };
     const limit = e.plan.optIns.includes('limit-axes');
     const order = ['core', 'ext', 'rest'];
-    const sorted = [...files].sort((a, b) => order.indexOf(a.role) - order.indexOf(b.role));
+    const sorted = [...files].toSorted((a, b) => order.indexOf(a.role) - order.indexOf(b.role));
     for (const c of checkShaping(source, sorted, cases)) {
       const v = c.verdict;
       if (v.kind === 'identical') { r.identical++; continue; }

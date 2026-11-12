@@ -2,3 +2,5 @@
 allowBuilds:
   esbuild: true
   '@parcel/watcher': false
+# The same 7-day install cooldown as the root pnpm-workspace.yaml, which explains it.
+minimumReleaseAge: 10080

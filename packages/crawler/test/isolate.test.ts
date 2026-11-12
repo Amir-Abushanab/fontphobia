@@ -167,7 +167,7 @@ describe('.fontphobia/', () => {
       mkdirSync(join(root, '.fontphobia', f, '..'), { recursive: true });
       writeFileSync(join(root, '.fontphobia', f), 'x');
     }
-    expect(sh(root, 'status', '--porcelain', '--untracked-files=all').trim().split('\n').sort()).toEqual(['?? .fontphobia/manifest.json', '?? .fontphobia/sources/google/a.woff2']);
+    expect(sh(root, 'status', '--porcelain', '--untracked-files=all').trim().split('\n').toSorted()).toEqual(['?? .fontphobia/manifest.json', '?? .fontphobia/sources/google/a.woff2']);
   });
 
   it('revert removes .fontphobia/ when nothing but its .gitignore is left', () => {

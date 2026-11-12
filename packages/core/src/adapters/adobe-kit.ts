@@ -80,7 +80,7 @@ export async function getPublishedKit(api: KitApi, kit: string): Promise<KitFami
 }
 
 type FamilySetting = { id: string; variations: string[]; subset: string };
-const key = (fs: FamilySetting[]) => JSON.stringify([...fs].map((f) => [f.id, [...f.variations].sort(), f.subset]).sort());
+const key = (fs: FamilySetting[]) => JSON.stringify([...fs].map((f) => [f.id, [...f.variations].toSorted(), f.subset]).toSorted());
 export const sameFamilies = (a: FamilySetting[], b: FamilySetting[]) => key(a) === key(b);
 
 async function postFamilies(api: KitApi, kit: string, families: FamilySetting[]): Promise<void> {

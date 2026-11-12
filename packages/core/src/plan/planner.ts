@@ -229,7 +229,7 @@ export function wordsOf(face: UsageFaceJson, keep: Set<number>, axes: Pick<Axis,
     const features = ctx.features ? ctx.features.split(',').map((f) => f.trim()).filter(Boolean) : [];
     // Shape at the ends of every axis range (§7.6): every corner.
     let corners: Record<string, number>[] = [{}];
-    for (const [t, [lo, hi]] of Object.entries(ctx.axes).sort(([a], [b]) => str(a, b))) {
+    for (const [t, [lo, hi]] of Object.entries(ctx.axes).toSorted(([a], [b]) => str(a, b))) {
       if (!tags.has(t)) continue;
       corners = corners.flatMap((c) => (lo === hi ? [{ ...c, [t]: lo }] : [{ ...c, [t]: lo }, { ...c, [t]: hi }]));
     }
@@ -289,7 +289,7 @@ export function repairCore(sfnt: Uint8Array, K: Set<number>, C0: Set<number>, wo
     C = closure(sfnt, C);
     for (const c of C) if (!C0.has(c)) moved.add(c);
   }
-  return { C, moved, words: [...fixed].sort(str), firstBroken: (first ?? []).map((w) => w.text).sort(str) };
+  return { C, moved, words: [...fixed].toSorted(str), firstBroken: (first ?? []).map((w) => w.text).toSorted(str) };
 }
 
 /** Single code points that the face's decomposed clusters (base + combining marks) compose to under NFC. */
@@ -347,7 +347,7 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
   // 1. K = (used ∪ safety net) ∩ cmap ∩ unicode-range.
   const used = setOf(face.chars);
   const safety = new Set<number>(SAFETY_LATIN);
-  const locales = [...new Set([...(cfg.locales ?? []), ...face.locales])].sort(str);
+  const locales = [...new Set([...(cfg.locales ?? []), ...face.locales])].toSorted(str);
   const unknownLocales: string[] = [];
   for (const l of locales) { const cs = localeChars(l); if (cs) for (const c of cs) safety.add(c); else unknownLocales.push(l); }
   if (face.editable) for (const c of cmap) if (isLatinish(c)) safety.add(c);
@@ -381,7 +381,7 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
   // Options: features (§8.7), axes (§8.6), hinting (§8.8).
   const allow = new Set(cfg.allow ?? []);
   const fvar = parseFvar(sfnt)?.axes ?? [];
-  const features = [...new Set(face.features)].filter((t) => !(mut?.kind === 'drop-feature' && t === mut.tag)).sort(str);
+  const features = [...new Set(face.features)].filter((t) => !(mut?.kind === 'drop-feature' && t === mut.tag)).toSorted(str);
   const axesLimit = fvar.length ? limitAxes(face, fvar) : undefined;
   const hinted = hasHinting(sfnt);
   const optsFor = (o: { limit: boolean; dropHinting: boolean }): Omit<SubsetOptions, 'unicodes'> => ({
@@ -417,10 +417,10 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
     if (hit) return hit;
     // For FreeType's auto-hinter, outside the unicode-range: the reference letters (core has them
     // already) and every code point sharing a glyph with one in the file.
-    const base = role === 'core' || !withRefs ? [] : hintRefs(set, cmap);
+    const hintBase = role === 'core' || !withRefs ? [] : hintRefs(set, cmap);
     // macOS's reference glyphs come with their code points when the source maps them (outside the unicode-range too).
     const macRefs = refGlyphs.flatMap((g) => byGlyph.get(g) ?? []).filter((c) => !set.has(c));
-    const refs = [...new Set([...base, ...macRefs, ...cmapAliases([...set, ...base, ...macRefs], hbFont, byGlyph)])].sort((a, b) => a - b);
+    const refs = [...new Set([...hintBase, ...macRefs, ...cmapAliases([...set, ...hintBase, ...macRefs], hbFont, byGlyph)])].toSorted((a, b) => a - b);
     const r = await subsetFont(sfnt, { ...o, unicodes: [...set, ...refs], glyphs: refGlyphs });
     const h = sha256(r.woff2);
     const refSet = new Set(refs);
@@ -477,7 +477,7 @@ export async function planFace(id: string, face: UsageFaceJson, usage: UsageFile
     axes: final.limit ? axesLimit : undefined, descriptors: final.limit && axesLimit ? axisDescriptors(face, axesLimit) : undefined,
     repair: rep.moved.size && !splitShaping ? { moved: fmt(rep.moved), count: rep.moved.size, words: rep.words.slice(0, 50), truncated: rep.words.length > 50 || undefined } : undefined,
     splitWords: splitShaping && rep.firstBroken.length ? rep.firstBroken.slice(0, 50) : undefined,
-    optIns: optIns.sort((a, b) => str(a.id, b.id)),
+    optIns: optIns.toSorted((a, b) => str(a.id, b.id)),
     bytes: { now, ...out.bytes },
     notes: notes.length ? notes : undefined,
   };
@@ -491,7 +491,7 @@ export async function planAll(usage: UsageFileJson, sources: Map<string, SourceF
   const faces: FacePlan[] = [];
   // Sequential: wawoff2 is serialized anyway, and the order keeps the output stable.
   // One face that fails (a font the subsetter can't handle as planned) is left as it is, with the error; the others still plan.
-  for (const id of Object.keys(usage.faces).sort(str)) {
+  for (const id of Object.keys(usage.faces).toSorted(str)) {
     const face = usage.faces[id]!;
     try { faces.push(await planFace(id, face, usage, sources.get(id), cfg, outputs)); }
     catch (e) { faces.push({ id, family: face.family, adapter: face.source.adapter, status: 'skipped', reason: `planning it failed: ${(e as Error).message}` }); }

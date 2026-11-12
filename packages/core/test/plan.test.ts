@@ -148,14 +148,14 @@ describe('locale characters', () => {
     expect(has('de', 'ßẞ€')).toBe(true);
   });
   it('closes sets under bidi mirroring, as HarfBuzz does', () => {
-    expect([...closure(fixture('DejaVuSans.ttf'), new Set([0x3e]))].sort()).toEqual([0x3c, 0x3e]);
+    expect([...closure(fixture('DejaVuSans.ttf'), new Set([0x3e]))].toSorted()).toEqual([0x3c, 0x3e]);
   });
 });
 
 // ─── Golden plans ───────────────────────────────────────────────────────────────────────────────
 
 const plans = join(repo, 'fixtures/plans');
-const names = existsSync(plans) ? readdirSync(plans).filter((n) => existsSync(join(plans, n, 'usage.json'))).sort() : [];
+const names = existsSync(plans) ? readdirSync(plans).filter((n) => existsSync(join(plans, n, 'usage.json'))).toSorted() : [];
 
 describe('golden plans', () => {
   if (!names.length) it.skip('no golden inputs yet (pnpm plans:update)', () => {});

@@ -299,10 +299,10 @@ async function run(page: Page, cdp: CDPSession, url: string, o: VisitOptions, bo
     const hit = await matchBackend(r.base);
     if (!hit?.size) continue;
     const ris: number[] = [];
-    runs.forEach((run, ri) => {
+    runs.forEach((piece, ri) => {
       if (r.pseudo) {
         const want = r.pseudo.replace(/^::/, '');
-        if (run.kind === want && pseudoOwner[ri] !== undefined && hit.has(pseudoOwner[ri]!)) ris.push(ri);
+        if (piece.kind === want && pseudoOwner[ri] !== undefined && hit.has(pseudoOwner[ri]!)) ris.push(ri);
       } else if (chains[ri]!.some((b) => hit.has(b))) ris.push(ri);
     });
     if (ris.length) declared.push({ runs: ris, decls: r.decls, origin: r.origin });
@@ -320,6 +320,7 @@ async function run(page: Page, cdp: CDPSession, url: string, o: VisitOptions, bo
   }
 
   // Font bodies, before the page closes.
+  // eslint-disable-next-line no-unmodified-loop-condition -- the response handlers change inflightFonts while this waits
   for (let i = 0; i < 200 && inflightFonts > 0; i++) await page.waitForTimeout(25);
   const fonts: FontResponse[] = [...dataFonts];
   for (const [id, r] of reqs) {
@@ -484,7 +485,7 @@ function collectInPage(a: { props: string[]; firstLine: string[]; textTransforms
         new Intl.DateTimeFormat(l, { dateStyle: 'medium' }).format(when),
         new Intl.DateTimeFormat(l, { year: 'numeric', month: '2-digit', day: '2-digit' }).format(when),
       ].join('');
-      locales[l] = Array.from(new Set(Array.from(s))).sort().join('');
+      locales[l] = Array.from(new Set(Array.from(s))).toSorted().join('');
     } catch { /* unsupported locale tag */ }
   }
   return { controls, preloads, links: Array.from(new Set(links)), lang, locales, textScaleMeta: !!document.querySelector('meta[name="text-scale" i]') };

@@ -1,47 +1,115 @@
 name: Release
 
-# Push a tag `v<version>` matching packages/cli/package.json to publish to npm with provenance.
-# Publishing uses npm trusted publishing (OIDC): on npmjs.com, add this repository and this
-# workflow (release.yml) as a trusted publisher for the `fontphobia` package. No token needed.
+# Changesets-driven publishing: when a "Version Packages" PR is merged, publishes the bumped
+# `fontphobia` package to npm, tags it and cuts a GitHub Release. Opening and updating that PR is
+# version.yml's job; this workflow never versions. The same pair of workflows as in the sibling
+# projects (orb3d, materials3d, wave3d, ascii-fx).
+#
+# Auth is OIDC / Trusted Publishing (`id-token: write` + NPM_CONFIG_PROVENANCE), so there is no
+# stored token. On npmjs.com the package's Trusted Publisher is GitHub Actions, this owner, this
+# repo, workflow filename `release.yml`, environment blank, with "Allow `npm publish`" ticked.
+# Keep this file's name: the publisher is tied to it.
+#
+# Every action here is pinned to a commit SHA, not a major tag, and that matters more in this file
+# than in ci.yml: this job can publish to npm unattended. A major tag is mutable:
+# `changesets/action@v2` is a BRANCH, force-pushable at will, and the `actions/*` majors are tags
+# that get re-pointed on every release. A SHA cannot be re-pointed. .github/dependabot.yml keeps
+# them fresh.
+#
+# changesets/action@v2 needs Changesets CLI v3, and refuses to run against CLI v2. It hands the
+# publish script a file path in CHANGESETS_OUTPUT and reads `{"type":"git-tag",...}` events from it
+# (scripts/publish-if-needed.mjs writes one per tag), then creates the tags and releases through
+# the GitHub API. Keep @changesets/cli v3 and @changesets/changelog-github v1 moving together.
+
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+    # Only the pushes that merge a Version PR. `changeset version` is the only thing that writes a
+    # package CHANGELOG, so this is the one path filter that picks out those pushes, and it keeps
+    # every other push out of this workflow's concurrency group (see below).
+    paths:
+      - "packages/**/CHANGELOG.md"
+  # Manual catch-up. It publishes whatever version npm lacks from the dispatched ref's CURRENT
+  # tree, which may already hold changes meant for the next version; to redo a cancelled or
+  # failed publish, re-run that run instead (a re-run keeps its original commit).
+  workflow_dispatch: {}
+
+# One publish at a time, and never cancel one in progress: a run cancelled mid-publish can leave
+# the package on npm without its tag or GitHub release. GitHub keeps only the NEWEST pending run
+# per group and cancels the one before it, which is why versioning lives in version.yml: when
+# both shared a group, a feature push could cancel a pending publish and then, carrying new
+# changesets, publish nothing itself. Only Version PR merges queue here, so a pending publish can
+# only be replaced by a later Version PR merge's, which publishes main's newer version (an
+# intermediate version is skipped only if three Version PRs merge within one publish run).
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
-  contents: write # create the GitHub release
-  id-token: write # npm provenance and trusted publishing
+  contents: write # tags, GitHub releases
+  id-token: write # OIDC trusted publishing + provenance
 
 jobs:
-  publish:
+  preflight:
+    name: Publish gate
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      publish: ${{ steps.gate.outputs.publish }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - id: gate
+        run: |
+          if npm view fontphobia version >/dev/null 2>&1; then
+            echo "publish=pnpm release" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::fontphobia is not on npm; nothing to publish here. A package's first version is published by hand, then Trusted Publishing is enabled."
+          fi
+
+  release:
+    name: Publish
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org
-      - name: The tag matches the package version
-        run: test "v$(node -p "require('./packages/cli/package.json').version")" = "$GITHUB_REF_NAME"
-      - name: The changelog has a section for this version (checked before anything is published)
-        run: node scripts/changelog-section.mjs "${GITHUB_REF_NAME#v}" > "$RUNNER_TEMP/release-notes.md"
       - run: pnpm install --frozen-lockfile
+      # Gate the publish on the package being sound. ci.yml runs on these same pushes but is a
+      # SEPARATE workflow with no dependency here, so without this a red suite could still publish
+      # to npm, the one thing this pipeline does that can't be taken back.
       - run: pnpm typecheck
       - run: pnpm test
-      - name: Pack (prepack builds dist and copies README and LICENSE)
-        run: (cd packages/cli && pnpm pack --pack-destination "$RUNNER_TEMP/pkg")
+      # Trusted publishing needs npm >= 11.5.1; Node 24 may ship an older npm. Pinned to the major
+      # so a new npm cannot change what a release run does.
+      - run: npm install -g npm@11
+      # A Version PR merge can still carry changesets: one merged after the PR was last versioned,
+      # whose version run had not updated it yet. changesets/action would then go to version mode
+      # and publish nothing, leaving the merged version unpublished. The files only drive
+      # versioning (version.yml versions them into the next PR) and are not in the package, so
+      # drop them from this checkout and publish the tree the Version PR merged.
+      - name: Set aside changesets for the next Version PR
+        run: |
+          set -euo pipefail
+          for f in .changeset/*.md; do
+            [ -e "$f" ] && [ "$(basename "$f")" != README.md ] || continue
+            echo "::notice::$f arrived with this merge; version.yml versions it into the next Version PR"
+            rm "$f"
+          done
       - name: Publish
-        run: |
-          npm install -g npm@11  # trusted publishing needs npm 11.5.1 or later
-          v="${GITHUB_REF_NAME#v}"
-          # The first version is published by hand (npm only lets a package that exists have a trusted publisher).
-          if npm view "fontphobia@$v" version >/dev/null 2>&1; then echo "fontphobia@$v is already on npm"; exit 0; fi
-          npm publish "$RUNNER_TEMP"/pkg/fontphobia-*.tgz --provenance --access public
-      - name: GitHub release
+        id: changesets
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          # `pnpm release` builds, runs publint and are-the-types-wrong on the packed package, then
+          # runs scripts/publish-if-needed.mjs: `pnpm publish` from packages/cli, whose `prepack`
+          # builds dist and copies README.md and LICENSE in. Empty if the package were not on npm
+          # (see preflight): then this does nothing.
+          publish-script: ${{ needs.preflight.outputs.publish }}
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # Also runs when the version was already on npm, unless the release exists.
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then echo "release $GITHUB_REF_NAME already exists"; exit 0; fi
-          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"
+          NPM_CONFIG_PROVENANCE: "true"

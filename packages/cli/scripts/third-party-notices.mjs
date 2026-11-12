@@ -27,7 +27,7 @@ function describe(root) {
   const pkg = readJson(join(root, 'package.json'));
   const license = typeof pkg.license === 'string' ? pkg.license : pkg.license?.type ?? (pkg.licenses ? pkg.licenses.map((l) => l.type).join(' OR ') : undefined);
   const repo = typeof pkg.repository === 'string' ? pkg.repository : pkg.repository?.url;
-  const files = readdirSync(root, { withFileTypes: true }).filter((e) => e.isFile() && LICENSE_FILE.test(e.name)).map((e) => e.name).sort();
+  const files = readdirSync(root, { withFileTypes: true }).filter((e) => e.isFile() && LICENSE_FILE.test(e.name)).map((e) => e.name).toSorted();
   return { name: pkg.name, version: pkg.version, license, url: (repo ?? pkg.homepage ?? '').replace(/^git\+/, ''), files: files.map((f) => ({ name: f, text: readFileSync(join(root, f), 'utf8').trim() })) };
 }
 
@@ -54,7 +54,7 @@ export function thirdPartyNotices() {
         if (!p.files.length && !p.license) this.error(`third-party-notices: bundled package ${p.name}@${p.version} (${root}) has no license file and no license field`);
         pkgs.set(`${p.name}@${p.version}`, p);
       }
-      const list = [...pkgs.values()].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : a.version < b.version ? -1 : a.version > b.version ? 1 : 0));
+      const list = [...pkgs.values()].toSorted((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : a.version < b.version ? -1 : a.version > b.version ? 1 : 0));
       const rule = '='.repeat(78);
       let out = 'THIRD-PARTY NOTICES\n\nfontphobia bundles the packages below and data generated from the Unicode CLDR.\nThe text of each license follows its entry.\n';
       for (const p of list) {

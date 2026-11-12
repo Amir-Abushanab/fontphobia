@@ -34,7 +34,7 @@ export function readSfnt(buf: Uint8Array): Sfnt {
 }
 
 export function tableTags(buf: Uint8Array): string[] {
-  return [...readSfnt(buf).tables.keys()].sort();
+  return [...readSfnt(buf).tables.keys()].toSorted();
 }
 
 export function getTable(buf: Uint8Array, tag: string): Uint8Array | undefined {
@@ -56,7 +56,7 @@ export function checksum(data: Uint8Array): number {
 }
 
 export function writeSfnt(font: Sfnt): Uint8Array {
-  const tags = [...font.tables.keys()].sort((a, b) => TAG(a) - TAG(b));
+  const tags = [...font.tables.keys()].toSorted((a, b) => TAG(a) - TAG(b));
   const n = tags.length;
   let size = 12 + 16 * n;
   for (const t of tags) size += (font.tables.get(t)!.byteLength + 3) & ~3;

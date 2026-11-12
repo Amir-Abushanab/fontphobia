@@ -27,6 +27,6 @@ let html = readFileSync(index, 'utf8');
 if (html.includes('<script id="font-data"')) {
   html = html.replace(/<script id="font-data" type="application\/json">[\s\S]*?<\/script>/, () => embedded);
 } else {
-  html = html.replace(/<script\b[^>]*\bsrc="demo\.js(?:\?[^\"]*)?"[^>]*><\/script>/, (script) => `${embedded}\n${script}`);
+  html = html.replace(/<script\b[^>]*\bsrc="demo\.js(?:\?[^"]*)?"[^>]*><\/script>/, (script) => `${embedded}\n${script}`);
 }
 writeFileSync(index, html);

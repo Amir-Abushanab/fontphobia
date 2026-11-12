@@ -25,7 +25,7 @@ export function otherFaces(root: string, css: CssSource[], edits: Edit[] = []): 
     const b = t.lastIndexOf('/* fontphobia:begin ', s.rule.start), e = t.lastIndexOf('/* fontphobia:end ', s.rule.start);
     return !(b >= 0 && b > e); // inside a block
   }).map((s) => ({ file: s.file, family: s.rule.family, sha256: ruleHash(text(s.file).slice(s.rule.start, s.rule.end)) }))
-    .sort((a, b) => (a.file + a.family + a.sha256 < b.file + b.family + b.sha256 ? -1 : 1));
+    .toSorted((a, b) => (a.file + a.family + a.sha256 < b.file + b.family + b.sha256 ? -1 : 1));
 }
 
 export interface Demand { file: string; /** familyKey()s, or undefined: whatever family is inherited. */ families?: string[]; features: [string, number][]; axes: [string, number][] }
@@ -63,7 +63,7 @@ export function cssDemands(root: string): Demand[] {
 }
 
 const keysOf = (d: Demand) => (d.families ?? ['*']).flatMap((f) => [...d.features.map(([t]) => `${f}|feature|${t}`), ...d.axes.map(([t, v]) => `${f}|axis|${t}=${v}`)]);
-export const demandKeys = (ds: Demand[]): string[] => [...new Set(ds.flatMap(keysOf))].sort();
+export const demandKeys = (ds: Demand[]): string[] => [...new Set(ds.flatMap(keysOf))].toSorted();
 /** Demands with at least one key the build didn't see. */
 export const newDemands = (ds: Demand[], seen: string[] | undefined): Demand[] => {
   if (!seen) return ds;

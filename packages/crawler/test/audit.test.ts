@@ -45,7 +45,7 @@ describe.skipIf(!chrome)('audit: static css fixture', () => {
   });
 
   it('attributes per face and matches each face to its declaration', () => {
-    expect(Object.keys(faces).sort()).toEqual(['deja-400-normal', 'inter-100-900-italic', 'inter-100-900-normal']);
+    expect(Object.keys(faces).toSorted()).toEqual(['deja-400-normal', 'inter-100-900-italic', 'inter-100-900-normal']);
     expect(faces['inter-100-900-normal']!.source).toMatchObject({ adapter: 'css', line: 2 });
     expect(faces['inter-100-900-italic']!.source).toMatchObject({ adapter: 'css', line: 9 });
     expect(Object.keys(r.usage.unloaded)).toEqual(['unused-400-normal']);
@@ -82,7 +82,7 @@ describe.skipIf(!chrome)('audit: static css fixture', () => {
   it('collects declared values, features and axes (§7.5)', () => {
     const n = faces['inter-100-900-normal']!;
     expect(n.declared.weight).toEqual(expect.arrayContaining([300, 400, 500, 600, 650, 800, 900]));
-    expect(Object.keys(n.inserted).filter((k) => k.startsWith('declared')).sort()).toEqual(['declared :hover', 'declared @keyframes pulse', 'declared @media (min-width: 40em)', 'declared @media print']);
+    expect(Object.keys(n.inserted).filter((k) => k.startsWith('declared')).toSorted()).toEqual(['declared :hover', 'declared @keyframes pulse', 'declared @media (min-width: 40em)', 'declared @media print']);
     expect(n.features).toEqual(expect.arrayContaining(['ss01', 'tnum']));
     const opsz = n.rendered.axes!.opsz!;
     expect(Math.min(...opsz)).toBe(14);

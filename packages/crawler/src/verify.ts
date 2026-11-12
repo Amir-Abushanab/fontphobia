@@ -122,9 +122,9 @@ async function pool<T>(items: T[], n: number, fn: (x: T) => Promise<void>) {
 
 /** §10.3 page selection: everything up to the cap, else a greedy set cover of face × character class, plus config pages. */
 export function selectPages(usage: UsageFileJson, entries: Set<string>, max: number, always: string[] = []): { pages: string[]; skipped: number } {
-  const all = Object.entries(usage.pages).filter(([, p]) => !p.private && Object.keys(p.faces).some((id) => entries.has(id))).map(([k]) => k).sort();
+  const all = Object.entries(usage.pages).filter(([, p]) => !p.private && Object.keys(p.faces).some((id) => entries.has(id))).map(([k]) => k).toSorted();
   const forced = always.filter((p) => usage.pages[p]);
-  if (all.length <= max) return { pages: [...new Set([...all, ...forced])].sort(), skipped: 0 };
+  if (all.length <= max) return { pages: [...new Set([...all, ...forced])].toSorted(), skipped: 0 };
   const cls = (cp: number) => {
     const ch = String.fromCodePoint(cp);
     if (cp < 0x80) return 'ascii';
@@ -152,7 +152,7 @@ export function selectPages(usage: UsageFileJson, entries: Set<string>, max: num
     chosen.add(best);
     for (const x of items.get(best)!) covered.add(x);
   }
-  return { pages: [...chosen].sort(), skipped: all.length - [...chosen].filter((p) => all.includes(p)).length };
+  return { pages: [...chosen].toSorted(), skipped: all.length - [...chosen].filter((p) => all.includes(p)).length };
 }
 
 interface Box { x: number; y: number; w: number; h: number }
@@ -177,15 +177,16 @@ async function launch(engine: Engine, linux: () => Promise<LinuxBrowsers>): Prom
   const type = engine === 'firefox' ? firefox : webkit;
   try { return await type.launch({ headless: true }); } catch (e) {
     const msg = (e as Error).message;
+    // eslint-disable-next-line no-control-regex -- strips ANSI colour codes
     const said = [...msg.replace(/\x1b\[[0-9;]*m/g, '').matchAll(/\[err\] (.+)/g)].map((m) => m[1]!.trim().replace(/\.$/, '')).filter((l) => !/headless mode/i.test(l)).pop();
-    if (/Executable doesn't exist/i.test(msg)) throw new Error(`${engine} isn't installed. Install Playwright's build with \`pnpm dlx playwright@${playwrightVersion()} install ${engine}\`, or use linux-${engine} (runs in a container).`);
+    if (/Executable doesn't exist/i.test(msg)) throw new Error(`${engine} isn't installed. Install Playwright's build with \`pnpm dlx playwright@${playwrightVersion()} install ${engine}\`, or use linux-${engine} (runs in a container).`, { cause: e });
     // Playwright's Firefox opens ~/Library/Application Support/Firefox even with a temporary profile.
     // When a real Firefox is installed, macOS protects that folder as another app's data (com.apple.macl),
     // so the launch fails unless the terminal has Full Disk Access (M5 notes).
     const hint = engine === 'firefox' && /profile folder/i.test(said ?? '') && process.platform === 'darwin'
       ? ' macOS protects ~/Library/Application Support/Firefox as your installed Firefox\'s data, and Playwright\'s Firefox needs it; giving your terminal Full Disk Access allows it.'
       : '';
-    throw new Error(`Couldn't start ${engine}${said ? `: ${said}` : ` (${msg.split('\n')[0]})`}.${hint} Use linux-${engine} to run it in a container instead.`);
+    throw new Error(`Couldn't start ${engine}${said ? `: ${said}` : ` (${msg.split('\n')[0]})`}.${hint} Use linux-${engine} to run it in a container instead.`, { cause: e });
   }
 }
 
@@ -489,7 +490,7 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
         // itself between sessions by at least as much (a real change never matches and never moves).
         const loadsB = [b.snap.png], loadsA = [a.snap.png];
         const same = (x: PNG, y: PNG) => x.width === y.width && x.height === y.height && x.data.equals(y.data);
-        for (let attempt = 0; attempt < 3 && c.class === 'regression' && !c.moved && c.causes.every((x) => /^pixels differ/.test(x)); attempt++) {
+        for (let attempt = 0; attempt < 3 && c.class === 'regression' && !c.moved && c.causes.every((x) => x.startsWith('pixels differ')); attempt++) {
           const fresh = t.engine.startsWith('linux-') ? undefined : await launch(t.engine, getLinux).catch(() => undefined);
           const br = fresh ?? t.browser;
           try {
@@ -522,14 +523,14 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
     });
     comparisons.sort((x, y) => (x.page < y.page ? -1 : x.page > y.page ? 1 : 0) || x.browser.localeCompare(y.browser) || x.viewport - y.viewport || x.dpr - y.dpr);
 
-    const loads = [...loadProblems].map(([k, problem]) => ({ page: k.split('\u0000')[0]!, problem })).sort((x, y) => (x.page + x.problem < y.page + y.problem ? -1 : 1));
+    const loads = [...loadProblems].map(([k, problem]) => ({ page: k.split('\u0000')[0]!, problem })).toSorted((x, y) => (x.page + x.problem < y.page + y.problem ? -1 : 1));
     if (!usedInAfter.size && Object.keys(o.manifest.entries).length) {
       loads.unshift({ page: '*', problem: `the served site loads none of fontphobia's files${site.built ? '' : ' (is it older than `build --write`? pass --rebuild)'}` });
     }
     const ok = !comparisons.some((c) => c.class === 'regression' || c.class === 'failed') && !loads.length && !rejected.length;
     return {
       site: { mode: site.mode, base: site.base, built: site.built }, baseline: baseline ? 'worktree' : 'overlay', browsers: versions, pages, skipped, comparisons,
-      bytes: [...bytes.values()].sort((x, y) => (x.page < y.page ? -1 : 1)), loads, rejected, ok, durationMs: Date.now() - t0,
+      bytes: [...bytes.values()].toSorted((x, y) => (x.page < y.page ? -1 : 1)), loads, rejected, ok, durationMs: Date.now() - t0,
     };
   } finally {
     for (const b of browsers) await b.browser.close().catch(() => {});
@@ -673,7 +674,7 @@ async function compare(
     if (!cause && !moved.includes(i) && before && after && before.size) {
       const names = [...before.keys(), ...after.keys()].map((k) => fam(k).replace(/^system /, '').toLowerCase());
       const same = before.size === after.size && [...before.keys()].every((k) => after.has(k));
-      if (same && !names.some((n) => ours.has(n))) { cause = `unrelated: drawn only with ${[...before.keys()].map((k) => k.replace(/^system /, '')).join(', ')}, which fontphobia didn't change`; unrelated++; }
+      if (same && !names.some((name) => ours.has(name))) { cause = `unrelated: drawn only with ${[...before.keys()].map((k) => k.replace(/^system /, '')).join(', ')}, which fontphobia didn't change`; unrelated++; }
     }
     if (!cause) {
       if (moved.includes(i)) {
@@ -686,7 +687,7 @@ async function compare(
   }
   // Where each example is, as a selector: text alone ("Projects") is hard to find on a big page.
   const where = await selectorsOf(a.cdp, exampleOwners.filter((x): x is number => x !== undefined));
-  r.examples.forEach((e, k) => { const o = exampleOwners[k]; const w = o !== undefined ? where.get(o) : undefined; if (w) e.where = w; });
+  r.examples.forEach((e, k) => { const o = exampleOwners[k]; const sel = o !== undefined ? where.get(o) : undefined; if (sel) e.where = sel; });
   if (!flagged.length) r.examples.push({ text: '', cause: 'pixels differ outside the text boxes the verifier maps (form controls or replaced content)' });
   r.causes = [...new Set(r.examples.map((x) => x.cause.replace(/\d+ glyph\(s\)/, 'some glyphs')))];
 

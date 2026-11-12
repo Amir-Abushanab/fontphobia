@@ -53,7 +53,7 @@ export interface TightenSuggestion { sheet: string; families: string[]; weights:
  * from a CMS, could ask for one. Then it's measured and reported instead. `limitAxes`: default-only axes.
  */
 export async function tightenGoogle(root: string, usage: Usage, prev: Manifest | undefined, o: { limitAxes: boolean; drop: boolean }): Promise<{ edits: Edit[]; records: GoogleUrlRecord[]; suggestions: TightenSuggestion[] }> {
-  const sheets = [...new Set([...Object.values(usage.faces), ...Object.values(usage.unloaded ?? {})].map((f) => f.sheet).filter(isGoogleSheet))].sort();
+  const sheets = [...new Set([...Object.values(usage.faces), ...Object.values(usage.unloaded ?? {})].map((f) => f.sheet).filter(isGoogleSheet))].toSorted();
   const edits: Edit[] = [];
   const records: GoogleUrlRecord[] = [];
   const suggestions: TightenSuggestion[] = [];
@@ -86,14 +86,14 @@ export async function tightenGoogle(root: string, usage: Usage, prev: Manifest |
     const refs = findSheetRefs(root, sheet);
     if (!refs.length) continue;
     for (const r of refs) edits.push({ file: r.file, start: r.start, end: r.end, text: r.text.includes('&amp;') ? amp(t.url) : t.url, why: `tighten ${sheet}` });
-    const merge = <T>(a: Record<string, T[]> = {}, b: Record<string, T[]>) => Object.fromEntries([...new Set([...Object.keys(a), ...Object.keys(b)])].sort().map((k) => [k, [...new Set([...(a[k] ?? []), ...(b[k] ?? [])])].sort()]));
+    const merge = <T>(a: Record<string, T[]> = {}, b: Record<string, T[]>) => Object.fromEntries([...new Set([...Object.keys(a), ...Object.keys(b)])].toSorted().map((k) => [k, [...new Set([...(a[k] ?? []), ...(b[k] ?? [])])].toSorted()]));
     records.push({
-      from: earlier?.from ?? sheet, to: t.url, files: [...new Set(refs.map((r) => r.file))].sort(),
-      dropped: { families: [...new Set([...(earlier?.dropped.families ?? []), ...t.families])].sort(), weights: merge(earlier?.dropped.weights, t.weights), axes: merge(earlier?.dropped.axes, t.axes) },
+      from: earlier?.from ?? sheet, to: t.url, files: [...new Set(refs.map((r) => r.file))].toSorted(),
+      dropped: { families: [...new Set([...(earlier?.dropped.families ?? []), ...t.families])].toSorted(), weights: merge(earlier?.dropped.weights, t.weights), axes: merge(earlier?.dropped.axes, t.axes) },
     });
     if (earlier) done.add(earlier.to);
   }
   // Earlier rewrites the audit didn't see again stay while their URL is still in the repo.
   for (const r of prev?.google ?? []) if (!done.has(r.to) && !records.some((x) => x.to === r.to) && findSheetRefs(root, r.to).length) records.push(r);
-  return { edits, records: records.sort((a, b) => (a.from < b.from ? -1 : 1)), suggestions };
+  return { edits, records: records.toSorted((a, b) => (a.from < b.from ? -1 : 1)), suggestions };
 }

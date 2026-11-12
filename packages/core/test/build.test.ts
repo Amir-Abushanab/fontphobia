@@ -90,7 +90,7 @@ describe('build --write (css adapter, §9)', () => {
     const normalCore = r.plan.faces.find((f) => f.id === 'inter-100-900-normal')!.files!.find((f) => f.role === 'core')!.name;
     expect(readFileSync(join(root, 'index.html'), 'utf8')).toContain(`href="./fonts/${normalCore}"`);
     const m = readManifest(root)!;
-    expect(Object.keys(m.entries).sort()).toEqual(['deja-400-normal', 'inter-100-900-italic', 'inter-100-900-normal']);
+    expect(Object.keys(m.entries).toSorted()).toEqual(['deja-400-normal', 'inter-100-900-italic', 'inter-100-900-normal']);
     expect(m.entries['deja-400-normal']!.declaration).toBe("@font-face {\n  font-family: 'Deja';\n  src: url('./fonts/DejaVuSans.ttf') format('truetype');\n  font-display: swap;\n}");
     expect([...generatedFaces(m).keys()]).toHaveLength(9);
 

@@ -22,7 +22,7 @@ describe('subsetFont', () => {
     for (const [text, mirrored] of [['a>b', [0x3c, 0x3e]], ['(hello', [0x28, 0x29]]] as const) {
       const r = await subsetFont(inter, { unicodes: [...text].map((c) => c.codePointAt(0)!) });
       for (const c of mirrored) expect(r.unicodes).toContain(c);
-      expect(r.unicodes).toEqual([...loadFont(r.decoded).face.collectUnicodes()].sort((x, y) => x - y));
+      expect(r.unicodes).toEqual([...loadFont(r.decoded).face.collectUnicodes()].toSorted((x, y) => x - y));
     }
   });
 

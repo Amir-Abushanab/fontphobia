@@ -57,13 +57,13 @@ export function detectCss(root: string, opts: { outputDirs?: string[] } = {}): C
     for (const c of chunks) {
       const sheet = parseStylesheet(c.text, { syntax: c.syntax });
       for (const rule of sheet.fontFaces) {
-        const files = rule.src.filter((s) => s.url !== undefined).map((s) => {
+        const sources = rule.src.filter((s) => s.url !== undefined).map((s) => {
           const path = resolveUrl(root, file, s.url!);
           let h: string | undefined;
           if (path) { try { h = sha256(new Uint8Array(readFileSync(path))); } catch { /* unreadable */ } }
           return { url: s.url!, path: path ? relative(root, path).split(sep).join('/') : undefined, sha256: h };
         });
-        out.push({ file, line: lineAt(text, c.offset + rule.start), rule: { ...rule, start: rule.start + c.offset, end: rule.end + c.offset }, files, manual: rule.computed ? 'computed URL' : undefined });
+        out.push({ file, line: lineAt(text, c.offset + rule.start), rule: { ...rule, start: rule.start + c.offset, end: rule.end + c.offset }, files: sources, manual: rule.computed ? 'computed URL' : undefined });
       }
     }
   }

@@ -11,10 +11,30 @@
     "golden": "vitest run packages/core/test/golden.test.ts",
     "golden:update": "UPDATE_GOLDEN=1 vitest run packages/core/test/golden.test.ts",
     "plans:update": "UPDATE_GOLDEN=1 FONTPHOBIA_SITES=1 vitest run packages/crawler/test/audit.test.ts packages/crawler/test/sites.test.ts && UPDATE_GOLDEN=1 vitest run packages/core/test/plan.test.ts",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "oxlint packages scripts vitest.config.ts",
+    "lint:fix": "oxlint packages scripts vitest.config.ts --fix",
+    "knip": "knip",
+    "depcruise": "depcruise packages/core/src packages/crawler/src packages/cli/src packages/core/scripts packages/cli/scripts scripts",
+    "skill:validate": "intent validate packages/cli/skills",
+    "skill:stale": "intent stale packages/cli",
+    "check": "pnpm lint && pnpm typecheck && pnpm knip && pnpm depcruise && pnpm skill:validate && pnpm skill:stale",
+    "publint": "publint --strict packages/cli",
+    "attw": "attw --pack packages/cli --profile esm-only",
+    "package:check": "pnpm publint && pnpm attw",
+    "version": "changeset version && node scripts/sync-version-pins.mjs",
+    "release": "pnpm build && pnpm package:check && node scripts/publish-if-needed.mjs"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
+    "@changesets/changelog-github": "1.0.1",
+    "@changesets/cli": "3.0.3",
+    "@tanstack/intent": "0.5.6",
     "@types/node": "26.6.6",
+    "dependency-cruiser": "18.7.2",
+    "knip": "6.44.1",
+    "oxlint": "1.91.0",
+    "publint": "0.3.25",
     "typescript": "6.0.3",
     "vitest": "5.1.0"
   }

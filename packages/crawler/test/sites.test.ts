@@ -22,12 +22,12 @@ function expectFixtureUsage(faces: Record<string, Face>, cssFile: string) {
   const list = Object.values(faces);
   const css = list.find((f) => f.family === 'Fixture Sans')!;
   expect(css.source).toMatchObject({ adapter: 'css', file: cssFile, line: 2 });
-  expect([...chars(css.chars)].sort().join('')).toBe(' 24;=cnostx'); // <code>const x = 42;</code>
+  expect([...chars(css.chars)].toSorted().join('')).toBe(' 24;=cnostx'); // <code>const x = 42;</code>
   const inter = list.filter((f) => f.family === 'Inter Variable');
   expect(inter.map((f) => f.source.adapter)).toEqual(['fontsource', 'fontsource']);
   // Țară needs the latin-ext slice; nothing else on the site does.
   const ext = inter.find((f) => chars(f.chars).has('Ț'))!;
-  expect([...chars(ext.chars)].sort().join('')).toBe('ăȚ');
+  expect([...chars(ext.chars)].toSorted().join('')).toBe('ăȚ');
   expect(ext.pages).toEqual(['/']);
   expect(list.find((f) => f.family === 'Fraunces')!.source.adapter).toBe('google-fonts');
 }
@@ -72,7 +72,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
         expect(served.length).toBeGreaterThan(0);
         for (const f of served) { expect(f.status).toBe(200); expect(f.url).toMatch(/dejavu-sans-latin\.(core|ext|rest)\.[0-9a-f]{8}\.woff2$/); }
         // The ejected Inter slices fold back to the same faces, served from the subsets.
-        for (const [fid, f] of Object.entries(u1.faces).filter(([, f]) => f.source.adapter === 'fontsource')) {
+        for (const [fid, f] of Object.entries(u1.faces).filter(([, face]) => face.source.adapter === 'fontsource')) {
           expect(u2.faces[fid]?.chars, fid).toBe(f.chars);
           expect(u2.faces[fid]!.files.every((x) => /\.(core|rest)\.[0-9a-f]{8}/.test(x.url))).toBe(true);
         }
@@ -82,7 +82,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
         expect(v.static.findings).toEqual([]);
         expect(v.browser!.loads).toEqual([]);
         // Every page draws a generated face now (Inter is ejected too).
-        expect(v.browser!.pages).toEqual(Object.keys(u1.pages).sort());
+        expect(v.browser!.pages).toEqual(Object.keys(u1.pages).toSorted());
         expect(v.browser!.comparisons.length).toBe(2 * v.browser!.pages.length);
         expect(v.browser!.comparisons.filter((c) => c.class !== 'identical' && c.class !== 'unrelated' && c.class !== 'flaky').map((c) => `${c.page} DPR ${c.dpr} ${c.class}: ${c.causes.join('; ')} ${JSON.stringify(c.examples.slice(0, 4))}`)).toEqual([]);
         expect(v.ok).toBe(true);
@@ -101,7 +101,7 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
         const config = join(root, 'astro.config.mjs');
         const configText = name === 'astro' ? readFileSync(config, 'utf8') : '';
         try {
-          const withIntegration = (opts: string) => writeFileSync(config, `import { defineConfig } from 'astro/config';\nimport fontphobia from ${JSON.stringify(fileURLToPath(new URL('../../cli/src/astro.ts', import.meta.url)))};\nexport default defineConfig({ integrations: [fontphobia(${opts})] });\n`);
+          const withIntegration = (args: string) => writeFileSync(config, `import { defineConfig } from 'astro/config';\nimport fontphobia from ${JSON.stringify(fileURLToPath(new URL('../../cli/src/astro.ts', import.meta.url)))};\nexport default defineConfig({ integrations: [fontphobia(${args})] });\n`);
           if (name === 'astro') {
             withIntegration('');
             const ok = await runCommand('pnpm run build', root);

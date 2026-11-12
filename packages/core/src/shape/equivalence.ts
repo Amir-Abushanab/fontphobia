@@ -31,7 +31,7 @@ const ROUNDING_POINT = 2.5;
 const ROUNDING_ADVANCE = 1;
 
 const hex = (cp: number) => 'U+' + cp.toString(16).toUpperCase().padStart(4, '0');
-const varKey = (v?: Record<string, number>) => JSON.stringify(Object.entries(v ?? {}).sort());
+const varKey = (v?: Record<string, number>) => JSON.stringify(Object.entries(v ?? {}).toSorted());
 
 class Shaper {
   private outlines = new Map<string, number[]>();
@@ -73,7 +73,7 @@ class Shaper {
 }
 
 /** Order-independent of direction: stable sort by cluster. */
-const byCluster = (g: Glyph[]) => g.map((x, i) => [x, i] as const).sort((a, b) => a[0].cluster - b[0].cluster || a[1] - b[1]).map(([x]) => x);
+const byCluster = (g: Glyph[]) => g.map((x, i) => [x, i] as const).toSorted((a, b) => a[0].cluster - b[0].cluster || a[1] - b[1]).map(([x]) => x);
 
 export function checkShaping(source: Uint8Array, files: OutputFile[], cases: ShapeCase[]): CaseResult[] {
   const src = new Shaper(loadFont(source));

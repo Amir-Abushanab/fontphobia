@@ -78,7 +78,7 @@ function locate(root: string, face: FacePlan, usage: UsageFileJson, prev: Manife
   // line only breaks ties, since the stylesheet may have changed since.
   const same = cands.filter((c) => familyKey(c.rule.family) === familyKey(f.family) && sameFaceDescriptors(f.descriptors, c.rule.descriptors));
   if (!same.length) return `no @font-face in ${f.source.file} that loads ${face.source!.file} has this face's descriptors: the stylesheet changed since the audit; rerun \`fontphobia audit\``;
-  const best = [...same].sort((a, b) => Math.abs(a.line - (f.source.line ?? 0)) - Math.abs(b.line - (f.source.line ?? 0)))[0]!;
+  const best = [...same].toSorted((a, b) => Math.abs(a.line - (f.source.line ?? 0)) - Math.abs(b.line - (f.source.line ?? 0)))[0]!;
   const text = readFileSync(join(root, best.file), 'utf8');
   const declaration = text.slice(best.rule.start, best.rule.end);
   if (/fontphobia:begin/.test(text.slice(Math.max(0, best.rule.start - 400), best.rule.start)) && findBlockAround(text, best.rule.start)) return `${best.file}:${best.line} is inside a fontphobia block but the manifest has no entry for it`;
@@ -177,7 +177,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
   let calls: ReturnType<typeof findLocalFontCalls> | undefined;
   // One source can back several faces (normal and italic); its preloads go to the face on the most pages.
   const preloadOwner = new Map<string, string>();
-  for (const f of [...plan.faces].filter((x) => x.status === 'planned' && x.adapter === 'css').sort((a, b) => (usage.faces[b.id]?.pages.length ?? 0) - (usage.faces[a.id]?.pages.length ?? 0) || (a.id < b.id ? -1 : 1))) {
+  for (const f of [...plan.faces].filter((x) => x.status === 'planned' && x.adapter === 'css').toSorted((a, b) => (usage.faces[b.id]?.pages.length ?? 0) - (usage.faces[a.id]?.pages.length ?? 0) || (a.id < b.id ? -1 : 1))) {
     const n = posix.basename(f.source!.file);
     if (!preloadOwner.has(n)) preloadOwner.set(n, f.id);
   }
@@ -264,8 +264,8 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
       for (const p of placed) fonts.set(p.file, outputs.get(p.f.name)!);
       const desc = Object.entries(u.descriptors).filter(([k]) => !['src', 'font-family', 'unicode-range'].includes(k)).map(([k, v]) => `  ${k}: ${v};`).join('\n');
       const declaration = `@font-face {\n  font-family: '${face.family.replace(/'/g, "\\'")}';\n  src: url('${posix.basename(face.source!.file)}');\n${desc ? desc + '\n' : ''}${u.descriptors['unicode-range'] ? `  unicode-range: ${u.descriptors['unicode-range']};\n` : ''}}`;
-      const css = cssBlock({ id: face.id, version: o.version, declaration, sourceUrl: posix.basename(face.source!.file), indent: '', eol: '\n', descriptors: face.descriptors, files: [...placed].reverse().map((p) => ({ url: p.url, unicodeRange: p.f.role === 'core' ? undefined : p.f.unicodeRange })) });
-      snippets.push({ id: face.id, file: u.source.file, line: u.source.line, css: `${css}\n/* The URLs are relative to ${dir}/; point them at where your site serves these files. */` });
+      const block = cssBlock({ id: face.id, version: o.version, declaration, sourceUrl: posix.basename(face.source!.file), indent: '', eol: '\n', descriptors: face.descriptors, files: [...placed].toReversed().map((p) => ({ url: p.url, unicodeRange: p.f.role === 'core' ? undefined : p.f.unicodeRange })) });
+      snippets.push({ id: face.id, file: u.source.file, line: u.source.line, css: `${block}\n/* The URLs are relative to ${dir}/; point them at where your site serves these files. */` });
       return;
     }
     if (face.adapter === 'next-font-local') {
@@ -308,7 +308,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
       descriptors: face.descriptors, syntax: loc.syntax,
       // Rest, extended, core: WebKit takes a segmented family's primary font (underline skip-ink,
       // emphasis marks) from the last rule; Chrome from the first rule covering U+0020 (M5 notes).
-      files: [...placed].reverse().map(({ f, at }) => ({ url: (at as { url: string }).url, unicodeRange: f.role === 'core' ? undefined : f.unicodeRange, family: cfg.mutation?.kind === 'ext-family' && cfg.mutation.face === face.id && f.role === 'ext' ? cfg.mutation.family : undefined })),
+      files: [...placed].toReversed().map(({ f, at }) => ({ url: (at as { url: string }).url, unicodeRange: f.role === 'core' ? undefined : f.unicodeRange, family: cfg.mutation?.kind === 'ext-family' && cfg.mutation.face === face.id && f.role === 'ext' ? cfg.mutation.family : undefined })),
     });
     if (text.slice(loc.start, loc.end) !== block) edits.push({ file: loc.file, start: loc.start, end: loc.end, text: block, why: `${face.id}: ${face.files!.map((f) => f.role).join(' + ')}` });
     for (const { f, at } of placed) fonts.set((at as { file: string }).file, outputs.get(f.name)!);
@@ -365,8 +365,8 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
     ejects: Object.keys(ejects).length ? ejects : undefined, google, options, fontChecks: fontChecks.length ? fontChecks : undefined,
     others: otherFaces(root, css.filter((c) => !generated.has(c.file) && !ejects[c.file]), edits), demands: demandKeys(cssDemands(root)),
   };
-  const generatedList = [...generated].sort(([a], [b]) => (a < b ? -1 : 1)).map(([file, text]) => ({ file, bytes: Buffer.byteLength(text), exists: existsSync(join(root, file)) && readFileSync(join(root, file), 'utf8') === text }));
-  const fontList = [...fonts].sort(([a], [b]) => (a < b ? -1 : 1)).map(([file, bytes]) => {
+  const generatedList = [...generated].toSorted(([a], [b]) => (a < b ? -1 : 1)).map(([file, text]) => ({ file, bytes: Buffer.byteLength(text), exists: existsSync(join(root, file)) && readFileSync(join(root, file), 'utf8') === text }));
+  const fontList = [...fonts].toSorted(([a], [b]) => (a < b ? -1 : 1)).map(([file, bytes]) => {
     const abs = join(root, file);
     return { file, bytes: bytes.byteLength, exists: existsSync(abs) && sha(readFileSync(abs)) === sha(bytes) };
   });
@@ -375,7 +375,7 @@ export async function buildProject(root: string, usage: UsageFileJson, cfgIn: Pl
     .filter((x) => existsSync(join(root, x.file)) && sha(readFileSync(join(root, x.file))) === x.sha256).map((x) => x.file);
   const json = manifestJson(manifest);
   const manifestSame = manifestPath(root) === join(root, MANIFEST_FILE) && existsSync(join(root, MANIFEST_FILE)) && readFileSync(join(root, MANIFEST_FILE), 'utf8') === json;
-  const unchanged = !edits.length && fontList.every((f) => f.exists) && generatedList.every((g) => g.exists) && !stale.length && (manifestSame || (!Object.keys(entries).length && !google && !options));
+  const unchanged = !edits.length && fontList.every((f) => f.exists) && generatedList.every((x) => x.exists) && !stale.length && (manifestSame || (!Object.keys(entries).length && !google && !options));
 
   const before = new Map([...new Set(edits.map((e) => e.file))].map((f) => [f, readFileSync(join(root, f), 'utf8')]));
   checkEdits(edits); // before anything is written, so a conflict leaves the project as it was
@@ -414,7 +414,7 @@ function writeAll(root: string, w: { fonts: Map<string, Uint8Array>; generated: 
     }
   } catch (e) {
     const left: string[] = [];
-    for (const u of undo.reverse()) { try { u(); } catch (x) { left.push((x as Error).message); } }
+    for (const u of undo.toReversed()) { try { u(); } catch (x) { left.push((x as Error).message); } }
     throw new Error(`Writing the build failed: ${(e as Error).message}. ${left.length ? `Undoing the files already written failed too, so the project is partly built: ${left.join('; ')}` : 'Nothing was changed: every file is as it was before.'}`, { cause: e });
   }
   // The manifest no longer lists these, so a failure here leaves a consistent build.
@@ -477,7 +477,7 @@ function ejectFontsource(root: string, faces: FacePlan[], prev: Manifest | undef
       if (!hit) { out += r.text.replace(r.url, toPkg(r.url, r.file)); continue; }
       const { face } = hit;
       const placed = face.files!.map((f) => ({ f, file: `${filesDir}/${f.name}`, url: `./files/${f.name}` }));
-      out += cssBlock({ id: face.id, version, declaration: r.text, sourceUrl: r.url, indent: '', eol: '\n', descriptors: face.descriptors, files: [...placed].reverse().map((p) => ({ url: p.url, unicodeRange: p.f.role === 'core' ? undefined : p.f.unicodeRange })) });
+      out += cssBlock({ id: face.id, version, declaration: r.text, sourceUrl: r.url, indent: '', eol: '\n', descriptors: face.descriptors, files: [...placed].toReversed().map((p) => ({ url: p.url, unicodeRange: p.f.role === 'core' ? undefined : p.f.unicodeRange })) });
       for (const p of placed) fonts.set(p.file, outputs.get(p.f.name)!);
       entries[face.id] = {
         id: face.id, adapter: 'fontsource', family: face.family, stylesheet: genFile, declaration: r.text,
@@ -495,7 +495,7 @@ function ejectFontsource(root: string, faces: FacePlan[], prev: Manifest | undef
       if (i.start !== undefined && i.end !== undefined) edits.push({ file: i.file, start: i.start, end: i.end, text: rel, why: `${spec} → ${genFile}` });
       imports.push({ file: i.file, from: spec, to: i.to ?? rel });
     }
-    ejects[genFile] = { package: c.pkg.name, version: c.pkg.version, specifier: spec, css: c.pkg.css, sha256: sha(out), imports: imports.sort((a, b) => (a.file < b.file ? -1 : 1)) };
+    ejects[genFile] = { package: c.pkg.name, version: c.pkg.version, specifier: spec, css: c.pkg.css, sha256: sha(out), imports: imports.toSorted((a, b) => (a.file < b.file ? -1 : 1)) };
   }
   return { entries, fonts, edits, generated, ejects, notWritten };
 }
@@ -545,13 +545,13 @@ async function selfHostGoogle(root: string, faces: FacePlan[], usage: UsageFileJ
       if (!face) { out += text; continue; }
       done.add(face.id);
       const placed = face.files!.map((f) => ({ f, file: `${host.dir}/${f.name}`, url: `./${f.name}` }));
-      out += cssBlock({ id: face.id, version, declaration: text, sourceUrl: url!, indent: '', eol: '\n', descriptors: face.descriptors, files: [...placed].reverse().map((p) => ({ url: p.url, unicodeRange: p.f.role === 'core' ? undefined : p.f.unicodeRange })) });
+      out += cssBlock({ id: face.id, version, declaration: text, sourceUrl: url!, indent: '', eol: '\n', descriptors: face.descriptors, files: [...placed].toReversed().map((p) => ({ url: p.url, unicodeRange: p.f.role === 'core' ? undefined : p.f.unicodeRange })) });
       for (const p of placed) fonts.set(p.file, outputs.get(p.f.name)!);
       entries[face.id] = {
         id: face.id, adapter: 'google-fonts', family: face.family, stylesheet: genFile, declaration: text,
         source: { file: sources.get(face.id)!.file, sha256: face.source!.sha256, bytes: sources.get(face.id)!.bytes.byteLength },
         outputs: placed.map((p) => ({ role: p.f.role, file: p.file, url: p.url, sha256: p.f.sha256, bytes: p.f.bytes, unicodeRange: p.f.unicodeRange, hintRefs: p.f.hintRefs })),
-        plan: { features: face.features, axes: face.axes, descriptors: face.descriptors, hinting: face.hinting, optIns: [...(face.optIns ?? []).filter((x) => x.applied).map((x) => x.id), 'self-host'].sort(), rename: face.license?.rename },
+        plan: { features: face.features, axes: face.axes, descriptors: face.descriptors, hinting: face.hinting, optIns: [...(face.optIns ?? []).filter((x) => x.applied).map((x) => x.id), 'self-host'].toSorted(), rename: face.license?.rename },
       };
     }
     out += css.slice(at);
@@ -563,7 +563,7 @@ async function selfHostGoogle(root: string, faces: FacePlan[], usage: UsageFileJ
     for (const r of refs) edits.push({ file: r.file, start: r.start, end: r.end, text: to, why: `${sheet} → ${to}` });
     const imports = [...(prevEject?.imports ?? []), ...refs.map((r) => ({ file: r.file, from: r.text, to }))];
     if (!imports.length) for (const f of planned) notWritten.push({ id: f.id, reason: `couldn't find where the repo links ${sheet}` });
-    ejects[genFile] = { kind: 'google', package: 'fonts.googleapis.com', version: '', specifier: sheet, css: sheet, sha256: sha(out), imports: imports.sort((a, b) => (a.file < b.file ? -1 : 1)), text: css };
+    ejects[genFile] = { kind: 'google', package: 'fonts.googleapis.com', version: '', specifier: sheet, css: sheet, sha256: sha(out), imports: imports.toSorted((a, b) => (a.file < b.file ? -1 : 1)), text: css };
   }
   return { entries, fonts, edits, generated, ejects, notWritten };
 }

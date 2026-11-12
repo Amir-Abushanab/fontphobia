@@ -26,7 +26,7 @@ test('concurrent WOFF2 calls are serialized and return valid, independent result
 /** Minimal WOFF 1.0 encoder, only for testing the decoder. */
 function encodeWoff1(sfnt: Uint8Array): Uint8Array {
   const { flavor, tables } = readSfnt(sfnt);
-  const tags = [...tables.keys()].sort();
+  const tags = [...tables.keys()].toSorted();
   const entries = tags.map((tag) => {
     const orig = tables.get(tag)!;
     const z = new Uint8Array(deflateSync(orig));

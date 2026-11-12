@@ -211,7 +211,7 @@ export function featuresOf(style: VariantStyle & { fontFeatureSettings?: string 
 
 /** Canonical "tag=value" list, sorted. */
 export const formatSettings = (m: Map<string, number> | [string, number][]): string =>
-  [...m].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([t, v]) => `${t}=${v}`).join(',');
+  [...m].toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([t, v]) => `${t}=${v}`).join(',');
 
 /** CSS relative weights (CSS Fonts 4 §2.2 table). */
 export function relativeWeight(kw: 'bolder' | 'lighter', parent: number): number {

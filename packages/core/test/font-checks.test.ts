@@ -17,7 +17,7 @@ function project(files: Record<string, string>): string {
 }
 const apply = (text: string, calls: ReturnType<typeof findFontCheckCalls>) => {
   let out = text;
-  for (const c of [...calls].filter((x) => x.fixable).sort((a, b) => b.start - a.start)) { const f = fontCheckFix(c); out = out.slice(0, f.start) + f.text + out.slice(f.end); }
+  for (const c of [...calls].filter((x) => x.fixable).toSorted((a, b) => b.start - a.start)) { const f = fontCheckFix(c); out = out.slice(0, f.start) + f.text + out.slice(f.end); }
   return out;
 };
 

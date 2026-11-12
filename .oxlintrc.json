@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error"
+  },
+  "env": {
+    "node": true,
+    "browser": true,
+    "es2022": true
+  },
+  "rules": {
+    // Off because the rule is wrong for this codebase, not because of exceptions: helpers sit
+    // beside their one caller, and a function passed to `page.evaluate` runs in the browser,
+    // so a helper it uses has to be defined inside it. Everything else stays on, and each
+    // exception carries a per-site comment.
+    "unicorn/consistent-function-scoping": "off"
+  },
+  "options": {
+    "denyWarnings": true,
+    "reportUnusedDisableDirectives": "error"
+  },
+  "ignorePatterns": ["**/dist/**"]
+}

@@ -63,7 +63,7 @@ function validate(name: string, c: unknown): void {
   const keys = (o: Record<string, unknown>, known: string[], at: string) => {
     for (const k of Object.keys(o)) {
       if (known.includes(k)) continue;
-      const near = known.map((n) => [n, distance(k, n)] as const).filter(([, d]) => d <= 2).sort((a, b) => a[1] - b[1])[0];
+      const near = known.map((n) => [n, distance(k, n)] as const).filter(([, d]) => d <= 2).toSorted((a, b) => a[1] - b[1])[0];
       throw new Error(`${name}: unknown key "${at}${k}"${near ? `; did you mean "${at}${near[0]}"?` : ''}`);
     }
   };
@@ -92,29 +92,29 @@ function validate(name: string, c: unknown): void {
 const NAMES = ['fontphobia.config.ts', 'fontphobia.config.mts', 'fontphobia.config.mjs', 'fontphobia.config.js', 'fontphobia.config.json'];
 
 let hooked = false;
-function hookSelfImport(selfUrl: string) {
+function hookSelfImport(self: string) {
   const reg = (module as unknown as { registerHooks?: (h: unknown) => void }).registerHooks;
   if (hooked || !reg) return;
   hooked = true;
   reg({
     resolve(specifier: string, context: unknown, next: (s: string, c: unknown) => unknown) {
-      if (specifier === 'fontphobia') return { url: selfUrl, shortCircuit: true, format: selfUrl.endsWith('.ts') ? 'module-typescript' : 'module' };
+      if (specifier === 'fontphobia') return { url: self, shortCircuit: true, format: self.endsWith('.ts') ? 'module-typescript' : 'module' };
       return next(specifier, context);
     },
   });
 }
 
-export async function loadConfig(root: string, selfUrl: string): Promise<{ config: Config; file?: string }> {
+export async function loadConfig(root: string, self: string): Promise<{ config: Config; file?: string }> {
   for (const name of NAMES) {
     const file = join(root, name);
     if (!existsSync(file)) continue;
     if (name.endsWith('.json')) {
       let config: Config;
-      try { config = JSON.parse(readFileSync(file, 'utf8')); } catch (e) { throw new Error(`${name}: ${(e as Error).message}`); }
+      try { config = JSON.parse(readFileSync(file, 'utf8')); } catch (e) { throw new Error(`${name}: ${(e as Error).message}`, { cause: e }); }
       validate(name, config);
       return { config, file: name };
     }
-    hookSelfImport(selfUrl);
+    hookSelfImport(self);
     // A project without "type": "module" makes Node warn that it reparsed the config as ESM; that's expected here.
     const emit = process.emitWarning;
     process.emitWarning = ((w: string | Error, ...rest: unknown[]) => {
@@ -128,8 +128,8 @@ export async function loadConfig(root: string, selfUrl: string): Promise<{ confi
       config = (mod.default ?? mod) as Config;
     } catch (e) {
       const msg = (e as Error).message;
-      if (/Unknown file extension "\.m?ts"/.test(msg)) throw new Error(`${name}: this Node version can't load TypeScript configs; use Node ≥ 22.18 or rename it to fontphobia.config.mjs`);
-      throw new Error(`${name}: ${msg}`);
+      if (/Unknown file extension "\.m?ts"/.test(msg)) throw new Error(`${name}: this Node version can't load TypeScript configs; use Node ≥ 22.18 or rename it to fontphobia.config.mjs`, { cause: e });
+      throw new Error(`${name}: ${msg}`, { cause: e });
     } finally {
       process.emitWarning = emit;
     }

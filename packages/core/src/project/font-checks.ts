@@ -42,7 +42,7 @@ interface Block { code: string; offset: number; ts: boolean; jsx: boolean }
 function blocks(file: string, text: string): Block[] {
   if (SCRIPT_EXT.test(file)) {
     const ts = /\.(m|c)?tsx?$/.test(file);
-    return [{ code: text, offset: 0, ts, jsx: /x$/.test(file) || !ts }];
+    return [{ code: text, offset: 0, ts, jsx: file.endsWith('x') || !ts }];
   }
   const out: Block[] = [];
   // <script> blocks only: an .astro frontmatter runs on the server, where `document` doesn't exist.
@@ -108,7 +108,7 @@ export function findFontCheckCalls(root: string, o: { maxFiles?: number; outputD
   const skipRel = new Set((o.outputDirs ?? []).map((d) => d.replace(/\/$/, '')));
   let files = 0;
   const walk = (dir: string) => {
-    for (const name of readdirSync(dir).sort()) {
+    for (const name of readdirSync(dir).toSorted()) {
       if (files > (o.maxFiles ?? 20_000)) return;
       const p = join(dir, name);
       const rel = relative(root, p).split(sep).join('/');

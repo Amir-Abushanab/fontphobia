@@ -108,7 +108,7 @@ function harvestNext(root: string, family: string): Harvest | undefined {
   const fams = new Set([familyKey(family), familyKey(`${family} Fallback`)]);
   const faces: string[] = [], classes: string[] = [];
   const seen = new Set<string>();
-  for (const p of [...css.values()].sort()) {
+  for (const p of [...css.values()].toSorted()) {
     const text = readFileSync(join(root, p), 'utf8');
     if (!text.includes(family)) continue;
     postcss.parse(text).walk((n) => {
@@ -136,7 +136,7 @@ function harvestNext(root: string, family: string): Harvest | undefined {
 /** Astro Fonts API: the family's <style> block from the built HTML, and its preload links. */
 function harvestAstro(root: string, hashed: string): Harvest | undefined {
   const html = builtFiles(root, (r) => r.endsWith('.html'));
-  for (const p of [...html.values()].sort()) {
+  for (const p of [...html.values()].toSorted()) {
     const text = readFileSync(join(root, p), 'utf8');
     if (!text.includes(hashed)) continue;
     for (const m of text.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) {
@@ -165,7 +165,7 @@ function harvestNuxt(root: string, family: string): Harvest | undefined {
   const files = builtFiles(root, (r) => r.endsWith('.html') || (r.endsWith('.css') && r.includes('_nuxt/')));
   const unescape = (v: string) => v.replace(/\\(.)/g, '$1');
   const fallbackOf = (fam: string) => fam.startsWith(`${family} Fallback`);
-  for (const p of [...files.values()].sort((a, b) => Number(b.endsWith('.html')) - Number(a.endsWith('.html')) || (a < b ? -1 : 1))) {
+  for (const p of [...files.values()].toSorted((a, b) => Number(b.endsWith('.html')) - Number(a.endsWith('.html')) || (a < b ? -1 : 1))) {
     const text = readFileSync(join(root, p), 'utf8');
     if (!text.includes('/_nuxt/fonts/')) continue;
     const chunks = p.endsWith('.html') ? [...text.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]!) : [text];
@@ -246,14 +246,14 @@ export function ejectFramework(root: string, kind: EjectKind, faces: FacePlan[],
       if (face?.files) {
         done.add(face.id);
         const placed = face.files.map((f) => ({ f, file: `${host.dir}/${f.name}`, url: `${host.url}/${f.name}` }));
-        out += cssBlock({ id: face.id, version, declaration: text, sourceUrl: url, indent: '', eol: '\n', descriptors: face.descriptors, files: [...placed].reverse().map((p) => ({ url: p.url, unicodeRange: p.f.role === 'core' ? undefined : p.f.unicodeRange })) }) + '\n';
+        out += cssBlock({ id: face.id, version, declaration: text, sourceUrl: url, indent: '', eol: '\n', descriptors: face.descriptors, files: [...placed].toReversed().map((p) => ({ url: p.url, unicodeRange: p.f.role === 'core' ? undefined : p.f.unicodeRange })) }) + '\n';
         for (const p of placed) r.fonts.set(p.file, outputs.get(p.f.name)!);
         urlOf.set(b, placed.find((p) => p.f.role === 'core')!.url);
         r.entries[face.id] = {
           id: face.id, adapter: kind, family: face.family, stylesheet: genFile, declaration: text,
           source: { file: sources.get(face.id)!.file, sha256: face.source!.sha256, bytes: sources.get(face.id)!.bytes.byteLength },
           outputs: placed.map((p) => ({ role: p.f.role, file: p.file, url: p.url, sha256: p.f.sha256, bytes: p.f.bytes, unicodeRange: p.f.unicodeRange, hintRefs: p.f.hintRefs })),
-          plan: { features: face.features, axes: face.axes, descriptors: face.descriptors, hinting: face.hinting, optIns: [...(face.optIns ?? []).filter((x) => x.applied).map((x) => x.id), 'eject'].sort(), rename: face.license?.rename },
+          plan: { features: face.features, axes: face.axes, descriptors: face.descriptors, hinting: face.hinting, optIns: [...(face.optIns ?? []).filter((x) => x.applied).map((x) => x.id), 'eject'].toSorted(), rename: face.license?.rename },
         };
         continue;
       }
@@ -282,7 +282,7 @@ export function ejectFramework(root: string, kind: EjectKind, faces: FacePlan[],
       r.edits.push(...s.edits);
     }
     r.generated.set(genFile, out);
-    r.ejects[genFile] = { kind, package: name, version: '', specifier: name, css: '', sha256: sha(out), imports: [], snippets, text: h.css, preloads: h.preloads, fallbacks: h.fallbacks?.length ? h.fallbacks : undefined, files: copies.sort() };
+    r.ejects[genFile] = { kind, package: name, version: '', specifier: name, css: '', sha256: sha(out), imports: [], snippets, text: h.css, preloads: h.preloads, fallbacks: h.fallbacks?.length ? h.fallbacks : undefined, files: copies.toSorted() };
   }
   return r;
 }
@@ -337,7 +337,7 @@ function astroSnippets(root: string, family: string, genFile: string, preloads: 
   const edits: Edit[] = [{ file: entry.file, start: open, end: close, text: arr2, why: `eject ${family} from astro.config fonts[]` }];
   const tags = findAstroFontTags(root).filter((t) => t.cssVariable === variable);
   if (!tags.length) return `couldn't find a <Font cssVariable="${variable}"> tag`;
-  for (const file of [...new Set(tags.map((t) => t.file))].sort()) {
+  for (const file of [...new Set(tags.map((t) => t.file))].toSorted()) {
     const text = readFileSync(join(root, file), 'utf8');
     const fm = text.indexOf('---');
     const fmEnd = fm >= 0 ? text.indexOf('\n', fm) + 1 : -1;

@@ -153,7 +153,7 @@ export function parseStylesheet(text: string, opts: { syntax?: Syntax } = {}): S
         weight: parseWeightDescriptor(d['font-weight']),
         style: parseStyle(d['font-style']),
         stretch: parseStretchDescriptor(d['font-stretch'] ?? d['font-width']),
-        descriptors: Object.fromEntries(Object.entries(d).sort(([x], [y]) => (x < y ? -1 : 1))),
+        descriptors: Object.fromEntries(Object.entries(d).toSorted(([x], [y]) => (x < y ? -1 : 1))),
         start: a.source?.start?.offset ?? 0,
         end: a.source?.end?.offset ?? text.length,
         line: a.source?.start?.line ?? 1,

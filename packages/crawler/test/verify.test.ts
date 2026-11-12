@@ -182,7 +182,7 @@ describe.skipIf(!runtime)('verify in the pinned Linux image (§10.3, --hinting)'
 
 describe.skipIf(!chrome)('verify --baseline worktree (§10.3)', () => {
   const g = (cwd: string, ...args: string[]) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...args], { cwd, stdio: 'pipe' }).toString();
-  function repo(name: string) {
+  function gitRepo(name: string) {
     const root = copy(name);
     g(root, 'init', '-q', '-b', 'main');
     g(root, 'add', '-A');
@@ -191,7 +191,7 @@ describe.skipIf(!chrome)('verify --baseline worktree (§10.3)', () => {
   }
 
   it('builds HEAD in a worktree as "before", whether the build is committed or not, and cleans up', async () => {
-    const root = repo('worktree');
+    const root = gitRepo('worktree');
     await buildProject(root, usage, {}, { version: '1', write: true });
     const r1 = await verify({ root, usage, viewports: [1280], dprs: [1], baseline: 'worktree', outDir: outDir('worktree') });
     expect(r1.browser!.baseline).toBe('worktree');
@@ -208,7 +208,7 @@ describe.skipIf(!chrome)('verify --baseline worktree (§10.3)', () => {
   }, 300_000);
 
   it('refuses when the working tree has changes besides fontphobia\'s', async () => {
-    const root = repo('worktree-dirty');
+    const root = gitRepo('worktree-dirty');
     await buildProject(root, usage, {}, { version: '1', write: true });
     writeFileSync(join(root, 'about/index.html'), readFileSync(join(root, 'about/index.html'), 'utf8').replace('About', 'About us'));
     await expect(verify({ root, usage, viewports: [1280], dprs: [1], baseline: 'worktree' })).rejects.toThrow(/changes besides fontphobia's: about\/index\.html/);

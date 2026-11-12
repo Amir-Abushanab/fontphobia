@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const root = new URL('../../../', import.meta.url);
@@ -14,7 +14,21 @@ describe('release metadata', () => {
     });
   }
 
-  it('CHANGELOG.md has a section for the package version', () => {
-    expect(read('CHANGELOG.md')).toMatch(new RegExp(`^## ${version.replace(/[.+]/g, '\\$&')}$`, 'm'));
+  it('packages/cli/CHANGELOG.md has a section for the package version', () => {
+    expect(read('packages/cli/CHANGELOG.md')).toMatch(new RegExp(`^## ${version.replace(/[.+]/g, '\\$&')}$`, 'm'));
+  });
+
+  // `changeset version` skips a changeset that names a private package and leaves the file behind,
+  // so a change recorded against @fontphobia/core or @fontphobia/crawler would never be released.
+  it('every changeset names fontphobia and nothing else', () => {
+    const bad: string[] = [];
+    for (const f of readdirSync(new URL('.changeset/', root)).filter((n) => n.endsWith('.md') && n !== 'README.md')) {
+      const front = /^---\n([\s\S]*?)\n?---/.exec(read(`.changeset/${f}`));
+      if (!front) { bad.push(`${f}: no frontmatter`); continue; }
+      for (const line of front[1]!.split('\n').filter((l) => l.trim())) {
+        if (!/^(["']?)fontphobia\1: (patch|minor|major)$/.test(line.trim())) bad.push(`${f}: ${line.trim()}`);
+      }
+    }
+    expect(bad).toEqual([]);
   });
 });
