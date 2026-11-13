@@ -349,7 +349,7 @@ pnpm package:check              # publint and are-the-types-wrong on the packed 
 node packages/cli/src/cli.ts --help
 ```
 
-**Fixture sites** have their own lockfiles. Install them, then run their tests with `FONTPHOBIA_SITES=1`. The Google, Next and Astro tests need the network.
+**Fixture sites** have their own lockfiles. Install them, then run their tests with `FONTPHOBIA_SITES=1`. Pages that link a Google Fonts stylesheet get it from a local stand-in that serves the responses recorded in `fixtures/google-fonts/`; `FONTPHOBIA_RECORD_GOOGLE=1` records a URL that is missing. `FONTPHOBIA_LIVE_GOOGLE=1` uses the real Google instead; the scheduled `Live Google Fonts` workflow runs the self-host and tighten tests that way once a day, and blocks no merge or release when it fails. The `next/font/google` and Fonts API tests (Astro, Nuxt) still need the network, because those frameworks fetch from Google while they build.
 
 ```sh
 for d in fixtures/sites/{astro,tanstack-start,next,nuxt} fixtures/integrations; do (cd $d && pnpm install); done
