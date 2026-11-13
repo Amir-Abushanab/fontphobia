@@ -14,7 +14,7 @@ description: >
 metadata:
   type: core
   library: 'fontphobia'
-  library_version: '0.4.0'
+  library_version: '0.4.1'
 sources:
   - 'fontphobia:README.md'
   - 'fontphobia:docs/ci.md'
