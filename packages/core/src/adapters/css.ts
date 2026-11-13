@@ -55,7 +55,12 @@ const PUBLIC_DIRS = [
   '.',
 ];
 
-const skip = (outputDirs: string[]) => (rel: string, name: string) =>
+/** `built`: the root is a build output itself, where a directory named `build` or `static` holds real files. */
+const skip =
+  (outputDirs: string[], built = false) =>
+  (rel: string, name: string) =>
+    built ? name === 'node_modules' || name.startsWith('.') : skipSource(outputDirs, rel, name);
+const skipSource = (outputDirs: string[], rel: string, name: string) =>
   SKIP_DIRS.has(name) ||
   SKIP_DIRS.has(rel) ||
   outputDirs.includes(rel) ||
@@ -85,10 +90,10 @@ function resolveUrl(root: string, file: string, url: string): string | undefined
   return undefined;
 }
 
-export function detectCss(root: string, opts: { outputDirs?: string[] } = {}): CssSource[] {
+export function detectCss(root: string, opts: { outputDirs?: string[]; built?: boolean } = {}): CssSource[] {
   const out: CssSource[] = [];
   const files = listFiles(root, (r) => STYLE_EXT.test(r) || BLOCK_EXT.test(r) || MANUAL_EXT.test(r), {
-    skip: skip(opts.outputDirs ?? []),
+    skip: skip(opts.outputDirs ?? [], opts.built),
   });
   for (const file of files) {
     let text: string;

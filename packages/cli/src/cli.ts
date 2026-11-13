@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // fontphobia CLI: audit (M2), build and revert (M3–M4), verify (M5), check (M6).
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { extname, join, resolve } from 'node:path';
+import { extname, join, relative, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { cac } from 'cac';
 import {
@@ -14,6 +14,7 @@ import {
   buildProject,
   canonicalJson,
   formatAudit,
+  formatAuto,
   formatEdits,
   formatPlan,
   kb,
@@ -33,6 +34,7 @@ import {
 } from '@fontphobia/core';
 import { loadConfig, selfUrl as selfUrlOf } from './config.ts';
 import { applyKit, readUsage, revertKits } from './apply-kit.ts';
+import { runAuto } from './auto-run.ts';
 import pkg from '../package.json' with { type: 'json' };
 
 const cli = cac('fontphobia');
@@ -262,6 +264,7 @@ interface BuildFlags {
   cwd?: string;
   usage?: string;
   allow?: string | string[];
+  coreThreshold?: string | number;
   remainder: boolean;
   write?: boolean;
   u?: boolean;
@@ -286,6 +289,15 @@ async function ask(q: string): Promise<boolean> {
   }
 }
 
+/** --core-threshold: 'auto', or the share of a face's pages (0 to 1) a character needs to be in core. */
+function coreThresholdOf(v: unknown): number | 'auto' | undefined {
+  if (v === undefined) return undefined;
+  if (v === 'auto') return v;
+  if (typeof v !== 'number' || !(v >= 0 && v <= 1))
+    throw new Error("--core-threshold must be 'auto' or a number between 0 and 1");
+  return v;
+}
+
 async function runBuild(o: BuildFlags & { prompt?: boolean }) {
   strs(o, 'cwd', 'usage', 'allow');
   const root = rootOf(o.cwd);
@@ -299,7 +311,7 @@ async function runBuild(o: BuildFlags & { prompt?: boolean }) {
   if (file) log(`config: ${file}`);
   log(`planning ${Object.keys(usage.faces).length} face(s)…`);
   const cfg = {
-    coreThreshold: config.coreThreshold,
+    coreThreshold: coreThresholdOf(o.coreThreshold) ?? config.coreThreshold,
     remainder: o.remainder === false ? false : config.remainder,
     allow: [...(config.allow ?? []), ...(list(o.allow) ?? [])],
     locales: config.locales,
@@ -573,6 +585,10 @@ const buildOptions = (c: ReturnType<typeof cli.command>) =>
       '--allow <opt-in>',
       'Enable an opt-in (limit-axes, drop-hinting, split-shaping, drop-hint-refs, self-host, tighten, eject); repeatable',
     )
+    .option(
+      '--core-threshold <auto|share>',
+      "Which used characters go in core: 'auto' measures (default), 0 to 1 is a fixed share of a face's pages",
+    )
     .option('--no-remainder', 'No lazy "rest" file: unseen characters fall back to the system font')
     .option('--write, -u', 'Write the fonts, the CSS edits and .fontphobia/manifest.json without asking');
 
@@ -674,6 +690,89 @@ cli
   .option('--max-pages <n>', 'Page cap for --url')
   .option('--json', 'Machine-readable output')
   .action((o: CheckFlags) => runCheck(o));
+
+cli
+  .command(
+    'auto',
+    'Subset the fonts of the built site in its output directory (no source edits, nothing to commit). Run it after every build',
+  )
+  .option('--cwd <dir>', 'Project root (default: current directory)')
+  .option('--dist <dir>', 'The built site (default: what the framework profile finds)')
+  .option('--crawl', 'Measure each face in Chrome (default: read the built text; no browser)')
+  .option(
+    '--rules <where>',
+    'Where the split rules go: inline (default, in each page) or linked (one cached stylesheet)',
+  )
+  .option('--allow <opt-in>', 'Enable an opt-in (drop-hinting, split-shaping, drop-hint-refs); repeatable')
+  .option(
+    '--core-threshold <auto|share>',
+    "Which used characters go in core: 'auto' measures (default), 0 to 1 is a fixed share of a face's pages",
+  )
+  .option('--no-remainder', 'No lazy "rest" file')
+  .option('--dry-run', 'Plan and report; write nothing')
+  .option('--verify', 'Also compare every page before and after in Chrome (the browser stage of `verify`)')
+  .option('--json', 'Machine-readable output')
+  .action(
+    async (o: {
+      cwd?: string;
+      dist?: string;
+      crawl?: boolean;
+      rules?: string;
+      verify?: boolean;
+      allow?: string | string[];
+      coreThreshold?: string | number;
+      remainder: boolean;
+      dryRun?: boolean;
+      json?: boolean;
+    }) => {
+      strs(o, 'cwd', 'dist', 'allow', 'rules');
+      if (o.rules !== undefined && o.rules !== 'inline' && o.rules !== 'linked')
+        throw new Error('--rules takes inline or linked');
+      const root = rootOf(o.cwd);
+      const { result, outDir, failed, verify } = await runAuto({
+        root,
+        outDir: o.dist,
+        crawl: o.crawl,
+        rules: o.rules,
+        verify: o.verify,
+        write: !o.dryRun,
+        allow: list(o.allow),
+        coreThreshold: coreThresholdOf(o.coreThreshold),
+        remainder: o.remainder,
+        log: (m) => {
+          if (!o.json) process.stderr.write(`  ${m}\n`);
+        },
+      });
+      const nFailed = Object.keys(failed).length;
+      if (verify && !verify.ok) process.exitCode = 1;
+      if (o.json) {
+        // The usage and the in-memory manifest are verify's input, not part of the report.
+        const { usage: _usage, manifest: _manifest, ...report } = result;
+        process.stdout.write(
+          JSON.stringify({ ...report, ...(nFailed ? { failed } : {}), ...(verify ? { verify } : {}) }, null, 2) + '\n',
+        );
+        return;
+      }
+      process.stdout.write(formatAuto(result, relative(root, outDir) || '.') + '\n');
+      if (verify) {
+        const { formatVerify } = await import('@fontphobia/crawler');
+        process.stdout.write(
+          '\n' +
+            formatVerify(verify, root)
+              .replace('`fontphobia revert` restores the original fonts.', 'Build the site again to start over.')
+              .replace(/\n*Rerun with `fontphobia verify`\.\n*$/, '') +
+            '\n',
+        );
+      }
+      if (nFailed)
+        process.stdout.write(
+          `${nFailed} page(s) could not be loaded:\n${Object.entries(failed)
+            .slice(0, 10)
+            .map(([p, e]) => `  ${p}: ${e}`)
+            .join('\n')}\n`,
+        );
+    },
+  );
 
 cli
   .command('revert', 'Put the original @font-face declarations and preloads back from .fontphobia/manifest.json')

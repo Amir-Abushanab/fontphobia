@@ -1,4 +1,5 @@
-// §13: every framework integration runs `check` after the framework wrote its HTML, in a real build.
+// §13: every framework integration runs `check` after the framework wrote its HTML, in a real build
+// (and, with `auto`, subsets that output instead: Astro, Nuxt and Next below).
 // A build with nothing built passes and logs the check; a stale manifest fails it. The bundler
 // plugins also keep fontphobia's files out of asset inlining. Opt-in: FONTPHOBIA_SITES=1, after
 // `pnpm install` in fixtures/integrations, fixtures/sites/nuxt and fixtures/sites/next.
@@ -76,6 +77,21 @@ function expectGuard(outDir: string) {
 
 const bin = (name: string) => join(fixtures, 'node_modules/.bin', name);
 
+/** With `auto`: the build subsets its own output, and the subset files pass their checks. */
+function expectAuto(out: string, outDir: string) {
+  expect(out).toMatch(/fontphobia auto \(static\): \d+ face\(s\) subset in /);
+  expect(out).toMatch(/Checked without a browser: \d+ file\(s\) decode and match their sources/);
+  const names: string[] = [];
+  const walk = (d: string) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      if (e.isDirectory()) walk(join(d, e.name));
+      else names.push(e.name);
+    }
+  };
+  walk(outDir);
+  expect(names.some((n) => /\.core\.[0-9a-f]{8}\.woff2$/.test(n))).toBe(true);
+}
+
 describe.skipIf(!enabled)('framework integrations (§13)', () => {
   beforeAll(() => {
     execFileSync('pnpm', ['run', 'build'], { cwd: join(repo, 'packages/cli'), stdio: 'ignore' });
@@ -116,6 +132,25 @@ describe.skipIf(!enabled)('framework integrations (§13)', () => {
     edit(root);
     return root;
   };
+  it.skipIf(!existsSync(join(repo, 'fixtures/sites/astro/node_modules')))(
+    'astro: `auto` subsets the build in astro:build:done (Fontsource slices and a local font)',
+    () => {
+      const root = copy('astro', (r) =>
+        writeFileSync(
+          join(r, 'astro.config.mjs'),
+          `import { defineConfig } from 'astro/config';\nimport fontphobia from ${JSON.stringify(join(dist, 'astro.mjs'))};\nexport default defineConfig({ integrations: [fontphobia({ auto: true })] });\n`,
+        ),
+      );
+      try {
+        const r = build(root, [join(root, 'node_modules/.bin/astro'), 'build']);
+        expect(r.code).toBe(0);
+        expectAuto(r.out, join(root, 'dist'));
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+    900_000,
+  );
   it.skipIf(!existsSync(join(repo, 'fixtures/sites/nuxt/node_modules')))(
     'nuxt: a module on nitro:build:public-assets',
     () => {
@@ -130,6 +165,17 @@ describe.skipIf(!enabled)('framework integrations (§13)', () => {
       );
       try {
         roundTrip(root, [join(root, 'node_modules/.bin/nuxt'), 'generate']);
+        // The module's `auto` option: Google's slices of Merriweather, subset in .output/public.
+        writeFileSync(
+          join(root, 'nuxt.config.ts'),
+          readFileSync(join(root, 'nuxt.config.ts'), 'utf8').replace(
+            JSON.stringify(join(dist, 'nuxt.mjs')),
+            `[${JSON.stringify(join(dist, 'nuxt.mjs'))}, { auto: true }]`,
+          ),
+        );
+        const r = build(root, [join(root, 'node_modules/.bin/nuxt'), 'generate']);
+        expect(r.code).toBe(0);
+        expectAuto(r.out, join(root, '.output/public'));
       } finally {
         rmSync(root, { recursive: true, force: true });
       }
@@ -150,6 +196,11 @@ describe.skipIf(!enabled)('framework integrations (§13)', () => {
       );
       try {
         roundTrip(root, [join(root, 'node_modules/.bin/next'), 'build']);
+        // The adapter takes no options: `auto` comes from the config.
+        writeFileSync(join(root, 'fontphobia.config.json'), '{"auto":true}');
+        const r = build(root, [join(root, 'node_modules/.bin/next'), 'build']);
+        expect(r.code).toBe(0);
+        expectAuto(r.out, join(root, 'out'));
       } finally {
         rmSync(root, { recursive: true, force: true });
       }

@@ -60,6 +60,11 @@ export interface VerifyOptions extends SiteOptions {
   mask?: string[];
   /** Seconds a page may take to load (default 30). */
   timeout?: number;
+  /**
+   * `auto`: the sources stay in the output next to their subsets. Record the "after" loads that
+   * still download one (`originals`): a preload or a script asked for it.
+   */
+  sourcesInOutput?: boolean;
   /** Cap before the set cover kicks in (default 200). */
   maxPages?: number;
   viewports?: number[];
@@ -127,6 +132,8 @@ export interface BrowserVerify {
   loads: { page: string; problem: string }[];
   /** Outputs the browser's font sanitizer (OTS in Chrome) rejects. */
   rejected: { file: string; browser: Engine; error: string }[];
+  /** With `sourcesInOutput`: source fonts a page still downloaded with the subsets in place. Bytes, not pixels. */
+  originals?: { page: string; file: string }[];
   ok: boolean;
   durationMs: number;
 }
@@ -217,9 +224,17 @@ async function launch(engine: Engine, linux: () => Promise<LinuxBrowsers>): Prom
     // decisions that depend on timing, so the same page drew a glyph's edge pixels two ways at random
     // (measured on Linux CI: about one load in eight, sticky for a run; none in 20 runs with this flag).
     // Glyph positions stay exact; only the antialiasing changes, the same for both sides.
+    // CPU rasterization, for the page and for 2D canvases: Chrome's GPU rasterizer isn't repeatable. It
+    // draws text between about 162 and 256 device pixels tall (a 94 px heading at DPR 2) with edge
+    // pixels that change by one level from load to load, whatever the font, and now and then a corner
+    // pixel of a form control (measured on macOS with Chrome 157, where every load of such a page
+    // differed from every other; none in 1,400 loads with these flags). Machines without a GPU, CI
+    // runners among them, rasterize on the CPU already.
     return launchChrome([
       ...(process.platform === 'linux' ? ['--font-render-hinting=none'] : []),
       '--disable-lcd-text',
+      '--disable-gpu-rasterization',
+      '--disable-accelerated-2d-canvas',
     ]);
   }
   const type = engine === 'firefox' ? firefox : webkit;
@@ -661,6 +676,7 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
   const comparisons: Comparison[] = [];
   const bytes = new Map<string, PageFonts>();
   const loadProblems = new Map<string, string>();
+  const originals = new Map<string, { page: string; file: string }>();
   const rejected: BrowserVerify['rejected'] = [];
   const usedInAfter = new Set<string>();
   let linux: Promise<LinuxBrowsers> | undefined;
@@ -752,79 +768,63 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
         for (const id of hitsA) usedInAfter.add(id);
         const drawn = Object.keys(o.usage.pages[t.page]?.faces ?? {}).filter((id) => entryIds.has(id));
         let c = await compare(t, base, b, a, drawn.some(roundingOk), o.manifest, outDir, ours);
-        // Pixels only, at identical layout: load both again, each time in a new browser. Browsers
-        // occasionally rasterize a glyph a pixel differently, and a version can stick for a session, so
-        // a retry in the same browser may repeat the same pair. Up to three more loads; any identical one wins, and so
-        // does any load of one side whose pixels match a load of the other, or a side that differs from
-        // itself between sessions by at least as much (a real change never matches and never moves).
-        const loadsB = [b.snap.png],
-          loadsA = [a.snap.png];
-        const same = (x: PNG, y: PNG) => x.width === y.width && x.height === y.height && x.data.equals(y.data);
-        for (
-          let attempt = 0;
-          attempt < 3 && c.class === 'regression' && !c.moved && c.causes.every((x) => x.startsWith('pixels differ'));
-          attempt++
-        ) {
-          const fresh = t.engine.startsWith('linux-')
-            ? undefined
-            : await launch(t.engine, getLinux).catch(() => undefined);
-          const br = fresh ?? t.browser;
-          try {
-            const [cb2, ca2] = await Promise.all([
-              context(
-                br,
-                { ...t, mask: o.mask },
-                overlay,
-                baseline ? 'plain' : 'before',
-                root,
-                new Set(),
-                local,
-                snapshots,
-              ),
-              context(br, { ...t, mask: o.mask }, overlay, 'plain', root, new Set(), local, snapshots),
-            ]);
+        // Pixels only, at identical layout: load both again, each time in a new browser (browsers
+        // occasionally rasterize a pixel differently, and a version can stick for a session), and keep
+        // the pixels that differ the same way on every load.
+        if (c.class === 'regression' && !c.moved && c.causes.every((x) => /^(pixels differ|unrelated:)/.test(x))) {
+          const first = { before: b.snap.png, after: a.snap.png };
+          const r = await repeatedPixels(first, async () => {
+            const fresh = t.engine.startsWith('linux-')
+              ? undefined
+              : await launch(t.engine, getLinux).catch(() => undefined);
+            const br = fresh ?? t.browser;
             try {
-              const [b2, a2] = await Promise.all([
-                capture(cb2, beforeUrl, t.engine, o.timeout),
-                capture(ca2, url, t.engine, o.timeout),
+              const [cb2, ca2] = await Promise.all([
+                context(
+                  br,
+                  { ...t, mask: o.mask },
+                  overlay,
+                  baseline ? 'plain' : 'before',
+                  root,
+                  new Set(),
+                  local,
+                  snapshots,
+                ),
+                context(br, { ...t, mask: o.mask }, overlay, 'plain', root, new Set(), local, snapshots),
               ]);
-              const again = await compare(t, base, b2, a2, drawn.some(roundingOk), o.manifest, outDir, ours);
-              loadsB.push(b2.snap.png);
-              loadsA.push(a2.snap.png);
-              if (again.class === 'identical')
-                c = { ...c, class: 'flaky', causes: [`${c.causes.join('; ')}; identical on load ${attempt + 2}`] };
-              else if (loadsB.some((x) => loadsA.some((y) => same(x, y))))
-                c = {
-                  ...c,
-                  class: 'flaky',
-                  causes: [
-                    `${c.causes.join('; ')}; a load of the original and a load of the new files are pixel-identical (${loadsB.length} loads each)`,
-                  ],
-                };
-              else {
-                // The noise floor: does either side differ from itself between sessions?
-                for (const [side, x, y] of [
-                  ['original', b, b2],
-                  ['new', a, a2],
-                ] as const) {
-                  if (c.class !== 'regression' || same(x.snap.png, y.snap.png)) continue;
-                  const self = await compare(t, base, x, y, false, o.manifest, join(outDir, 'noise'), ours);
-                  if (self.class !== 'identical' && self.pixels >= again.pixels)
-                    c = {
-                      ...c,
-                      class: 'flaky',
-                      causes: [
-                        `${c.causes.join('; ')}; the ${side} fonts differ from themselves between loads by ${self.pixels} px`,
-                      ],
-                    };
-                }
+              try {
+                const [b2, a2] = await Promise.all([
+                  capture(cb2, beforeUrl, t.engine, o.timeout),
+                  capture(ca2, url, t.engine, o.timeout),
+                ]);
+                return { before: b2.snap.png, after: a2.snap.png };
+              } finally {
+                await Promise.all([cb2.close().catch(() => {}), ca2.close().catch(() => {})]);
               }
             } finally {
-              await Promise.all([cb2.close().catch(() => {}), ca2.close().catch(() => {})]);
+              await fresh?.close().catch(() => {});
             }
-          } finally {
-            await fresh?.close().catch(() => {});
-          }
+          });
+          if (!r.pixels.length)
+            c = {
+              ...c,
+              class: 'flaky',
+              causes: [
+                `${c.causes.join('; ')}; ${r.identical ? `identical on load ${r.reloads + 1}` : `none of its ${r.differed} px repeated in ${r.reloads} more load(s)`}`,
+              ],
+            };
+          // Part of it is noise: report the part that repeats.
+          else if (r.pixels.length < r.differed)
+            c = await compare(
+              t,
+              base,
+              b,
+              { ...a, snap: { ...a.snap, png: only(first, r.pixels) } },
+              drawn.some(roundingOk),
+              o.manifest,
+              outDir,
+              ours,
+            );
         }
         comparisons.push(c);
         if (t.dpr === dprsFor(t.engine)[0] && t.engine === engines[0])
@@ -865,6 +865,7 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
       bytes: [...bytes.values()].toSorted((x, y) => (x.page < y.page ? -1 : 1)),
       loads,
       rejected,
+      originals: o.sourcesInOutput ? [...originals.values()] : undefined,
       ok,
       durationMs: Date.now() - t0,
     };
@@ -905,6 +906,11 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
       }
       row.after.bytes += f.bytes;
       row.after.requests++;
+      if (o.sourcesInOutput) {
+        const path = decodeURIComponent(new URL(f.url).pathname);
+        const src = Object.values(o.manifest.entries).find((e) => path.endsWith(`/${e.source.file}`));
+        if (src) originals.set(`${page}\u0000${src.source.file}`, { page, file: src.source.file });
+      }
       for (const ref of overlay.outputsOf(f.url)) {
         loaded.add(ref.entry.id);
         if (o.usage.pages[page]?.faces[ref.entry.id]) face(ref.entry.id).after += f.bytes;
@@ -942,7 +948,7 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
  * How many pixels differ between two RGBA buffers of the same size, and the diff image (differing
  * pixels in red). Every differing pixel counts: pixelmatch's anti-aliasing detection would skip
  * exactly the pixels a changed glyph edge touches. Rasterizer noise is handled by the reloads in
- * `verify`, not by ignoring pixels here.
+ * `verify` (`repeatedPixels`), not by ignoring pixels here.
  */
 export function diffPixels(
   before: Buffer,
@@ -952,6 +958,94 @@ export function diffPixels(
 ): { pixels: number; diff: PNG } {
   const diff = new PNG({ width, height });
   return { pixels: pixelmatch(before, after, diff.data, width, height, { threshold: 0, includeAA: true }), diff };
+}
+
+/** Reloads in a row that must draw both sides exactly as the first load did, before a difference is reported. */
+const CONFIRMATIONS = 3;
+/** The most reloads of one comparison. */
+const MAX_RELOADS = 12;
+
+/** One load of both sides. */
+export interface Shots {
+  before: PNG;
+  after: PNG;
+}
+
+/**
+ * The part of a pixel difference that is there on every load. `first` is the pair that differs and
+ * `reload` loads both sides again. The pixels are indices into the area both of `first` cover
+ * (`y * width + x`).
+ *
+ * A changed font draws the same wrong pixels every time. Noise doesn't: a rasterizer that isn't
+ * repeatable, or content that changes by itself, draws a pixel one way on one load and another way on
+ * the next. So a pixel is kept only while the original and the new files each draw it exactly as
+ * they did the first time, and the reloads stop when none is left.
+ *
+ * What is left is reported once `CONFIRMATIONS` reloads in a row have drawn both whole screenshots
+ * exactly as the first load did. A reload that differs from the first anywhere shows a rasterizer
+ * that isn't repeatable here, where a stray pixel can come out the same a few times by chance, so
+ * the reloads go on, up to `MAX_RELOADS`.
+ *
+ * Counting pixels can't tell a change from noise. Comparing how many differ between the sides with
+ * how many differ between two loads of one side lets large noise hide a small change, and reports
+ * noise as a regression whenever the loads of each side happen to differ by less (measured on a site
+ * with 94 px headings, with Chrome rasterizing on a Mac's GPU: 1 verify in 10).
+ */
+export async function repeatedPixels(
+  first: Shots,
+  reload: () => Promise<Shots>,
+): Promise<{ pixels: Uint32Array; width: number; differed: number; reloads: number; identical: boolean }> {
+  const width = Math.min(first.before.width, first.after.width);
+  const height = Math.min(first.before.height, first.after.height);
+  const at = (png: PNG, p: number) => png.data.readUInt32LE((Math.floor(p / width) * png.width + (p % width)) * 4);
+  // Most rows are equal: compare each as a whole first.
+  const rows: number[] = [];
+  for (let y = 0; y < height; y++) {
+    const [rb, ra] = [y * first.before.width * 4, y * first.after.width * 4];
+    if (first.before.data.compare(first.after.data, ra, ra + width * 4, rb, rb + width * 4)) rows.push(y);
+  }
+  const differs = (p: number) => at(first.before, p) !== at(first.after, p);
+  let differed = 0;
+  for (const y of rows) for (let x = 0; x < width; x++) if (differs(y * width + x)) differed++;
+  let pixels = new Uint32Array(differed);
+  let n = 0;
+  for (const y of rows) for (let x = 0; x < width; x++) if (differs(y * width + x)) pixels[n++] = y * width + x;
+
+  let reloads = 0;
+  let exact = 0;
+  let identical = false;
+  while (pixels.length && exact < CONFIRMATIONS && reloads < MAX_RELOADS) {
+    const again = await reload();
+    reloads++;
+    identical = sameImage(again.before, again.after);
+    const inside = (png: PNG, p: number) => p % width < png.width && Math.floor(p / width) < png.height;
+    pixels = pixels.filter(
+      (p) =>
+        inside(again.before, p) &&
+        inside(again.after, p) &&
+        at(again.before, p) === at(first.before, p) &&
+        at(again.after, p) === at(first.after, p),
+    );
+    exact = sameImage(again.before, first.before) && sameImage(again.after, first.after) ? exact + 1 : 0;
+  }
+  return { pixels, width, differed, reloads, identical };
+}
+
+const sameImage = (x: PNG, y: PNG) => x.width === y.width && x.height === y.height && x.data.equals(y.data);
+
+/** `after` with every pixel but `pixels` taken from `before`: what is left of a difference without its noise. */
+function only({ before, after }: Shots, pixels: Uint32Array): PNG {
+  const width = Math.min(before.width, after.width);
+  const height = Math.min(before.height, after.height);
+  const out = new PNG({ width: after.width, height: after.height });
+  after.data.copy(out.data);
+  for (let y = 0; y < height; y++)
+    before.data.copy(out.data, y * after.width * 4, y * before.width * 4, (y * before.width + width) * 4);
+  for (const p of pixels) {
+    const k = (Math.floor(p / width) * after.width + (p % width)) * 4;
+    after.data.copy(out.data, k, k, k + 4);
+  }
+  return out;
 }
 
 async function compare(

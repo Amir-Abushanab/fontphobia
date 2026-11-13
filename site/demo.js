@@ -20,6 +20,7 @@ async function init() {
   const route = root.querySelector('#demo-route');
   const summary = root.querySelector('#demo-summary');
   const fallback = root.querySelector('#demo-fallback');
+  const built = root.querySelector('#demo-built');
   const comparison = root.querySelector('#demo-comparison');
   const compareStatus = root.querySelector('#compare-status');
   const previews = root.querySelector('#compare-previews');
@@ -117,6 +118,8 @@ async function init() {
     const difference = before ? `${Math.abs(Math.round((1 - bytes / before) * 100))}% ${bytes <= before ? 'less' : 'more'}` : 'No font files needed';
     const result = `${files} ${files === 1 ? 'file' : 'files'} · ${kb(bytes)}${before ? ` · ${difference}` : ''}`;
     root.querySelector('#demo-total').textContent = result;
+    // The split shown is this page's. A site that used these characters would have planned for them.
+    built.hidden = groups.get('ext').size + groups.get('rest').size === 0;
     fallback.hidden = groups.get('fallback').size === 0;
     fallback.textContent = fallback.hidden ? '' : `${[...groups.get('fallback')].map((ch) => `${ch} (${code(ch)})`).join(', ')}: not in the original ${face.family} font. Both versions use a fallback for these characters.`;
     clearTimeout(announcement);
