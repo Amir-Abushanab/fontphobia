@@ -5,6 +5,7 @@ import { extname, join, relative, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { cac } from 'cac';
 import {
+  AUTO_OPT_INS,
   checkProject,
   checkUsage,
   formatCheck,
@@ -318,10 +319,8 @@ async function runBuild(o: BuildFlags & { prompt?: boolean }) {
     rename: config.rename,
     licenses: config.licenses,
   };
-  if (cfg.allow.includes('add-preloads'))
-    log(
-      'add-preloads: not applied by `build`, which points the preloads a site has at the core file; `fontphobia auto --crawl` adds them',
-    );
+  const autoOnly = cfg.allow.filter((a) => (AUTO_OPT_INS as readonly string[]).includes(a));
+  if (autoOnly.length) log(`${autoOnly.join(', ')}: not applied by \`build\`; \`fontphobia auto\` applies them`);
   let write = !!(o.write || o.u);
   const r = await buildProject(root, usage, cfg, { version: pkg.version, write });
   if (o.json) {
@@ -709,7 +708,7 @@ cli
   )
   .option(
     '--allow <opt-in>',
-    'Enable an opt-in (drop-hinting, split-shaping, drop-hint-refs; with --crawl, add-preloads); repeatable',
+    'Enable an opt-in (drop-hinting, split-shaping, drop-hint-refs; with --crawl, add-preloads and prefetch-extended; with --rules linked, inline-core); repeatable',
   )
   .option(
     '--core-threshold <auto|share>',

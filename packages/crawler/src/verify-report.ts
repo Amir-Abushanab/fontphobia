@@ -98,8 +98,8 @@ function lines(r: VerifyResult, root: string, md: boolean): string[] {
       for (const p of b.bytes)
         L.push(
           md
-            ? `| ${p.page} | ${kb(p.before.bytes)} | ${kb(p.after.bytes)} | ${p.before.requests} → ${p.after.requests} |`
-            : `  ${p.page.padEnd(30)} ${kb(p.before.bytes).padStart(9)} → ${kb(p.after.bytes).padStart(9)}  (${p.before.requests} → ${p.after.requests} requests)`,
+            ? `| ${p.page} | ${kb(p.before.bytes)} | ${kb(p.after.bytes)} | ${p.before.requests} → ${p.after.requests}${p.after.inCss ? `; ${kb(p.after.inCss)} in the stylesheet` : ''} |`
+            : `  ${p.page.padEnd(30)} ${kb(p.before.bytes).padStart(9)} → ${kb(p.after.bytes).padStart(9)}  (${p.before.requests} → ${p.after.requests} requests${p.after.inCss ? `; ${kb(p.after.inCss)} in the stylesheet` : ''})`,
         );
       if (md) L.push('');
       item(

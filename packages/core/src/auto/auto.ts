@@ -28,6 +28,13 @@
 //    draws, where the page has none. Opt-in because it changes what the page loads first, and crawl
 //    only because the static mode can't tell which faces a page draws: a preload of a font the page
 //    never draws is a wasted download.
+//  - With `prefetch-extended` and a crawl: on pages that don't need a face's extended file, a
+//    `<link rel="prefetch">` of it, when some other page does. The browser fetches it when idle, so
+//    a later page that needs it finds it cached. Every visitor then downloads it once.
+//  - With `inline-core` and `rules: 'linked'`: the core file of a face every page draws goes into
+//    the linked stylesheet as a data: URL, which saves its request. Linked only: inline rules would
+//    put the font in every page's HTML, where it is never cached. A face whose source font a page
+//    preloads is left as a file, so that preload keeps something to load.
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, posix, resolve, sep } from 'node:path';
 import { gzipSync } from 'node:zlib';
@@ -105,6 +112,10 @@ export interface AutoResult {
   linked: number;
   /** `add-preloads`: the core-file preloads added, and the pages they were added to. */
   preloaded?: { links: number; pages: number };
+  /** `prefetch-extended`: the extended files pages prefetch, and the pages that do. */
+  prefetched?: { files: number; bytes: number; pages: number };
+  /** `inline-core`: the faces whose core file is in the linked stylesheet as a data: URL. */
+  embedded?: { id: string; bytes: number }[];
   /** Files of the output that were edited. */
   edited: string[];
   skipped: { id: string; family: string; reason: string }[];
@@ -507,11 +518,47 @@ export async function autoSubset(o: AutoOptions): Promise<AutoResult> {
   const off = (o.config?.allow ?? []).filter((a) => ['limit-axes', 'self-host', 'tighten', 'eject'].includes(a));
   if (off.length) notes.push(`${off.join(', ')}: not applied by \`auto\` (the committed flow only)`);
   const cfg: PlanConfig = { ...o.config, allow: (o.config?.allow ?? []).filter((a) => !off.includes(a)) };
-  const addPreloads = !!o.config?.allow?.includes('add-preloads');
-  if (addPreloads && mode !== 'crawl')
+  const asked = (name: string) => !!o.config?.allow?.includes(name);
+  const addPreloads = asked('add-preloads') && mode === 'crawl';
+  const prefetchExt = asked('prefetch-extended') && mode === 'crawl';
+  for (const name of ['add-preloads', 'prefetch-extended'])
+    if (asked(name) && mode !== 'crawl')
+      notes.push(
+        `${name}: not applied without \`--crawl\` (reading the built text can't tell which faces a page draws)`,
+      );
+  const inlineCore = asked('inline-core') && linkedRules;
+  if (asked('inline-core') && !linkedRules)
     notes.push(
-      "add-preloads: not applied without `--crawl` (reading the built text can't tell which faces a page draws)",
+      "inline-core: not applied without `--rules linked` (inline rules would put the font in every page's HTML, where it is never cached)",
     );
+  // inline-core leaves a face alone when a page preloads its source font: font file names pages preload.
+  const preloadedSources = new Set<string>();
+  if (inlineCore)
+    for (const rel of listFiles(outDir, (r) => /\.html?$/i.test(r), {
+      skip: (_rel, n) => n === 'node_modules' || n.startsWith('.'),
+    })) {
+      let html: string;
+      try {
+        html = readFileSync(join(outDir, rel), 'utf8');
+      } catch {
+        continue;
+      }
+      const names = [
+        ...[...html.matchAll(/<link\b[^>]*>/gi)]
+          .filter((m) => /\brel\s*=\s*["']?preload\b/i.test(m[0]))
+          .map((m) => attr(m[0], 'href')),
+        ...[...html.matchAll(/HL\[(\\?")([^"\\]+)\1,\\?"font\\?"/g)].map((m) => m[2]),
+      ];
+      for (const n of names) {
+        if (!n) continue;
+        const base = posix.basename(n.split(/[?#]/)[0]!);
+        try {
+          preloadedSources.add(decodeURI(base));
+        } catch {
+          preloadedSources.add(base);
+        }
+      }
+    }
 
   // Sources: the output's own font files. A license file sits next to the font in the project, not in the output.
   const sources = new Map<string, SourceFont>();
@@ -545,6 +592,9 @@ export async function autoSubset(o: AutoOptions): Promise<AutoResult> {
   const preloads = new Map<string, { to: string; pages: number }>();
   /** Face → its core file's path from the output's root, and the characters it serves. */
   const cores = new Map<string, { path: string; has: Set<number> }>();
+  /** Face → its extended file, when at least one audited page draws a character from it. */
+  const exts = new Map<string, { path: string; has: Set<number>; bytes: number }>();
+  const embedded: NonNullable<AutoResult['embedded']> = [];
   const faces: AutoResult['faces'] = [];
   const texts = new Map<string, string>();
   const textOf = (file: string) => {
@@ -649,8 +699,23 @@ export async function autoSubset(o: AutoOptions): Promise<AutoResult> {
       const sheetRule = g.rules.find((r) => !r.inline);
       if (sheetRule) {
         place(sheetRule);
+        // inline-core: a face every audited page draws, whose source font no page preloads.
+        const coreFile = files.find((f) => f.role === 'core');
+        const everywhere = (usage.faces[g.id]?.pages.length ?? 0) === Object.keys(usage.pages).length;
+        const asData =
+          inlineCore && coreFile && everywhere && !g.rules.some((r) => preloadedSources.has(posix.basename(r.path)))
+            ? `data:font/woff2;base64,${Buffer.from(outputs.get(coreFile.name)!).toString('base64')}`
+            : undefined;
+        if (asData) embedded.push({ id: face.id, bytes: coreFile!.bytes });
+        else if (inlineCore && coreFile)
+          notes.push(
+            `inline-core: ${face.id} stays a file (${everywhere ? 'a page preloads its source font' : `${usage.faces[g.id]?.pages.length ?? 0} of ${Object.keys(usage.pages).length} page(s) draw it`})`,
+          );
         // Paths from the output's root: each page puts its own way there in front.
-        const urlOf = (name: string) => ROOT + encodeURI(posix.join(posix.dirname(sheetRule.path), name));
+        const urlOf = (name: string) =>
+          asData && name === coreFile!.name
+            ? asData
+            : ROOT + encodeURI(posix.join(posix.dirname(sheetRule.path), name));
         blocks.push(block(sheetRule, urlOf));
         sheetFaces.push(face.id);
         entries[face.id] = entry(sheetRule, SHEET, urlOf);
@@ -686,9 +751,20 @@ export async function autoSubset(o: AutoOptions): Promise<AutoResult> {
     const n = usage.faces[g.id]?.pages.length ?? 0;
     for (const name of new Set(g.rules.map((r) => posix.basename(r.path))))
       if (core && n > (preloads.get(name)?.pages ?? -1)) preloads.set(name, { to: core.name, pages: n });
-    const corePath = core && [...fonts.keys()].find((k) => posix.basename(k) === core.name);
-    if (core && corePath)
+    const pathOf = (name: string) => [...fonts.keys()].find((k) => posix.basename(k) === name);
+    const corePath = core && pathOf(core.name);
+    // A core file that is in the stylesheet has nothing to preload.
+    if (core && corePath && !embedded.some((e) => e.id === face.id))
       cores.set(face.id, { path: corePath, has: new Set(codePointsOf(parseUnicodeRange(core.unicodeRange))) });
+    const ext = files.find((f) => f.role === 'ext');
+    const extPath = ext && pathOf(ext.name);
+    if (ext && extPath) {
+      const has = new Set(codePointsOf(parseUnicodeRange(ext.unicodeRange)));
+      const needed = Object.values(usage.pages).some((p) =>
+        [...codePointsOf(parseUnicodeRange(p.faces[g.id] ?? ''))].some((c) => has.has(c)),
+      );
+      if (needed) exts.set(face.id, { path: extPath, has, bytes: ext.bytes });
+    }
     faces.push({ id: face.id, family: face.family, source: face.source!.file, bytes: face.bytes! });
   }
 
@@ -743,6 +819,7 @@ export async function autoSubset(o: AutoOptions): Promise<AutoResult> {
   const pinned = new Set<string>();
   let linked = 0;
   const preloaded = { links: 0, pages: 0 };
+  const prefetched = { files: new Set<string>(), pages: 0 };
   let carrier: { rel: string; prefix: string } | undefined;
   let csp: string | undefined;
   const pages = listFiles(outDir, (r) => /\.html?$/i.test(r), {
@@ -806,10 +883,21 @@ export async function autoSubset(o: AutoOptions): Promise<AutoResult> {
         preloaded.links++;
       }
     if (links) preloaded.pages++;
+    // prefetch-extended: the extended files other pages need and this one doesn't.
+    let prefetches = '';
+    if (prefetchExt && seen)
+      for (const [id, ext] of exts) {
+        if ([...codePointsOf(parseUnicodeRange(seen.faces[id] ?? ''))].some((c) => ext.has.has(c))) continue;
+        prefix ??= hrefPrefix(outDir, rel, html);
+        prefetches += `<link rel="prefetch" href="${prefix}${encodeURI(ext.path)}" as="font" type="font/woff2" crossorigin>`;
+        prefetched.files.add(ext.path);
+      }
+    if (prefetches) prefetched.pages++;
+    links += prefetches;
     // A crawled page that draws none of these faces doesn't need them; a page the crawl never saw might.
     const rulesHere = !!sheetText && !(seen && !sheetFaces.some((id) => seen.faces[id]));
     if (!rulesHere) {
-      if (links) edits.push({ file: rel, start: head, end: head, text: links, why: 'preload the core file' });
+      if (links) edits.push({ file: rel, start: head, end: head, text: links, why: 'preloads and prefetches' });
       continue;
     }
     prefix ??= hrefPrefix(outDir, rel, html);
@@ -902,6 +990,14 @@ export async function autoSubset(o: AutoOptions): Promise<AutoResult> {
     stylesheet: sheetName ? { file: sheetName, bytes: Buffer.byteLength(linkedText) } : undefined,
     linked,
     preloaded: preloaded.links ? preloaded : undefined,
+    prefetched: prefetched.pages
+      ? {
+          files: prefetched.files.size,
+          bytes: [...exts.values()].filter((e) => prefetched.files.has(e.path)).reduce((n, e) => n + e.bytes, 0),
+          pages: prefetched.pages,
+        }
+      : undefined,
+    embedded: embedded.length ? embedded : undefined,
     edited,
     skipped,
     notes,
@@ -929,6 +1025,14 @@ export function formatAuto(r: AutoResult, outDir: string): string {
     if (r.preloaded)
       L.push(
         `${r.written ? 'Added' : 'Would add'} ${r.preloaded.links} preload(s) of core files to ${r.preloaded.pages} page(s)`,
+      );
+    if (r.prefetched)
+      L.push(
+        `${r.prefetched.pages} page(s) ${r.written ? 'now prefetch' : 'would prefetch'} ${r.prefetched.files} extended file(s) they don't need themselves (${kb(r.prefetched.bytes)} in all, once per visitor)`,
+      );
+    if (r.embedded)
+      L.push(
+        `${r.written ? 'Put' : 'Would put'} ${r.embedded.length} core file(s) in the stylesheet as data: URLs (${kb(r.embedded.reduce((n, e) => n + e.bytes, 0))}): ${r.embedded.map((e) => e.id).join(', ')}`,
       );
     if (r.checked)
       L.push(

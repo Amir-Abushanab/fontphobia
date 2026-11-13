@@ -115,7 +115,8 @@ export interface Comparison {
 export interface PageFonts {
   page: string;
   before: { bytes: number; requests: number };
-  after: { bytes: number; requests: number };
+  /** `inCss`: bytes of files the build put in the stylesheet as data: URLs, counted in `bytes`. */
+  after: { bytes: number; requests: number; inCss?: number };
   faces: Record<string, { before: number; after: number }>;
 }
 
@@ -935,6 +936,15 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
           );
       }
     }
+    // A file the build put in the stylesheet as a data: URL (`auto`'s inline-core) makes no request:
+    // it is downloaded with the stylesheet, by every page that loads it.
+    for (const id of inlined)
+      for (const out of o.manifest.entries[id]?.outputs ?? []) {
+        if (!/^data:/i.test(out.url)) continue;
+        row.after.bytes += out.bytes;
+        row.after.inCss = (row.after.inCss ?? 0) + out.bytes;
+        if (o.usage.pages[page]?.faces[id]) face(id).after += out.bytes;
+      }
     // Drawn in the audit, but none of its files loaded and its CSS doesn't name them (inlined data: URLs do): the page doesn't use the build.
     for (const id of Object.keys(o.usage.pages[page]?.faces ?? {})) {
       if (o.manifest.entries[id] && !loaded.has(id) && !inlined.has(id))

@@ -81,6 +81,8 @@ const ALLOW = [
   'tighten',
   'eject',
   'add-preloads',
+  'prefetch-extended',
+  'inline-core',
 ];
 const SCHEMA: Record<string, Kind | Record<string, Kind>> = {
   dist: 'string',

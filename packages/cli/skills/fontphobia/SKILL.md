@@ -173,16 +173,18 @@ Nothing that could change rendering or where fonts load from happens by default.
 `--allow <name>` (repeatable) or `allow: [...]` in the config. The plan lists each with its
 measured saving even when it is off.
 
-| Opt-in           | What it does                                                                                              | Cost                                                       |
-| ---------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `self-host`      | Serves Google Fonts from the site, split                                                                  | Changes where fonts load from                              |
-| `eject`          | Serves `next/font/google`, Astro Fonts API and `@nuxt/fonts` families from the site, split                | Replaces the framework's font loading in the code          |
-| `tighten`        | Drops families and weights nothing asks for from Google URLs and `next/font`, Astro and Nuxt font options | A page the audit never saw, or CMS text, could ask for one |
-| `limit-axes`     | Limits variable axes to the ranges in use; drops axes left at the default                                 | Text widths shift up to about 0.02%                        |
-| `drop-hinting`   | Removes TrueType hinting                                                                                  | Rasterization changes on Windows, layout on Linux at 1x    |
-| `split-shaping`  | Lets words mixing core and extended characters split across files                                         | Kerning is lost where they meet                            |
-| `add-preloads`   | With `auto --crawl`: preloads the core file of each face a page draws, where it has no preload            | Changes what the page loads first                          |
-| `drop-hint-refs` | Drops the reference characters FreeType's auto-hinter needs                                               | Extended characters hint differently on Linux and ChromeOS |
+| Opt-in              | What it does                                                                                              | Cost                                                       |
+| ------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `self-host`         | Serves Google Fonts from the site, split                                                                  | Changes where fonts load from                              |
+| `eject`             | Serves `next/font/google`, Astro Fonts API and `@nuxt/fonts` families from the site, split                | Replaces the framework's font loading in the code          |
+| `tighten`           | Drops families and weights nothing asks for from Google URLs and `next/font`, Astro and Nuxt font options | A page the audit never saw, or CMS text, could ask for one |
+| `limit-axes`        | Limits variable axes to the ranges in use; drops axes left at the default                                 | Text widths shift up to about 0.02%                        |
+| `drop-hinting`      | Removes TrueType hinting                                                                                  | Rasterization changes on Windows, layout on Linux at 1x    |
+| `split-shaping`     | Lets words mixing core and extended characters split across files                                         | Kerning is lost where they meet                            |
+| `add-preloads`      | With `auto --crawl`: preloads the core file of each face a page draws, where it has no preload            | Changes what the page loads first                          |
+| `prefetch-extended` | With `auto --crawl`: pages prefetch the extended files other pages need                                   | Every visitor downloads those files once                   |
+| `inline-core`       | With `auto --rules linked`: the core of a face every page draws goes in the stylesheet as a `data:` URL   | The stylesheet grows by the core file                      |
+| `drop-hint-refs`    | Drops the reference characters FreeType's auto-hinter needs                                               | Extended characters hint differently on Linux and ChromeOS |
 
 Only pass an opt-in the user chose. Italic styles are never dropped. `--no-remainder` (config
 `remainder: false`) drops the rest file: characters no crawled page used then render in the next
@@ -351,7 +353,8 @@ pnpm build && pnpm dlx fontphobia auto --crawl    # measures each face in Chrome
   or fontphobia version changes, or in CI; it is not needed on every build. It also reports an
   original font a page still downloads (a script loads it by URL).
 - **Options:** `--dist`, `--dry-run`, `--json`, `--allow` (`drop-hinting`, `split-shaping`,
-  `drop-hint-refs`; with `--crawl`, `add-preloads`), `--core-threshold`, `--no-remainder`. Crawl settings (`pages`, `ignore`,
+  `drop-hint-refs`; with `--crawl`, `add-preloads` and `prefetch-extended`; with `--rules linked`,
+  `inline-core`), `--core-threshold`, `--no-remainder`. Crawl settings (`pages`, `ignore`,
   `viewports`, `locales`, `auth`) come from the config.
 - **Integrations:** each one's options take `auto: true` (static) or `auto: 'crawl'`, which
   replaces the post-build `check`. The config's `auto` key does the same for an integration
@@ -453,7 +456,6 @@ measured savings. `apply-kit` removes unused styles through the Typekit API and 
   `auth`), text scripts add after load, and content added later. Its characters render from the
   extended file when they are in Latin-1, Latin Extended-A or the alphabets of `locales`, and from
   the rest file otherwise (with `remainder: false`, in the next font in the stack).
-- **CFF fonts** that need an OFL Reserved Font Name rename are not supported yet.
 - **`apply-kit`** affects every site using the kit and does not change the kit's character set.
 
 ## Common mistakes
