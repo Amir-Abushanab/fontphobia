@@ -136,6 +136,23 @@ describe.skipIf(!chrome)('verify in Chrome (§10.3)', () => {
     expect(text).toContain('Verify passed');
     const md = verifyMarkdown('# report\n\nAudit things.\n', r, root);
     expect(verifyMarkdown(md, r, root)).toBe(md); // replaces its own section
+    // What a fresh paint changed is reported with its size, and is no failure: the comparison is of
+    // the fresh paint.
+    const [first, ...rest] = r.browser!.comparisons;
+    const left = {
+      ...r,
+      browser: {
+        ...r.browser!,
+        comparisons: [
+          { ...first!, leftover: { pixels: 3, levels: 2, original: 1 } },
+          ...rest.map((c) => ({ ...c, leftover: undefined })),
+        ],
+      },
+    };
+    const note = formatVerify(left, root);
+    expect(note).toContain('note: in 1 comparison(s) the page as it loaded was not what a fresh paint of it gives');
+    expect(note).toContain('3 px, up to 2 level(s); 1 px with the original fonts');
+    expect(note).toContain('Verify passed');
   }, 300_000);
 
   it('draws large text the same on every load', async () => {

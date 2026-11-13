@@ -110,6 +110,12 @@ export interface Comparison {
   pixels: number;
   examples: NodeDiff[];
   diffImage?: string;
+  /**
+   * The page as it loaded against a fresh paint of itself (the fresh paint is what is compared):
+   * pixels an earlier paint left behind when a font file arrived after the page had drawn, and the
+   * largest change of a color channel among them. `original`: the same count with the original fonts.
+   */
+  leftover?: { pixels: number; levels: number; original: number };
 }
 
 export interface PageFonts {
@@ -214,6 +220,8 @@ interface Snapshot {
   nodes: { key: string; text: string; boxes: Box[]; owner?: number }[];
   png: PNG;
   fonts: { url: string; bytes: number; status: number }[];
+  /** Pixels of the page as it loaded that a fresh paint changed, and the largest change of a color channel. */
+  leftover?: { pixels: number; levels: number };
 }
 
 async function launch(engine: Engine, linux: () => Promise<LinuxBrowsers>): Promise<Browser> {
@@ -511,14 +519,25 @@ async function capture(
       return out;
     });
   }
-  // Paint the whole page again before the screenshot. When a font file arrives after the page has
-  // painted (the extended file, on a page that had drawn with core), Chrome repaints the text, and a
-  // glyph's faintest edge pixel just outside its element's box can keep the level of the earlier
-  // paint: one level off, depending on which file arrived first, so a comparison differed on one
-  // load and not on the next (measured: 8 of 8 loads with the extended file 400 ms late, 0 of 8 with
-  // core late; 0 of 24 after this). Changing the root's background invalidates the whole page
-  // without touching layout, focus or scroll; a change that repaints the text alone did not help.
-  // Content in a layer of its own (a scroller, `will-change`) is not repainted by it.
+  const take = async () => {
+    try {
+      return await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide', scale: 'device' });
+    } catch {
+      return await page.screenshot({ animations: 'disabled', caret: 'hide', scale: 'device' });
+    }
+  };
+  // The page as it loaded, then the whole page painted again. The second is what is compared; what
+  // the fresh paint changed is reported (`leftover`).
+  //
+  // When a font file arrives after the page has painted (the extended file, on a page that had drawn
+  // with core), Chrome repaints the text, and a glyph's faintest edge pixel just outside its
+  // element's box can keep the level of the earlier paint: one level off, depending on which file
+  // arrived first. A comparison then differed on one load and not on the next (measured: 8 of 8
+  // loads with the extended file 400 ms late, 0 of 8 with core late; 0 of 24 once painted again).
+  // Changing the root's background invalidates the whole page without touching layout, focus or
+  // scroll; a change that repaints the text alone did not help. Content in a layer of its own (a
+  // scroller, `will-change`) is not repainted by it.
+  const asLoaded = await take();
   await page
     .evaluate(async () => {
       const root = document.documentElement;
@@ -532,13 +551,30 @@ async function capture(
       await frames();
     })
     .catch(() => {});
-  let shot: Buffer;
-  try {
-    shot = await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide', scale: 'device' });
-  } catch {
-    shot = await page.screenshot({ animations: 'disabled', caret: 'hide', scale: 'device' });
+  const shot = await take();
+  const png = PNG.sync.read(shot);
+  let leftover: Snapshot['leftover'];
+  if (!asLoaded.equals(shot)) {
+    const was = PNG.sync.read(asLoaded);
+    if (was.width === png.width && was.height === png.height) {
+      let pixels = 0;
+      let levels = 0;
+      for (let k = 0; k < png.data.length; k += 4) {
+        const d = Math.max(
+          Math.abs(png.data[k]! - was.data[k]!),
+          Math.abs(png.data[k + 1]! - was.data[k + 1]!),
+          Math.abs(png.data[k + 2]! - was.data[k + 2]!),
+          Math.abs(png.data[k + 3]! - was.data[k + 3]!),
+        );
+        if (d) {
+          pixels++;
+          levels = Math.max(levels, d);
+        }
+      }
+      if (pixels) leftover = { pixels, levels };
+    }
   }
-  return { page, cdp, snap: { nodes, png: PNG.sync.read(shot), fonts } };
+  return { page, cdp, snap: { nodes, png, fonts, leftover } };
 }
 
 /** A short CSS selector per element (by backend node id): up to 4 levels, stopping at an id. */
@@ -848,6 +884,7 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
               ours,
             );
         }
+        if (a.snap.leftover) c = { ...c, leftover: { ...a.snap.leftover, original: b.snap.leftover?.pixels ?? 0 } };
         comparisons.push(c);
         if (t.dpr === dprsFor(t.engine)[0] && t.engine === engines[0])
           record(t.page, b.snap.fonts, a.snap.fonts, hitsA);
