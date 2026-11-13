@@ -34,6 +34,7 @@ pnpm dlx fontphobia@0.4.1
 - [Licenses](#licenses)
 - [Limitations](#limitations)
 - [Development](#development)
+- [Credits](#credits)
 
 ## Requirements
 
@@ -376,5 +377,9 @@ pnpm plans:update   # re-crawl the fixtures and rewrite fixtures/plans/*
 - Merging that pull request runs `.github/workflows/release.yml`. It typechecks, tests, checks the packed package, publishes to npm with provenance over trusted publishing, tags `fontphobia@<version>` and creates the GitHub release from the changelog entry. It never versions.
 
 The version pull request needs the repository setting "Allow GitHub Actions to create and approve pull requests". GitHub does not run CI on a pull request that Actions opened. To run it, start it on the pull request's branch with `gh workflow run ci.yml --ref changeset-release/main`. The release workflow also runs the typecheck and the tests before it publishes.
+
+## Credits
+
+fontphobia started from [a prompt Shu Ding posted](https://x.com/shuding/status/2115855028737200211) for having an agent shrink a site's web fonts without changing how anything renders. It turns that prompt into a tool. A few things the prompt drops are kept by default, because dropping them can change rendering: hinting and full variable axes are [opt-ins](#opt-ins), and `build` keeps every OpenType feature.
 
 MIT © Amir Abushanab
