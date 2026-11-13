@@ -6,13 +6,13 @@ pnpm 12.9.1, macOS arm64, Node 24.21.0, system Chrome 155. Target: under 15 s.
 
 `pkg/` is a stand-in for the published package. Its `cli.mjs` measures the time to load the modules, run one WOFF2 compress of a 757 KB font, start Chrome and render a page.
 
-| Contents | Size |
-|---|---|
-| harfbuzzjs 1.6.4 (both WASM files, bundles HarfBuzz 15.0.0) | |
-| wawoff2 2.0.1 | |
-| A 3 MB stand-in for the rest of the bundle (postcss, babel parser, CLDR data, our code) | |
-| A test font | |
-| **Tarball total** | **3.66 MB** |
+| Contents                                                                                | Size        |
+| --------------------------------------------------------------------------------------- | ----------- |
+| harfbuzzjs 1.6.4 (both WASM files, bundles HarfBuzz 15.0.0)                             |             |
+| wawoff2 2.0.1                                                                           |             |
+| A 3 MB stand-in for the rest of the bundle (postcss, babel parser, CLDR data, our code) |             |
+| A test font                                                                             |             |
+| **Tarball total**                                                                       | **3.66 MB** |
 
 The only dependency is `playwright-core@1.64.1`, the one dependency the plan doesn't bundle.
 
@@ -22,10 +22,10 @@ The cold run used a fresh, empty `store-dir` and `cache-dir`, so `playwright-cor
 
 **About 4 s cold and 2.4 s warm, far under the 15 s target.**
 
-| | Total | Install / resolve | CLI: modules + WASM | CLI: Chrome up |
-|---|---|---|---|---|
-| Cold | 4.1 s | ~1.2 s | 24 ms | ~1.1 s |
-| Warm | 2.4 s | ~0.1 s | 20 ms | ~0.5 s |
+|      | Total | Install / resolve | CLI: modules + WASM | CLI: Chrome up |
+| ---- | ----- | ----------------- | ------------------- | -------------- |
+| Cold | 4.1 s | ~1.2 s            | 24 ms               | ~1.1 s         |
+| Warm | 2.4 s | ~0.1 s            | 20 ms               | ~0.5 s         |
 
 The 1.6 s WOFF2 compress of a whole 757 KB font is real work, not startup. Loading the modules and WASM costs about 20 ms.
 

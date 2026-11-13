@@ -33,6 +33,7 @@ pnpm dlx fontphobia@0.5.0
 - [Configuration](#configuration)
 - [Licenses](#licenses)
 - [Limitations](#limitations)
+- [Other tools](#other-tools)
 - [Development](#development)
 - [Credits](#credits)
 
@@ -124,18 +125,18 @@ fontphobia finds where each face comes from and edits it there.
 
 Pass with `--allow <name>` (repeatable) or `allow: [...]` in the config. Each is listed in the plan with its measured saving.
 
-| Opt-in              | What it does                                                                                                   | Why it isn't the default                                     |
-| ------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `self-host`         | Serves Google Fonts from your site, split                                                                      | Changes where fonts load from                                |
-| `eject`             | Serves `next/font/google`, Astro Fonts API and `@nuxt/fonts` families from your site, split                    | Replaces the framework's font loading in your code           |
-| `tighten`           | Drops families and weights nothing asks for from Google URLs and from `next/font`, Astro and Nuxt font options | A page the audit never saw, or CMS text, could ask for one   |
-| `limit-axes`        | Limits variable axes to the ranges in use, and drops axes every use leaves at the default                      | Text widths shift up to ~0.02% (whole pixels on Linux at 1×) |
-| `drop-hinting`      | Removes TrueType hinting                                                                                       | Changes rasterization on Windows, and layout on Linux at 1×  |
-| `split-shaping`     | Lets words that mix core and extended characters split across files                                            | Loses kerning where they meet                                |
-| `add-preloads`      | With `auto --crawl`: preloads the core file of each face a page draws, where the page has no preload of it     | Changes what the page loads first                            |
-| `prefetch-extended` | With `auto --crawl`: pages prefetch, when idle, the extended files other pages need and they don't             | Every visitor downloads those files once                     |
-| `inline-core`       | With `auto --rules linked`: the core file of a face every page draws goes in the stylesheet as a `data:` URL   | The stylesheet grows by the core file, on every page         |
-| `drop-hint-refs`    | Drops the reference characters FreeType's auto-hinter needs                                                    | Extended characters hint differently on Linux and ChromeOS   |
+| Opt-in              | What it does                                                                                                   | Why it isn't the default                                              |
+| ------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `self-host`         | Serves Google Fonts from your site, split                                                                      | Changes where fonts load from                                         |
+| `eject`             | Serves `next/font/google`, Astro Fonts API and `@nuxt/fonts` families from your site, split                    | Replaces the framework's font loading in your code                    |
+| `tighten`           | Drops families and weights nothing asks for from Google URLs and from `next/font`, Astro and Nuxt font options | A page the audit never saw, or CMS text, could ask for one            |
+| `limit-axes`        | Limits variable axes to the ranges in use, and drops axes every use leaves at the default                      | Text widths shift up to ~0.02% (whole pixels on Linux at 1×)          |
+| `drop-hinting`      | Removes TrueType hinting                                                                                       | Changes rasterization on Windows, and layout on Linux at 1×           |
+| `split-shaping`     | Lets words that mix core and extended characters split across files                                            | Loses kerning where they meet                                         |
+| `add-preloads`      | With `auto --crawl`: preloads the core file of each face a page draws, where the page has no preload of it     | Changes what the page loads first                                     |
+| `prefetch-extended` | With `auto --crawl`: pages prefetch, when idle, the extended files other pages need and they don't             | Every visitor downloads those files once                              |
+| `inline-core`       | With `auto --rules linked`: the core file of a face every page draws goes in the stylesheet as a `data:` URL   | Every page's first paint waits for it; files above 16 KB are left out |
+| `drop-hint-refs`    | Drops the reference characters FreeType's auto-hinter needs                                                    | Extended characters hint differently on Linux and ChromeOS            |
 
 Italic styles are never dropped, because browsers italicize `em`, `i`, `cite` and others on their own.
 
@@ -233,7 +234,7 @@ A page that has no preload gets none by default, because a preload changes what 
 Two more opt-ins trade bytes for requests:
 
 - **`--allow prefetch-extended`** (with `--crawl`) adds a `<link rel="prefetch">` of an extended file to the pages that don't need it, when some other page does. The browser fetches it when idle, so a visitor who goes on to a page that needs it finds it cached. Every visitor then downloads the file once. `verify`'s bytes per page don't count a prefetch; the `auto` report gives its size. Safari ignores `rel="prefetch"`.
-- **`--allow inline-core`** (with `--rules linked`) puts the core file of a face every page draws into the linked stylesheet as a `data:` URL, which saves its request. The stylesheet grows by the core file and is downloaded before the page renders. A face whose source font a page preloads stays a file. `verify` counts the embedded bytes in each page's total. A `Content-Security-Policy` with `font-src` has to allow `data:`.
+- **`--allow inline-core`** (with `--rules linked`) puts the core file of a face every page draws into the linked stylesheet as a `data:` URL, which saves its request. The stylesheet blocks rendering, so the first paint waits for it: on a 1.6 Mbit/s link, 91 KB of core files there made it 0.95 s later ([spike 13](spikes/13-other-tools/RESULTS.md)). A core file above 16 KB therefore stays a file; `inlineCoreMax` (bytes) changes the limit. A face whose source font a page preloads stays a file too, and the report notes a face with `font-display: swap` or `fallback`, whose pages painted text in a fallback font before. `verify` counts the embedded bytes in each page's total. A `Content-Security-Policy` with `font-src` has to allow `data:`.
 
 The split rules go in the HTML for two reasons. A hashed stylesheet keeps its file name when only the site's text changes, so writing the rules into it would let a browser holding the old copy ask for font files the new deploy no longer has. HTML is fetched fresh, so a page and its font rules always come from the same build. And a separate linked stylesheet can arrive after the page's own: in that gap the original rules are the last ones declared, and a style calculation there starts downloading the original fonts. In Chrome with slowed stylesheets that happened in 23 of 480 loads with a linked stylesheet and in none of 576 with the rules inline.
 
@@ -316,6 +317,7 @@ export default defineConfig({
   check: { mode: 'error', strict: false, allowChars: '' },
   auto: false, // integrations subset the build output instead of running check: true, 'static' or 'crawl'
   autoRules: 'inline', // where auto puts the split rules: 'inline' (each page) or 'linked' (one cached stylesheet)
+  inlineCoreMax: 16384, // auto --allow inline-core: the largest core file put in the stylesheet, in bytes
   verify: { browsers: ['chromium'], hinting: false, viewports: [360, 1280], dprs: [1, 2] },
 });
 ```
@@ -348,6 +350,18 @@ The project's own `LICENSE` and `package.json` never count as a font's license. 
 
 - **Text the crawl can't see** isn't counted when the files are planned: pages behind a login (use `auth`), text added by scripts after load, and content added later. Its characters render from the extended file when they are in Latin-1, Latin Extended-A or the alphabets of your `locales`, and from the rest file otherwise. With `remainder: false`, what would come from the rest file renders in the next font in the stack.
 - **`apply-kit` publishes your Adobe kit**, which changes every site that uses it. It refuses a kit whose draft has unpublished changes, reads each change back from Adobe and publishes only if it matches, and `revert` restores the previous styles only if nobody edited the kit since (otherwise it says which styles to add back, or `revert --keep-kits` leaves the kit as it is). Another site sharing the kit can run `fontphobia apply-kit --check` to see whether it lost a style it uses. It doesn't change the character set: Adobe's API doesn't reflect the web UI's setting, so the audit report says which one to pick and you change it on fonts.adobe.com.
+
+## Other tools
+
+Checked in November 2026, from each tool's README or source. The bytes and rendering of fontphobia and subfont on this repository's example site are measured in [spike 13](spikes/13-other-tools/RESULTS.md).
+
+| Tool (version checked)                                                                                                                                | What it keeps                                                                                                | CSS                                                                    | Characters it didn't see                                    | Checks the result                       | Needs                                      |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------- | ------------------------------------------ |
+| fontphobia 0.5                                                                                                                                        | What each face draws, crawled in Chrome; or the built text (`auto`)                                          | Rewritten in your source or in the build output                        | Extended and rest files, loaded only by pages that use them | Shaping (HarfBuzz) and pixels in Chrome | Node; Chrome for the crawl and `verify`    |
+| [subfont](https://github.com/Munter/subfont) 7.3.0                                                                                                    | Text found by applying the CSS to the built HTML without a browser; `--dynamic` adds headless Chrome         | Rewritten in the build output: a `__subset` family before the original | The original font, loaded by a script after the page        | No                                      | Node; Chromium for `--dynamic`             |
+| [glyphhanger](https://github.com/zachleat/glyphhanger) 6.0.0                                                                                          | Text in pages loaded in headless Chrome (Puppeteer) or jsdom; `--spider` follows local links (10 by default) | Prints an `@font-face` block (`--css`); edits nothing                  | Not handled                                                 | None documented                         | Node, Python fontTools (`pyftsubset`)      |
+| [cn-font-split](https://github.com/KonghaYao/cn-font-split) 7.4.3                                                                                     | The whole font, split into many `unicode-range` files; the site is not read                                  | Writes the rules for its files                                         | Every file stays available                                  | None documented                         | Node, Bun, Deno or a browser (WebAssembly) |
+| [subset-font](https://github.com/papandreou/subset-font) 2.9.0, [`pyftsubset`](https://fonttools.readthedocs.io/en/latest/subset/) (fontTools 4.68.0) | The characters you pass                                                                                      | None                                                                   | —                                                           | No                                      | Node; Python                               |
 
 ## Development
 

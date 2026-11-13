@@ -1,7 +1,7 @@
 {
   "name": "octane",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,6 @@
     "start": "node dist/server/entry.js",
     "ssg": "node scripts/ssg.mjs"
   },
-  "packageManager": "pnpm@12.9.1",
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
     "@octanejs/vite-plugin": "^0.5.0",
@@ -24,5 +23,6 @@
     "prettier": "^3.9.10",
     "typescript": "^6.0.3",
     "vite": "^8.3.5"
-  }
+  },
+  "packageManager": "pnpm@12.9.1"
 }

@@ -15,7 +15,13 @@ body{margin:0;font-family:T} span{white-space:nowrap;display:inline-block}
 
 function probe({ specs, text }) {
   const host = document.getElementById('host');
-  const mk = (style) => { const s = document.createElement('span'); s.textContent = text; s.setAttribute('style', style); host.appendChild(s); return s; };
+  const mk = (style) => {
+    const s = document.createElement('span');
+    s.textContent = text;
+    s.setAttribute('style', style);
+    host.appendChild(s);
+    return s;
+  };
   const out = {};
   for (const spec of specs) {
     const wAuto = mk(`font-size:${spec};font-optical-sizing:auto`).getBoundingClientRect().width;
@@ -25,7 +31,12 @@ function probe({ specs, text }) {
       const w = mk(`font-size:${spec};font-variation-settings:'opsz' ${o}`).getBoundingClientRect().width;
       if (!best || Math.abs(w - wAuto) < Math.abs(best.w - wAuto)) best = { o, w };
     }
-    out[spec] = { computed: getComputedStyle(host.firstChild).fontSize, opsz: best.o, fit: +(best.w - wAuto).toFixed(3), noneEqualsAuto: Math.abs(wNone - wAuto) < 0.01 };
+    out[spec] = {
+      computed: getComputedStyle(host.firstChild).fontSize,
+      opsz: best.o,
+      fit: +(best.w - wAuto).toFixed(3),
+      noneEqualsAuto: Math.abs(wNone - wAuto) < 0.01,
+    };
     host.innerHTML = '';
   }
   return out;
@@ -43,14 +54,26 @@ for (const webprefs of [
   const dir = mkdtempSync(join(tmpdir(), 'fp-spike10-'));
   mkdirSync(join(dir, 'Default'));
   writeFileSync(join(dir, 'Default', 'Preferences'), JSON.stringify({ webkit: { webprefs } }));
-  const ctx = await chromium.launchPersistentContext(dir, { channel: 'chrome', headless: true, viewport: { width: 1600, height: 800 } });
+  const ctx = await chromium.launchPersistentContext(dir, {
+    channel: 'chrome',
+    headless: true,
+    viewport: { width: 1600, height: 800 },
+  });
   const page = ctx.pages()[0] ?? (await ctx.newPage());
   await page.setContent(html);
   await page.evaluate(() => document.fonts.load('16px T'));
   const r = await page.evaluate(probe, { specs: SPECS, text: TEXT });
   const label = `min=${webprefs.minimum_font_size} default=${webprefs.default_font_size}`;
   results[label] = r;
-  console.log(label.padEnd(22), Object.entries(r).map(([k, v]) => `${k}→${v.computed}/opsz ${v.opsz}${v.noneEqualsAuto ? '' : ''}${Math.abs(v.fit) > 0.05 ? `(fit ${v.fit})` : ''}`).join('  '));
+  console.log(
+    label.padEnd(22),
+    Object.entries(r)
+      .map(
+        ([k, v]) =>
+          `${k}→${v.computed}/opsz ${v.opsz}${v.noneEqualsAuto ? '' : ''}${Math.abs(v.fit) > 0.05 ? `(fit ${v.fit})` : ''}`,
+      )
+      .join('  '),
+  );
   await ctx.close();
   rmSync(dir, { recursive: true, force: true });
 }

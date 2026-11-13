@@ -1,5 +1,5 @@
-import { component$ } from "@builder.io/qwik";
-import { useLocation, type StaticGenerateHandler } from "@builder.io/qwik-city";
+import { component$ } from '@builder.io/qwik';
+import { useLocation, type StaticGenerateHandler } from '@builder.io/qwik-city';
 
 export default component$(() => {
   const loc = useLocation();
@@ -7,5 +7,5 @@ export default component$(() => {
 });
 
 export const onStaticGenerate: StaticGenerateHandler = async () => ({
-  params: [{ id: "1" }, { id: "2" }],
+  params: [{ id: '1' }, { id: '2' }],
 });

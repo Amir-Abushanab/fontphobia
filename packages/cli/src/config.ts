@@ -44,6 +44,11 @@ export interface Config {
    * original fonts can download now and then while that stylesheet is still on its way.
    */
   autoRules?: 'inline' | 'linked';
+  /**
+   * `auto --allow inline-core`: the largest core file put in the stylesheet, in bytes (default
+   * 16384). The stylesheet blocks rendering, so each byte in it delays the first paint.
+   */
+  inlineCoreMax?: number;
   /** `verify` (§10.3): engines, page cap (default 200), viewports, device pixel ratios, masks and the load timeout. */
   verify?: {
     browsers?: ('chromium' | 'firefox' | 'webkit' | 'linux-chromium' | 'linux-firefox' | 'linux-webkit')[];
@@ -103,6 +108,7 @@ const SCHEMA: Record<string, Kind | Record<string, Kind>> = {
   check: { allowChars: 'string', mode: { enum: ['warn', 'error'] }, strict: 'boolean' },
   auto: 'custom',
   autoRules: { enum: ['inline', 'linked'] },
+  inlineCoreMax: 'number',
   verify: {
     browsers: { enum: ENGINES, array: true },
     hinting: 'boolean',

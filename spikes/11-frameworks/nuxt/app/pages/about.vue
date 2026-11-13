@@ -6,6 +6,10 @@
 </template>
 
 <style>
-.fraunces { font-family: Fraunces, serif; }
-.lora { font-family: Lora, serif; }
+.fraunces {
+  font-family: Fraunces, serif;
+}
+.lora {
+  font-family: Lora, serif;
+}
 </style>

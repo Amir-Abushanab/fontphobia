@@ -2,9 +2,9 @@
   "name": "spike-07-adobe-fonts",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@12.9.1",
   "dependencies": {
     "fontkit": "2.0.4",
     "wawoff2": "2.0.1"
-  }
+  },
+  "packageManager": "pnpm@12.9.1"
 }

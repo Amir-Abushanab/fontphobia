@@ -5,7 +5,8 @@
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 
-const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36';
+const UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36';
 export const QUERIES = {
   'inter-full': 'Inter:opsz,wght@14..32,100..900',
   'inter-wght-100-900': 'Inter:wght@100..900',
@@ -27,13 +28,18 @@ const index = {};
 const sha = (b) => createHash('sha256').update(b).digest('hex').slice(0, 16);
 
 for (const [key, q] of Object.entries(QUERIES)) {
-  const css = await (await fetch(`https://fonts.googleapis.com/css2?family=${q}&display=swap`, { headers: { 'user-agent': UA } })).text();
-  const blocks = css.split('/*').slice(1).map((b) => ({
-    subset: b.slice(0, b.indexOf('*/')).trim(),
-    url: b.match(/url\(([^)]+)\)/)?.[1],
-    unicodeRange: b.match(/unicode-range:\s*([^;]+);/)?.[1],
-    weight: b.match(/font-weight:\s*([^;]+);/)?.[1],
-  }));
+  const css = await (
+    await fetch(`https://fonts.googleapis.com/css2?family=${q}&display=swap`, { headers: { 'user-agent': UA } })
+  ).text();
+  const blocks = css
+    .split('/*')
+    .slice(1)
+    .map((b) => ({
+      subset: b.slice(0, b.indexOf('*/')).trim(),
+      url: b.match(/url\(([^)]+)\)/)?.[1],
+      unicodeRange: b.match(/unicode-range:\s*([^;]+);/)?.[1],
+      weight: b.match(/font-weight:\s*([^;]+);/)?.[1],
+    }));
   const latin = blocks.find((b) => b.subset === 'latin');
   const buf = Buffer.from(await (await fetch(latin.url, { headers: { 'user-agent': UA } })).arrayBuffer());
   if (!refetch) writeFileSync(new URL(`./fonts/${key}.woff2`, import.meta.url), buf);

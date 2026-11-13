@@ -1,4 +1,4 @@
-import type { Route } from "./+types/post";
+import type { Route } from './+types/post';
 
 export function loader({ params }: Route.LoaderArgs) {
   return { id: params.id };

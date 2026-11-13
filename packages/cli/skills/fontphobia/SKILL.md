@@ -91,6 +91,8 @@ The default command (no subcommand) audits, prints the plan and the diff, then a
   default-font-size sweep, and writes `.fontphobia/usage.json` and `.fontphobia/report.md`.
 - It prints each face's size now and after, the saving per page, the opt-ins with their measured
   savings, and the exact edits.
+- `usage.json` lists each face's words for the shaping check, and a symbol-only word also with
+  its neighbours (`1 ± 2`): entries an audit with 0.5.0 or later adds.
 
 The question is asked only on an interactive terminal. With `--ci`, with `CI` set, or with no TTY
 (an agent's shell), it prints the plan and `Run with --write to apply.` and writes nothing. Show
@@ -235,6 +237,7 @@ export default defineConfig({
   check: { mode: 'error', strict: false, allowChars: '' },
   auto: false, // integrations subset the build output instead of running check: true, 'static' or 'crawl'
   autoRules: 'inline', // where auto puts the split rules: 'inline' (each page) or 'linked' (one cached stylesheet)
+  inlineCoreMax: 16384, // largest core file inline-core embeds, in bytes
   verify: {
     browsers: ['chromium'],
     hinting: false,
@@ -346,6 +349,14 @@ pnpm build && pnpm dlx fontphobia auto --crawl    # measures each face in Chrome
 - **`--rules linked`** (config `autoRules: 'linked'`) writes the rules to one cached stylesheet,
   `fontphobia.<hash>.css`, linked last in each page. Use it under a strict Content-Security-Policy.
   Its cost: the original font can download now and then while that stylesheet is on its way.
+- **Opt-ins that change what a page loads** are applied by `auto` only (`build` says it skips
+  them), and a note says when one's mode is missing:
+  - `add-preloads` (`--crawl`): preloads each drawn face's core file where the page has no preload.
+  - `prefetch-extended` (`--crawl`): pages prefetch, when idle, an extended file another page
+    needs. Its bytes are in the `auto` report, not in `verify`'s per-page totals. Safari ignores it.
+  - `inline-core` (`--rules linked`): the core of a face every page draws goes in the stylesheet as
+    a `data:` URL (`font-src` must allow `data:`), unless a page preloads its source font or the
+    core is above `inlineCoreMax` (16384 bytes): the stylesheet blocks the first paint.
 - **Every run checks, without a browser,** that each file decodes and matches its source, that the
   rules keep the original descriptors and that every word shapes identically. A failure puts the
   output back as it was and exits 1.
@@ -411,6 +422,11 @@ A pixel difference at unchanged layout is loaded again, each time in a new brows
 regression when the same pixels differ every time. Chrome rasterizes on the CPU during `verify`:
 its GPU rasterizer does not draw large text the same way on every load.
 
+`verify` compares each page after painting all of it again. A line starting `note: in N
+comparison(s) the page as it loaded was not what a fresh paint of it gives` lists edge pixels Chrome
+kept from an earlier paint when a font file arrived late, with their count and size. It is not a
+difference between the two sides and does not fail the run; tell the user when the numbers are large.
+
 `verify` exits 1 on a regression or a failed page. Diff images go to `.fontphobia/verify/` and the
 summary to `.fontphobia/report.md`. For content that changes between loads (script-driven
 animations, canvases, embeds), hide it with `--mask <selector>` or skip the page with
@@ -432,7 +448,8 @@ font package. The project's own `LICENSE` and `package.json` never count.
 - Fonts whose `fsType` forbids subsetting are refused.
 - **OFL Reserved Font Names:** the subset files are renamed internally, as the license requires.
   The decision comes from the font's own family name. The CSS `font-family` stays the same, so
-  pages do not change. `rename` chooses the internal name.
+  pages do not change. `rename` chooses the internal name. CFF fonts (`.otf` with PostScript
+  outlines) are renamed too, in the `CFF ` table as well as the name table.
 
 ## Adobe Fonts
 

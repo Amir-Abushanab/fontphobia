@@ -1,5 +1,5 @@
-import * as React from "react"
-import "@fontsource-variable/inter"
+import * as React from 'react';
+import '@fontsource-variable/inter';
 
 // Idiomatic global head tags: setHeadComponents in onRenderBody.
 export const onRenderBody = ({ setHeadComponents }) => {
@@ -10,5 +10,5 @@ export const onRenderBody = ({ setHeadComponents }) => {
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400..700&display=swap"
     />,
-  ])
-}
+  ]);
+};

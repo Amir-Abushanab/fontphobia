@@ -10,5 +10,7 @@
 </template>
 
 <style>
-body { font-family: 'Inter Variable', sans-serif; }
+body {
+  font-family: 'Inter Variable', sans-serif;
+}
 </style>

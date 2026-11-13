@@ -55,7 +55,10 @@ function probe({ specs, text }) {
 }
 
 const SPECS = ['1rem', '0.75rem', 'medium', 'small', '16px', '8px', '12px'];
-const fmt = (r) => Object.entries(r).map(([k, v]) => `${k}=${v.computed}/opsz ${v.opsz}${Math.abs(v.fit) > 0.01 ? `(fit ${v.fit})` : ''}`).join('  ');
+const fmt = (r) =>
+  Object.entries(r)
+    .map(([k, v]) => `${k}=${v.computed}/opsz ${v.opsz}${Math.abs(v.fit) > 0.01 ? `(fit ${v.fit})` : ''}`)
+    .join('  ');
 const results = { chrome: null, cdp: {}, pref: {}, minimum: {} };
 
 // A. CDP
@@ -83,7 +86,11 @@ const withPrefs = async (label, webprefs, bucket) => {
   const dir = mkdtempSync(join(tmpdir(), 'fp-spike10-'));
   mkdirSync(join(dir, 'Default'));
   writeFileSync(join(dir, 'Default', 'Preferences'), JSON.stringify({ webkit: { webprefs: webprefs } }));
-  const ctx = await chromium.launchPersistentContext(dir, { channel: 'chrome', headless: true, viewport: { width: 1600, height: 800 } });
+  const ctx = await chromium.launchPersistentContext(dir, {
+    channel: 'chrome',
+    headless: true,
+    viewport: { width: 1600, height: 800 },
+  });
   const page = ctx.pages()[0] ?? (await ctx.newPage());
   await page.setContent(html);
   await page.evaluate(() => document.fonts.load('16px T'));

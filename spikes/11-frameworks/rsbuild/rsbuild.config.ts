@@ -17,7 +17,12 @@ const rsbuildProbe: RsbuildPlugin = {
   name: 'rsbuild-probe',
   setup(api) {
     api.onAfterBuild(({ environments }) => {
-      console.log('[probe] rsbuild onAfterBuild', Object.keys(environments), 'dist/index.html exists:', existsSync('dist/index.html'));
+      console.log(
+        '[probe] rsbuild onAfterBuild',
+        Object.keys(environments),
+        'dist/index.html exists:',
+        existsSync('dist/index.html'),
+      );
     });
   },
 };
@@ -34,7 +39,10 @@ export default defineConfig({
       { tag: 'link', attrs: { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: true } },
       {
         tag: 'link',
-        attrs: { href: 'https://fonts.googleapis.com/css2?family=Fraunces:wght@400..700&display=swap', rel: 'stylesheet' },
+        attrs: {
+          href: 'https://fonts.googleapis.com/css2?family=Fraunces:wght@400..700&display=swap',
+          rel: 'stylesheet',
+        },
       },
     ],
   },

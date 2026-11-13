@@ -19,20 +19,33 @@ for (const f of ['DejaVuSans.ttf', 'Inter-Regular-hinted.woff2']) {
   const src = await readSfnt(new URL(`../fonts/${f}`, import.meta.url).pathname);
   fonts[f] = {
     hinted: Buffer.from(await woff2.compress(await subset(src, { unicodes: LATIN }))).toString('base64'),
-    unhinted: Buffer.from(await woff2.compress(await subset(src, { unicodes: LATIN, hinting: false }))).toString('base64'),
+    unhinted: Buffer.from(await woff2.compress(await subset(src, { unicodes: LATIN, hinting: false }))).toString(
+      'base64',
+    ),
   };
 }
 const browser = await chromium.launch({ headless: true, ...(bundled ? {} : { channel: 'chrome' }), args });
 const page = await browser.newPage({ deviceScaleFactor: 1, viewport: { width: 900, height: 400 } });
-const outDir = new URL(`./shots/${label}/`, import.meta.url).pathname; mkdirSync(outDir, { recursive: true });
-const result = { label, chrome: browser.version(), platform: `${process.platform}-${process.arch}`, args, env: { FONTCONFIG_FILE: process.env.FONTCONFIG_FILE, FREETYPE_PROPERTIES: process.env.FREETYPE_PROPERTIES }, diffs: {} };
+const outDir = new URL(`./shots/${label}/`, import.meta.url).pathname;
+mkdirSync(outDir, { recursive: true });
+const result = {
+  label,
+  chrome: browser.version(),
+  platform: `${process.platform}-${process.arch}`,
+  args,
+  env: { FONTCONFIG_FILE: process.env.FONTCONFIG_FILE, FREETYPE_PROPERTIES: process.env.FREETYPE_PROPERTIES },
+  diffs: {},
+};
 for (const [f, v] of Object.entries(fonts)) {
   const shot = async (which) => {
-    await page.setContent(`<style>@font-face{font-family:T;src:url(data:font/woff2;base64,${v[which]})}body{margin:0;background:#fff;color:#000;font-family:T}p{margin:0 4px;white-space:nowrap}</style>${SIZES.map((s) => `<p style="font-size:${s}px">${TEXT}</p>`).join('')}`);
+    await page.setContent(
+      `<style>@font-face{font-family:T;src:url(data:font/woff2;base64,${v[which]})}body{margin:0;background:#fff;color:#000;font-family:T}p{margin:0 4px;white-space:nowrap}</style>${SIZES.map((s) => `<p style="font-size:${s}px">${TEXT}</p>`).join('')}`,
+    );
     await page.evaluate(() => document.fonts.ready);
     return PNG.sync.read(await page.screenshot({ clip: { x: 0, y: 0, width: 900, height: 160 } }));
   };
-  const a = await shot('hinted'), b = await shot('unhinted');
+  const a = await shot('hinted'),
+    b = await shot('unhinted');
   const out = new PNG({ width: a.width, height: a.height });
   const px = pixelmatch(a.data, b.data, out.data, a.width, a.height, { threshold: 0 });
   // width check: does hinting change advances (layout), not just pixels?

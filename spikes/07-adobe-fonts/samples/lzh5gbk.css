@@ -12,18 +12,38 @@
  */
 /*{"last_published":"2020-10-03 19:55:25 UTC"}*/
 
-@import url("https://p.typekit.net/p.css?s=1&k=lzh5gbk&ht=tk&f=5624.5627&a=44402888&app=typekit&e=css");
+@import url('https://p.typekit.net/p.css?s=1&k=lzh5gbk&ht=tk&f=5624.5627&a=44402888&app=typekit&e=css');
 
 @font-face {
-font-family:"p22-underground";
-src:url("https://use.typekit.net/af/ad8f50/00000000000000000000de3b/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3") format("woff2"),url("https://use.typekit.net/af/ad8f50/00000000000000000000de3b/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3") format("woff"),url("https://use.typekit.net/af/ad8f50/00000000000000000000de3b/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3") format("opentype");
-font-display:auto;font-style:normal;font-weight:400;font-stretch:normal;
+  font-family: 'p22-underground';
+  src:
+    url('https://use.typekit.net/af/ad8f50/00000000000000000000de3b/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3')
+      format('woff2'),
+    url('https://use.typekit.net/af/ad8f50/00000000000000000000de3b/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3')
+      format('woff'),
+    url('https://use.typekit.net/af/ad8f50/00000000000000000000de3b/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3')
+      format('opentype');
+  font-display: auto;
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: normal;
 }
 
 @font-face {
-font-family:"p22-underground";
-src:url("https://use.typekit.net/af/49d3df/00000000000000000000de3e/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n9&v=3") format("woff2"),url("https://use.typekit.net/af/49d3df/00000000000000000000de3e/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n9&v=3") format("woff"),url("https://use.typekit.net/af/49d3df/00000000000000000000de3e/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n9&v=3") format("opentype");
-font-display:auto;font-style:normal;font-weight:900;font-stretch:normal;
+  font-family: 'p22-underground';
+  src:
+    url('https://use.typekit.net/af/49d3df/00000000000000000000de3e/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n9&v=3')
+      format('woff2'),
+    url('https://use.typekit.net/af/49d3df/00000000000000000000de3e/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n9&v=3')
+      format('woff'),
+    url('https://use.typekit.net/af/49d3df/00000000000000000000de3e/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n9&v=3')
+      format('opentype');
+  font-display: auto;
+  font-style: normal;
+  font-weight: 900;
+  font-stretch: normal;
 }
 
-.tk-p22-underground { font-family: "p22-underground",sans-serif; }
+.tk-p22-underground {
+  font-family: 'p22-underground', sans-serif;
+}

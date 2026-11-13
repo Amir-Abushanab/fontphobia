@@ -1,4 +1,4 @@
 # Standalone: keeps this dir out of any parent workspace.
 allowBuilds:
   core-js: false
-  "@swc/core": true
+  '@swc/core': true

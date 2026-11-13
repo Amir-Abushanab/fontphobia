@@ -1,10 +1,8 @@
 {
   "name": "analog",
   "version": "0.0.0",
+  "private": true,
   "type": "module",
-  "engines": {
-    "node": ">=22.22.3"
-  },
   "scripts": {
     "ng": "ng",
     "dev": "vite",
@@ -14,7 +12,6 @@
     "test": "vitest",
     "preview": "node dist/analog/server/index.mjs"
   },
-  "private": true,
   "dependencies": {
     "@analogjs/content": "^2.9.5",
     "@analogjs/router": "^2.9.5",
@@ -52,6 +49,9 @@
   "overrides": {
     "vite": "$vite",
     "vitest": "$vitest"
+  },
+  "engines": {
+    "node": ">=22.22.3"
   },
   "packageManager": "pnpm@12.9.1"
 }

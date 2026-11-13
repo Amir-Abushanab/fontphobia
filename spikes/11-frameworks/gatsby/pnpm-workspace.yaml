@@ -2,12 +2,12 @@
 allowBuilds:
   lmdb: true
   msgpackr-extract: true
-  "@parcel/watcher": true
+  '@parcel/watcher': true
   gatsby: true
   gatsby-cli: true
   core-js: false
   core-js-pure: false
-  "@swc/core": true
+  '@swc/core': true
   sharp: false
   esbuild: true
   es5-ext: false

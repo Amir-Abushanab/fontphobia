@@ -27,7 +27,9 @@ async function* run(options, context) {
     // Each yielded result = a finished build (output written, prerender done).
     const fs = require('node:fs');
     const dir = path.join(root, 'dist/angular/browser');
-    const html = fs.existsSync(dir) ? fs.readdirSync(dir, { recursive: true }).filter((f) => String(f).endsWith('.html')) : null;
+    const html = fs.existsSync(dir)
+      ? fs.readdirSync(dir, { recursive: true }).filter((f) => String(f).endsWith('.html'))
+      : null;
     console.log('[probe] builder result', JSON.stringify({ success: result.success, html }));
     yield result;
   }

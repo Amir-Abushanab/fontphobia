@@ -3,7 +3,9 @@
 const fs = require('fs');
 const path = require('path');
 const fontkit = require('next/dist/compiled/@next/font/dist/fontkit').default;
-const { getFallbackMetricsFromFontFile } = require('next/dist/compiled/@next/font/dist/local/get-fallback-metrics-from-font-file');
+const {
+  getFallbackMetricsFromFontFile,
+} = require('next/dist/compiled/@next/font/dist/local/get-fallback-metrics-from-font-file');
 const subsetFont = require('subset-font');
 
 const src = fs.readFileSync(path.join(__dirname, '../fonts/inter-latin-opsz-normal.woff2'));
@@ -15,10 +17,13 @@ const variants = {
   'subset Latin-1, no instancing': () => subsetFont(src, latin1, { targetFormat: 'woff2' }),
   'subset ASCII, no instancing': () => subsetFont(src, ascii, { targetFormat: 'woff2' }),
   'subset ASCII minus "q"': () => subsetFont(src, ascii.replace('q', ''), { targetFormat: 'woff2' }),
-  'wght 300..700 (default 400 kept)': () => subsetFont(src, latin1, { targetFormat: 'woff2', variationAxes: { wght: { min: 300, max: 700 } } }),
-  'wght 500..700 (default clamps to 500)': () => subsetFont(src, latin1, { targetFormat: 'woff2', variationAxes: { wght: { min: 500, max: 700 } } }),
+  'wght 300..700 (default 400 kept)': () =>
+    subsetFont(src, latin1, { targetFormat: 'woff2', variationAxes: { wght: { min: 300, max: 700 } } }),
+  'wght 500..700 (default clamps to 500)': () =>
+    subsetFont(src, latin1, { targetFormat: 'woff2', variationAxes: { wght: { min: 500, max: 700 } } }),
   'opsz pinned 14 (= default)': () => subsetFont(src, latin1, { targetFormat: 'woff2', variationAxes: { opsz: 14 } }),
-  'opsz 16..32 (default clamps to 16)': () => subsetFont(src, latin1, { targetFormat: 'woff2', variationAxes: { opsz: { min: 16, max: 32 } } }),
+  'opsz 16..32 (default clamps to 16)': () =>
+    subsetFont(src, latin1, { targetFormat: 'woff2', variationAxes: { opsz: { min: 16, max: 32 } } }),
   'opsz pinned 32': () => subsetFont(src, latin1, { targetFormat: 'woff2', variationAxes: { opsz: 32 } }),
 };
 
@@ -27,8 +32,12 @@ const variants = {
     const buf = await make();
     const font = fontkit.create ? fontkit.create(buf) : fontkit(buf);
     const m = getFallbackMetricsFromFontFile(font, 'sans-serif');
-    console.log(name.padEnd(40), String(buf.length).padStart(6), 'B',
+    console.log(
+      name.padEnd(40),
+      String(buf.length).padStart(6),
+      'B',
       `size-adjust ${m.sizeAdjust}  ascent ${m.ascentOverride}  descent ${m.descentOverride}  lineGap ${m.lineGapOverride}`,
-      ` hhea ${font.ascent}/${font.descent}/${font.lineGap}`);
+      ` hhea ${font.ascent}/${font.descent}/${font.lineGap}`,
+    );
   }
 })();

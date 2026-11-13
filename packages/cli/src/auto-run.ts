@@ -98,6 +98,7 @@ export async function runAuto(o: AutoRunOptions): Promise<AutoRun> {
     version: pkg.version,
     write: o.write,
     rules: o.rules ?? config.autoRules,
+    inlineCoreMax: config.inlineCoreMax,
   });
   let verify: VerifyResult | undefined;
   if (o.verify && result.written && Object.keys(result.manifest.entries).length) {

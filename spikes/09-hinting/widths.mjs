@@ -14,11 +14,24 @@ for (const f of ['DejaVuSans.ttf', 'Inter-Regular-hinted.woff2']) {
   css += `@font-face{font-family:${k}U;src:url(${dataUrl(await woff2.compress(await subset(src, { unicodes: LATIN, hinting: false })), 'font/woff2')})}`;
 }
 await page.setContent(`<style>${css} span{white-space:pre}</style><div id=h></div>`);
-await page.evaluate(async () => { for (const f of document.fonts) await f.load(); });
+await page.evaluate(async () => {
+  for (const f of document.fonts) await f.load();
+});
 const rows = [];
-for (const k of ['DejaVuSans', 'Inter']) for (const size of [11, 13, 16, 24]) {
-  const r = await page.evaluate(({ k, size, TEXT }) => ['H', 'U'].map((v) => { const s = document.createElement('span'); s.textContent = TEXT; s.style.cssText = `font-family:${k}${v};font-size:${size}px`; document.getElementById('h').append(s); return s.getBoundingClientRect().width; }), { k, size, TEXT });
-  rows.push(`${k} ${size}px hinted ${r[0].toFixed(3)} unhinted Δ${(r[1] - r[0]).toFixed(3)}`);
-}
+for (const k of ['DejaVuSans', 'Inter'])
+  for (const size of [11, 13, 16, 24]) {
+    const r = await page.evaluate(
+      ({ k, size, TEXT }) =>
+        ['H', 'U'].map((v) => {
+          const s = document.createElement('span');
+          s.textContent = TEXT;
+          s.style.cssText = `font-family:${k}${v};font-size:${size}px`;
+          document.getElementById('h').append(s);
+          return s.getBoundingClientRect().width;
+        }),
+      { k, size, TEXT },
+    );
+    rows.push(`${k} ${size}px hinted ${r[0].toFixed(3)} unhinted Δ${(r[1] - r[0]).toFixed(3)}`);
+  }
 console.log(browser.version(), process.platform, JSON.stringify(process.argv.slice(2)), '\n ' + rows.join('\n '));
 await browser.close();

@@ -25,6 +25,11 @@ for (const f of ['inter-wght-100-900.woff2', 'inter-full.woff2', 'flex-full.woff
     'core + limit-axes wght 400..700': await sz({ unicodes: core, axes: { wght: { min: 400, max: 700 } } }),
     'core, pinned 400 + 700': (await sz({ unicodes: core, axes: pin })) + (await sz({ unicodes: core, axes: pin7 })),
   };
-  console.log(`\n${f}  axes ${axes.map((a) => `${a.tag} ${a.min}-${a.max}`).join(', ')}  cmap ${cmap.size}  features ${feats.join(' ')}`);
-  for (const [k, v] of Object.entries(row)) console.log(`  ${k.padEnd(34)} ${(v / 1024).toFixed(1).padStart(6)} KB  ${k === 'google' ? '' : (100 * (1 - v / row.google)).toFixed(0) + '% smaller'}`);
+  console.log(
+    `\n${f}  axes ${axes.map((a) => `${a.tag} ${a.min}-${a.max}`).join(', ')}  cmap ${cmap.size}  features ${feats.join(' ')}`,
+  );
+  for (const [k, v] of Object.entries(row))
+    console.log(
+      `  ${k.padEnd(34)} ${(v / 1024).toFixed(1).padStart(6)} KB  ${k === 'google' ? '' : (100 * (1 - v / row.google)).toFixed(0) + '% smaller'}`,
+    );
 }

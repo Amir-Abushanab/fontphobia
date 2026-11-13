@@ -4,13 +4,13 @@
 
 **Yes, on everything tested.** Each environment produced 14 outputs: the decoded source, the HarfBuzz subset sfnt, the WOFF2 file and the WOFF2 round trip, for 3 fonts × 3–5 configs. They were byte-identical in all five environments:
 
-| Platform | Node |
-|---|---|
-| darwin-arm64 (macOS 27) | 24.21.0 |
+| Platform                                     | Node    |
+| -------------------------------------------- | ------- |
+| darwin-arm64 (macOS 27)                      | 24.21.0 |
 | linux-arm64 (Docker `node:24-bookworm-slim`) | 24.22.2 |
-| linux-x64 (same image, emulated) | 24.22.2 |
-| linux-arm64 (`node:22-bookworm-slim`) | 22.23.4 |
-| linux-x64 (same, emulated) | 22.23.4 |
+| linux-x64 (same image, emulated)             | 24.22.2 |
+| linux-arm64 (`node:22-bookworm-slim`)        | 22.23.4 |
+| linux-x64 (same, emulated)                   | 22.23.4 |
 
 That's expected, since harfbuzzjs and wawoff2 are both pure WASM with no native code and no threads. Windows is untested here. The M1 "3 OSes" criterion needs a `windows-latest` CI run of `hash.mjs`.
 

@@ -1,27 +1,20 @@
-import {
-  isRouteErrorResponse,
-  Links,
-  Meta,
-  Outlet,
-  Scripts,
-  ScrollRestoration,
-} from "react-router";
+import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
 
-import type { Route } from "./+types/root";
-import "@fontsource-variable/inter";
-import "./app.css";
+import type { Route } from './+types/root';
+import '@fontsource-variable/inter';
+import './app.css';
 
 export const links: Route.LinksFunction = () => [
-  { rel: "preconnect", href: "https://fonts.googleapis.com" },
+  { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
   {
-    rel: "preconnect",
-    href: "https://fonts.gstatic.com",
-    crossOrigin: "anonymous",
+    rel: 'preconnect',
+    href: 'https://fonts.gstatic.com',
+    crossOrigin: 'anonymous',
   },
   {
-    rel: "stylesheet",
+    rel: 'stylesheet',
     // Starter shipped Google "Inter" here; replaced with the spike's Fraunces link.
-    href: "https://fonts.googleapis.com/css2?family=Fraunces:wght@400..700&display=swap",
+    href: 'https://fonts.googleapis.com/css2?family=Fraunces:wght@400..700&display=swap',
   },
 ];
 
@@ -36,7 +29,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body style={{ fontFamily: "'Inter Variable', sans-serif" }}>
         <nav>
-          <a href="/">Home</a> · <a href="/about">About</a> · <a href="/posts/1">Post 1</a> ·{" "}
+          <a href="/">Home</a> · <a href="/about">About</a> · <a href="/posts/1">Post 1</a> ·{' '}
           <a href="/posts/2">Post 2</a>
         </nav>
         {children}
@@ -52,16 +45,13 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = "Oops!";
-  let details = "An unexpected error occurred.";
+  let message = 'Oops!';
+  let details = 'An unexpected error occurred.';
   let stack: string | undefined;
 
   if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "404" : "Error";
-    details =
-      error.status === 404
-        ? "The requested page could not be found."
-        : error.statusText || details;
+    message = error.status === 404 ? '404' : 'Error';
+    details = error.status === 404 ? 'The requested page could not be found.' : error.statusText || details;
   } else if (import.meta.env.DEV && error && error instanceof Error) {
     details = error.message;
     stack = error.stack;

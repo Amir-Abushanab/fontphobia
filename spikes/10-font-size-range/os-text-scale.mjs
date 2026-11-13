@@ -17,10 +17,19 @@ for (const meta of ['', '<meta name="text-scale" content="scale">']) {
     const cdp = await ctx.newCDPSession(page);
     let err = '';
     if (scale) {
-      try { await cdp.send('Emulation.setEmulatedOSTextScale', { scale }); } catch (e) { err = e.message.split('\n')[0]; }
+      try {
+        await cdp.send('Emulation.setEmulatedOSTextScale', { scale });
+      } catch (e) {
+        err = e.message.split('\n')[0];
+      }
     }
     await page.setContent(page_html(meta));
-    const r = await page.evaluate(() => ['rem', 'px', 'envProbe'].map((id) => `${id}=${getComputedStyle(document.getElementById(id)).fontSize}`).join(' ') + ` root=${getComputedStyle(document.documentElement).fontSize}`);
+    const r = await page.evaluate(
+      () =>
+        ['rem', 'px', 'envProbe']
+          .map((id) => `${id}=${getComputedStyle(document.getElementById(id)).fontSize}`)
+          .join(' ') + ` root=${getComputedStyle(document.documentElement).fontSize}`,
+    );
     console.log(`${meta ? 'meta text-scale' : 'no meta'}`.padEnd(16), `os scale ${scale ?? 'none'}`.padEnd(14), r, err);
     await ctx.close();
   }

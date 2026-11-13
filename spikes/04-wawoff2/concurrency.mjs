@@ -9,7 +9,19 @@ const seq = [];
 for (const i of inputs) seq.push(new Uint8Array(await wawoff2.compress(i)));
 const par = (await Promise.all(inputs.map((i) => wawoff2.compress(i)))).map((r) => new Uint8Array(r));
 const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
-console.log('sequential signatures', seq.map(sig), 'lengths', seq.map((b) => b.length));
-console.log('parallel   signatures', par.map(sig), 'lengths', par.map((b) => b.length), 'equal to sequential', par.map((b, i) => same(b, seq[i])));
+console.log(
+  'sequential signatures',
+  seq.map(sig),
+  'lengths',
+  seq.map((b) => b.length),
+);
+console.log(
+  'parallel   signatures',
+  par.map(sig),
+  'lengths',
+  par.map((b) => b.length),
+  'equal to sequential',
+  par.map((b, i) => same(b, seq[i])),
+);
 const r = wawoff2.compress(inputs[0]);
 console.log('compress returns', Object.prototype.toString.call(r), r instanceof Promise ? '(promise)' : '');
