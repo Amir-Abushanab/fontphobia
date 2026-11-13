@@ -24,7 +24,10 @@ export default defineConfig(({ mode }) => ({
       nitro: {
         hooks: {
           'prerender:done': (ctx: any) =>
-            console.log('[probe] nitro prerender:done', JSON.stringify(ctx.prerenderedRoutes?.map((r: any) => r.route))),
+            console.log(
+              '[probe] nitro prerender:done',
+              JSON.stringify(ctx.prerenderedRoutes?.map((r: any) => r.route)),
+            ),
           close: () => console.log('[probe] nitro close'),
         },
       },

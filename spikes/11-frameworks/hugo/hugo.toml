@@ -4,4 +4,4 @@ title = "fontphobia hugo fixture"
 
 # Raw HTML in Markdown is dropped by default (goldmark renderer.unsafe = false).
 [markup.goldmark.renderer]
-  unsafe = true
+unsafe = true

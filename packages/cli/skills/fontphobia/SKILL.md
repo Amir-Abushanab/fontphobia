@@ -237,6 +237,7 @@ export default defineConfig({
   check: { mode: 'error', strict: false, allowChars: '' },
   auto: false, // integrations subset the build output instead of running check: true, 'static' or 'crawl'
   autoRules: 'inline', // where auto puts the split rules: 'inline' (each page) or 'linked' (one cached stylesheet)
+  inlineCoreMax: 16384, // largest core file inline-core embeds, in bytes
   verify: {
     browsers: ['chromium'],
     hinting: false,
@@ -354,8 +355,8 @@ pnpm build && pnpm dlx fontphobia auto --crawl    # measures each face in Chrome
   - `prefetch-extended` (`--crawl`): pages prefetch, when idle, an extended file another page
     needs. Its bytes are in the `auto` report, not in `verify`'s per-page totals. Safari ignores it.
   - `inline-core` (`--rules linked`): the core of a face every page draws goes in the stylesheet as
-    a `data:` URL (`font-src` must allow `data:`), unless a page preloads its source font.
-    `verify` counts it per page as "in the stylesheet".
+    a `data:` URL (`font-src` must allow `data:`), unless a page preloads its source font or the
+    core is above `inlineCoreMax` (16384 bytes): the stylesheet blocks the first paint.
 - **Every run checks, without a browser,** that each file decodes and matches its source, that the
   rules keep the original descriptors and that every word shapes identically. A failure puts the
   output back as it was and exits 1.

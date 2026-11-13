@@ -2,5 +2,5 @@ allowBuilds:
   esbuild: true
 minimumReleaseAgeExclude:
   - octane
-  - "@octanejs/*"
-  - "@tsrx/*"
+  - '@octanejs/*'
+  - '@tsrx/*'

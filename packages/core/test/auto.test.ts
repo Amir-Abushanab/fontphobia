@@ -457,6 +457,8 @@ describe('auto, crawl (an audit’s usage)', () => {
       usage,
       version,
       rules: 'linked',
+      // Above the default limit: the fixture's Inter core is about 45 KB.
+      inlineCoreMax: 100_000,
       config: { allow: ['inline-core', 'add-preloads'] },
     });
     // Inter's upright face is on all three pages; the italic and DejaVu are on one.
@@ -472,7 +474,29 @@ describe('auto, crawl (an audit’s usage)', () => {
     for (const key of Object.keys(usage.pages)) expect(read(dir, relOf(key))).not.toContain(name);
     expect(read(dir, 'edge.html')).toMatch(/<link rel="preload" href="[^"]*DejaVuSans\.core\./);
     expect(r.notes.join('\n')).toMatch(/inline-core: deja-400-normal stays a file \(1 of 3 page\(s\) draw it\)/);
+    // The fixture's faces have font-display: swap, which the stylesheet now overrides for the first paint.
+    expect(r.notes.join('\n')).toMatch(
+      /inline-core: inter-100-900-normal has font-display: swap, so its pages painted text in a fallback font while it loaded/,
+    );
     expect(r.checked!.outputs).toBe(r.fonts.length);
+  }, 300_000);
+
+  it('inline-core leaves a core file above the size limit as a file, and says why', async () => {
+    const { dir, usage } = crawled('crawl-embed-limit');
+    writeFileSync(join(dir, 'index.html'), read(dir, 'index.html').replace(/<link rel="preload"[^>]*>\n?/g, ''));
+    const r = await autoSubset({
+      root: dir,
+      outDir: dir,
+      usage,
+      version,
+      rules: 'linked',
+      config: { allow: ['inline-core'] },
+    });
+    expect(r.embedded).toBeUndefined();
+    expect(read(dir, r.stylesheet!.file)).not.toContain('data:font');
+    expect(r.notes.join('\n')).toMatch(
+      /inline-core: inter-100-900-normal stays a file \(its core file is [\d.]+ KB, above the 16\.0 KB limit \(`inlineCoreMax`\)/,
+    );
   }, 300_000);
 
   it('inline-core leaves a face whose source font a page preloads, and needs linked rules', async () => {
@@ -483,6 +507,7 @@ describe('auto, crawl (an audit’s usage)', () => {
       usage: a.usage,
       version,
       rules: 'linked',
+      inlineCoreMax: 100_000,
       config: { allow: ['inline-core'] },
     });
     expect(linked.embedded).toBeUndefined();

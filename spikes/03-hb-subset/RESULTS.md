@@ -47,19 +47,20 @@ harfbuzzjs 1.6.4, Chrome 155.0.8059.79 (macOS), Node 24.21.0. Fonts: Inter 4.1 `
 - `drift.mjs` → `drift.txt`: HarfBuzz cumulative advance drift.
 - `browser.mjs` → `browser.txt`, `pinned.mjs` → `pinned.txt`: Chrome width deltas.
 
-| WOFF2, Latin subset | default | names 0–25 | features `*` | no hinting | wght 400..700 | pin 400/14 |
-|---|---|---|---|---|---|---|
-| InterVariable | 54,976 | 55,068 | 86,072 | 54,976 | 38,712 | 14,896 |
-| Inter hinted Regular | 20,512 | 20,656 | 31,636 | 14,336 | | |
-| DejaVu Sans | 20,344 | 21,888 | 21,588 | 9,296 | | |
+| WOFF2, Latin subset  | default | names 0–25 | features `*` | no hinting | wght 400..700 | pin 400/14 |
+| -------------------- | ------- | ---------- | ------------ | ---------- | ------------- | ---------- |
+| InterVariable        | 54,976  | 55,068     | 86,072       | 54,976     | 38,712        | 14,896     |
+| Inter hinted Regular | 20,512  | 20,656     | 31,636       | 14,336     |               |            |
+| DejaVu Sans          | 20,344  | 21,888     | 21,588       | 9,296      |               |            |
 
 ## Implications for the plan
 
-- **§8.6 axes:** limiting or pinning an axis is *lossy at the sub-pixel level*, not lossless. Options, recommended first:
+- **§8.6 axes:** limiting or pinning an axis is _lossy at the sub-pixel level_, not lossless. Options, recommended first:
   1. Keep it on by default, but have the verifier's layout diff accept horizontal box changes under 1 CSS px only if every line break and every box height is identical. If a line break changes, back off that face to its full axes and report why.
   2. Make axis limiting opt-in (`--allow limit-axes`).
 
   In either case, §10.3's "sub-pixel rounding" class needs a numeric definition: at most N px horizontal shift per line, no line-break change. The pixel diff will be noisy along every line of instanced text.
+
 - **§8.6 pinning:** when a face uses a few discrete values (e.g. 400 and 700, nothing animated), several pinned static files can beat one range-limited file (2 × 14.9 KB vs 38.7 KB). Add this as a planner candidate, with the same drift caveat.
 - **§8 features:** the plan's rule "HarfBuzz defaults + everything CSS enables" is correct, and this spike shows it matters: `tnum`, `case` and `ss**`/`cv**` are not in HarfBuzz's defaults. The CSS→feature map must cover `font-variant-*`, `font-feature-settings`, and `font-variant-alternates`. `text-transform: uppercase` doesn't enable `case`, so it adds nothing here.
 - **§11 licensing:** keep name IDs 0–14 and 25 by default, not HarfBuzz's 0–6. The OFL requires the copyright notice and license to travel with each copy, and IDs 13/14 carry them in the binary. It costs about 0.1–1.5 KB.

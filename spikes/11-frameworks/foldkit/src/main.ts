@@ -158,7 +158,10 @@ const pageView = (model: Model, h: HtmlBuilder<Message>): Html =>
             [h.Id('page-title'), h.Class('font-[Fraunces] text-4xl font-bold')],
             [`Post ${id}`],
           ),
-          h.p([], ['A dynamic route, /posts/:id, prerendered for ids 1 and 2.']),
+          h.p(
+            [],
+            ['A dynamic route, /posts/:id, prerendered for ids 1 and 2.'],
+          ),
         ],
       ),
     NotFound: ({ path }) =>

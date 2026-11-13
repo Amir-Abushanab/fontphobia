@@ -12,7 +12,9 @@ export const tag = (s) => [...s].reduce((a, c) => ((a << 8) | c.charCodeAt(0)) >
 let sub;
 async function subsetWasm() {
   if (sub) return sub;
-  const { instance } = await WebAssembly.instantiate(readFileSync(require.resolve('harfbuzzjs/dist/harfbuzz-subset.wasm')));
+  const { instance } = await WebAssembly.instantiate(
+    readFileSync(require.resolve('harfbuzzjs/dist/harfbuzz-subset.wasm')),
+  );
   instance.exports._initialize();
   return (sub = instance.exports);
 }
@@ -38,15 +40,23 @@ export async function subset(sfnt, opts = {}) {
   const face = w.hb_face_create(blob, 0);
   w.hb_blob_destroy(blob);
 
-  const setAll = (s) => { w.hb_set_clear(s); w.hb_set_invert(s); };
+  const setAll = (s) => {
+    w.hb_set_clear(s);
+    w.hb_set_invert(s);
+  };
   if (opts.features !== undefined) {
     const s = w.hb_subset_input_set(input, SETS.LAYOUT_FEATURE_TAG);
     w.hb_set_clear(s);
-    if (opts.features === '*') setAll(s); else for (const f of opts.features) w.hb_set_add(s, tag(f));
+    if (opts.features === '*') setAll(s);
+    else for (const f of opts.features) w.hb_set_add(s, tag(f));
   }
   if (opts.nameIds !== undefined) {
     const s = w.hb_subset_input_set(input, SETS.NAME_ID);
-    if (opts.nameIds === '*') setAll(s); else { w.hb_set_clear(s); for (const n of opts.nameIds) w.hb_set_add(s, n); }
+    if (opts.nameIds === '*') setAll(s);
+    else {
+      w.hb_set_clear(s);
+      for (const n of opts.nameIds) w.hb_set_add(s, n);
+    }
   }
   for (const t of opts.dropTables ?? []) w.hb_set_add(w.hb_subset_input_set(input, SETS.DROP_TABLE_TAG), tag(t));
   if (opts.nameLangs === '*') setAll(w.hb_subset_input_set(input, SETS.NAME_LANG_ID));
@@ -55,12 +65,14 @@ export async function subset(sfnt, opts = {}) {
   w.hb_subset_input_set_flags(input, flags);
 
   const u = w.hb_subset_input_unicode_set(input);
-  if (opts.unicodes === undefined) setAll(u); else for (const c of opts.unicodes) w.hb_set_add(u, c);
+  if (opts.unicodes === undefined) setAll(u);
+  else for (const c of opts.unicodes) w.hb_set_add(u, c);
 
   for (const [axis, v] of Object.entries(opts.axes ?? {})) {
-    const ok = typeof v === 'number'
-      ? w.hb_subset_input_pin_axis_location(input, face, tag(axis), v)
-      : w.hb_subset_input_set_axis_range(input, face, tag(axis), v.min, v.max, v.default ?? NaN);
+    const ok =
+      typeof v === 'number'
+        ? w.hb_subset_input_pin_axis_location(input, face, tag(axis), v)
+        : w.hb_subset_input_set_axis_range(input, face, tag(axis), v.min, v.max, v.default ?? NaN);
     if (!ok) throw new Error(`axis ${axis} failed`);
   }
   const out = w.hb_subset_or_fail(face, input);
@@ -68,7 +80,10 @@ export async function subset(sfnt, opts = {}) {
   if (!out) throw new Error('hb_subset_or_fail');
   const rb = w.hb_face_reference_blob(out);
   const data = heap().slice(w.hb_blob_get_data(rb, 0), w.hb_blob_get_data(rb, 0) + w.hb_blob_get_length(rb));
-  w.hb_blob_destroy(rb); w.hb_face_destroy(out); w.hb_face_destroy(face); w.free(ptr);
+  w.hb_blob_destroy(rb);
+  w.hb_face_destroy(out);
+  w.hb_face_destroy(face);
+  w.free(ptr);
   return data;
 }
 
@@ -91,13 +106,23 @@ export function shape(font, text, { features = [], variations } = {}) {
   buf.guessSegmentProperties();
   hb.shape(font, buf, features);
   const pos = buf.getGlyphPositions();
-  return buf.getGlyphInfos().map((g, i) => ({ g: g.codepoint, cl: g.cluster, ax: pos[i].xAdvance, ay: pos[i].yAdvance, dx: pos[i].xOffset, dy: pos[i].yOffset }));
+  return buf
+    .getGlyphInfos()
+    .map((g, i) => ({
+      g: g.codepoint,
+      cl: g.cluster,
+      ax: pos[i].xAdvance,
+      ay: pos[i].yAdvance,
+      dx: pos[i].xOffset,
+      dy: pos[i].yOffset,
+    }));
 }
 
 /** Flat list of outline points for a glyph (font units). */
 export function points(font, gid) {
   const out = [];
-  for (const c of font.glyphToJson(gid)) for (let i = 0; i + 1 < c.values.length; i += 2) out.push([c.values[i], c.values[i + 1]]);
+  for (const c of font.glyphToJson(gid))
+    for (let i = 0; i + 1 < c.values.length; i += 2) out.push([c.values[i], c.values[i + 1]]);
   return out;
 }
 

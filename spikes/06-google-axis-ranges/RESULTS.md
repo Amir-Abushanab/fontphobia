@@ -13,16 +13,16 @@ Tested 2026-11-02 with Chrome 155 (headless, DSF 2, `pixelmatch` threshold 0). T
 
 ## Evidence
 
-| Query (latin slice) | sfnt bytes | `fvar` | Notes |
-|---|---|---|---|
-| `Inter:opsz,wght@14..32,100..900` | 168,892 | opsz 14..32, wght 100..900 | |
-| `Inter:opsz,wght@16..24,400..700` | 168,892 | same | identical bytes to the row above |
-| `Inter:wght@100..900` | 122,888 | wght 100..900 | opsz pinned at 14 |
-| `Inter:wght@400..700` | 122,888 | wght 100..900 | identical bytes to the row above |
-| `Inter:wght@400` | 66,892 | none | static |
-| `Roboto+Flex:opsz,wght@8..144,100..1000` | 153,292 | opsz 8..144, wght 100..1000 | |
-| `Roboto+Flex:wght@400..700` (`/s/`, ~95%) | 72,552 | wght 100..1000 | opsz pinned at 14 |
-| `Roboto+Flex:wght@400..700` (`/l/font`, ~5%) | 55,512 | **wght 400..700** | instanced on the fly |
+| Query (latin slice)                          | sfnt bytes | `fvar`                      | Notes                            |
+| -------------------------------------------- | ---------- | --------------------------- | -------------------------------- |
+| `Inter:opsz,wght@14..32,100..900`            | 168,892    | opsz 14..32, wght 100..900  |                                  |
+| `Inter:opsz,wght@16..24,400..700`            | 168,892    | same                        | identical bytes to the row above |
+| `Inter:wght@100..900`                        | 122,888    | wght 100..900               | opsz pinned at 14                |
+| `Inter:wght@400..700`                        | 122,888    | wght 100..900               | identical bytes to the row above |
+| `Inter:wght@400`                             | 66,892     | none                        | static                           |
+| `Roboto+Flex:opsz,wght@8..144,100..1000`     | 153,292    | opsz 8..144, wght 100..1000 |                                  |
+| `Roboto+Flex:wght@400..700` (`/s/`, ~95%)    | 72,552     | wght 100..1000              | opsz pinned at 14                |
+| `Roboto+Flex:wght@400..700` (`/l/font`, ~5%) | 55,512     | **wght 400..700**           | instanced on the fly             |
 
 Pixel diffs are in `out/results.json`, and diff images for every non-zero case are in `out/`.
 
@@ -52,11 +52,11 @@ node render.mjs           # Chrome pixel diffs
 
 Google's own Latin files compared with fontphobia's output from the same file, for an English-only page:
 
-| | Inter (`wght`) | Inter (`opsz`+`wght`) | Roboto Flex |
-|---|---|---|---|
-| Google's Latin file | 47.3 KB | 71.3 KB | 82.6 KB |
-| Self-hosted, same characters | −7% | −6% | −6% |
-| Self-hosted core file (ASCII + punctuation) | −44% | −41% | −43% |
-| Core + `wght` limited to 400–700 | −59% | −58% | −60% |
+|                                             | Inter (`wght`) | Inter (`opsz`+`wght`) | Roboto Flex |
+| ------------------------------------------- | -------------- | --------------------- | ----------- |
+| Google's Latin file                         | 47.3 KB        | 71.3 KB               | 82.6 KB     |
+| Self-hosted, same characters                | −7%            | −6%                   | −6%         |
+| Self-hosted core file (ASCII + punctuation) | −44%           | −41%                  | −43%        |
+| Core + `wght` limited to 400–700            | −59%           | −58%                  | −60%        |
 
 Tightening the URL saves almost nothing. The savings come from self-hosting with the core split.

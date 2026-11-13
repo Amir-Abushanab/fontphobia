@@ -6,5 +6,5 @@
  * action.
  */
 export function health(): Response {
-  return Response.json({ status: "ok" });
+  return Response.json({ status: 'ok' });
 }

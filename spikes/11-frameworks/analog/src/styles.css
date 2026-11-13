@@ -1,8 +1,11 @@
 @import '@fontsource-variable/inter';
 
-html, body {
+html,
+body {
   display: block;
   height: 100%;
 }
 
-body { font-family: 'Inter Variable', sans-serif; }
+body {
+  font-family: 'Inter Variable', sans-serif;
+}

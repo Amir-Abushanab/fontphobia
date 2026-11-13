@@ -5,6 +5,7 @@ Researched 2026-11-02. Ten public kits were sampled from GitHub code search; the
 ## Answer
 
 **There is a documented API, the Typekit API v1, and it is narrow.** It can create, update, publish and delete kits. Per kit it can set `name`, `domains`, `families`, and for each family `subset` (`"default"` or `"all"`) and `variations` (FVD codes such as `n4`, `i7`). It can't set:
+
 - the **OpenType features** toggle;
 - **language subsetting** (custom language character sets);
 - **`font-display`**.
@@ -14,6 +15,7 @@ Those three are web-UI only (Edit Project). The API hasn't changed since 2011 an
 **Licensing rules out anything fontphobia normally does to the files.** Adobe Fonts can't be self-hosted, modified or uploaded elsewhere; they must be served from Adobe's CDN. So the adapter can never subset, instance or split. The only possible edits are kit settings on Adobe's side.
 
 **Conclusion:** keep `adobe-fonts` report-only by default. An opt-in, token-authenticated `--apply-kit` is feasible for two things:
+
 1. dropping unused `variations` (weights and styles);
 2. switching `subset: "all"` → `"default"` when the measured usage fits the default character set.
 
@@ -25,7 +27,7 @@ Everything else (turning off OpenType features, a language subset, `font-display
 
 - **Auth:** a user token from `fonts.adobe.com/account/tokens`, sent as the `X-Typekit-Token` header or `?token=`, over HTTPS only. Tokens act as the user, and there's no delegated/OAuth flow ("planned for the future"). Source: https://fonts.adobe.com/docs/api/auth
 - **`POST /kits`** (create) takes `name`, `domains`, `families`, `segmented_css_names` and `analytics` (deprecated). Source: https://fonts.adobe.com/docs/api/v1/:format/kits
-- **`GET|POST|DELETE /kits/:kit`** edits the *draft*. Any POSTed param "completely replaces the existing value", so `families` must be sent in full. Source: https://fonts.adobe.com/docs/api/v1/:format/kits/:kit
+- **`GET|POST|DELETE /kits/:kit`** edits the _draft_. Any POSTed param "completely replaces the existing value", so `families` must be sent in full. Source: https://fonts.adobe.com/docs/api/v1/:format/kits/:kit
 - **`POST /kits/:kit/families/:family`** takes `subset` ("default" or "all"; new families get "default") and `variations` (Font Variation Description list; default is all). Source: https://fonts.adobe.com/docs/api/v1/:format/kits/:kit/families/:family
 - **`POST /kits/:kit/publish`** makes the draft live, and `GET /kits/:kit/published` reads the live version. Source: https://fonts.adobe.com/docs/api
 - **Changelog:** last entry is 2011-09-12 (`analytics` deprecated). Source: https://fonts.adobe.com/docs/api/changelog

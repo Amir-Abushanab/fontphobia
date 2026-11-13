@@ -17,6 +17,7 @@ Same family name, served over HTTP with request logging. Script: `run.mjs`. Outp
    - `café naïve`: +0.47 px (`f|é`).
 
    Pairs within one file are exact (`AVATAR To We Yo`: 0 px diff).
+
 2. **Contextual alternates break too.** In `Ä:Ö`, Inter's `calt` raises the colon between capitals. With the colon in core and the capitals in ext, the colon drops back: widths match but 785 pixels change.
 3. **Combining marks: Chrome composes to NFC when the cluster spans files.** `e` + U+0301 with the mark only in ext rendered exactly like precomposed `é` from ext: the same +0.47 px and the same 15-pixel diff from losing the `f|é` kern. With marks in core (`SplitM`), the decomposed text renders **identically to `Whole`** (0 px), and only the core file is fetched.
 4. **Downloads match `unicode-range`.** An ASCII-only page fetches only core. One `é` fetches ext. Decomposed `e` + U+0301 fetches ext under `Split` but only core under `SplitM`.

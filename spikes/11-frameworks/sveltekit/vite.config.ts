@@ -9,32 +9,31 @@ const base = useNode ? adapterNode() : adapterStatic();
 
 // Wrapping the adapter: adapt() runs once, after prerendering, so all HTML exists.
 const adapter = {
-	...base,
-	async adapt(builder: any) {
-		console.log('[probe] adapter.adapt start', JSON.stringify(builder.prerendered.paths));
-		await base.adapt(builder);
-		console.log('[probe] adapter.adapt done');
-	}
+  ...base,
+  async adapt(builder: any) {
+    console.log('[probe] adapter.adapt start', JSON.stringify(builder.prerendered.paths));
+    await base.adapt(builder);
+    console.log('[probe] adapter.adapt done');
+  },
 };
 
 const probe: Plugin = {
-	name: 'probe',
-	closeBundle() {
-		// @ts-ignore
-		console.log('[probe] closeBundle', this.environment?.name ?? '-');
-	}
+  name: 'probe',
+  closeBundle() {
+    // @ts-ignore
+    console.log('[probe] closeBundle', this.environment?.name ?? '-');
+  },
 };
 
 export default defineConfig({
-	plugins: [
-		sveltekit({
-			compilerOptions: {
-				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
-				runes: ({ filename }) =>
-					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
-			},
-			adapter
-		}),
-		probe
-	]
+  plugins: [
+    sveltekit({
+      compilerOptions: {
+        // Force runes mode for the project, except for libraries. Can be removed in svelte 6.
+        runes: ({ filename }) => (filename.split(/[/\\]/).includes('node_modules') ? undefined : true),
+      },
+      adapter,
+    }),
+    probe,
+  ],
 });

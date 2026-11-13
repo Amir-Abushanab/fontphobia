@@ -24,7 +24,11 @@ for (const [family, opts] of cases) {
   let out;
   try {
     const v = validate(family.replace(/ /g, '_'), opts);
-    out = getGoogleFontsUrl(v.fontFamily, getFontAxes(v.fontFamily, v.weights, v.styles, v.selectedVariableAxes), v.display);
+    out = getGoogleFontsUrl(
+      v.fontFamily,
+      getFontAxes(v.fontFamily, v.weights, v.styles, v.selectedVariableAxes),
+      v.display,
+    );
   } catch (e) {
     out = 'ERROR: ' + e.message.split('\n')[0];
   }

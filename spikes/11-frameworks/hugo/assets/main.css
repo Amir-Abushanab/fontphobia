@@ -1,4 +1,6 @@
 /* css.Build (Hugo >= v0.158) resolves bare imports from node_modules via package.json. */
-@import "@fontsource-variable/inter";
+@import '@fontsource-variable/inter';
 
-body { font-family: 'Inter Variable', sans-serif; }
+body {
+  font-family: 'Inter Variable', sans-serif;
+}

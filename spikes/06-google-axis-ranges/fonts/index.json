@@ -1,15 +1,7 @@
 {
   "inter-full": {
     "query": "Inter:opsz,wght@14..32,100..900",
-    "subsets": [
-      "cyrillic-ext",
-      "cyrillic",
-      "greek-ext",
-      "greek",
-      "vietnamese",
-      "latin-ext",
-      "latin"
-    ],
+    "subsets": ["cyrillic-ext", "cyrillic", "greek-ext", "greek", "vietnamese", "latin-ext", "latin"],
     "unicodeRanges": {
       "cyrillic-ext": "U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F",
       "cyrillic": "U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116",
@@ -26,15 +18,7 @@
   },
   "inter-wght-100-900": {
     "query": "Inter:wght@100..900",
-    "subsets": [
-      "cyrillic-ext",
-      "cyrillic",
-      "greek-ext",
-      "greek",
-      "vietnamese",
-      "latin-ext",
-      "latin"
-    ],
+    "subsets": ["cyrillic-ext", "cyrillic", "greek-ext", "greek", "vietnamese", "latin-ext", "latin"],
     "unicodeRanges": {
       "cyrillic-ext": "U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F",
       "cyrillic": "U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116",
@@ -51,15 +35,7 @@
   },
   "inter-wght-400-700": {
     "query": "Inter:wght@400..700",
-    "subsets": [
-      "cyrillic-ext",
-      "cyrillic",
-      "greek-ext",
-      "greek",
-      "vietnamese",
-      "latin-ext",
-      "latin"
-    ],
+    "subsets": ["cyrillic-ext", "cyrillic", "greek-ext", "greek", "vietnamese", "latin-ext", "latin"],
     "unicodeRanges": {
       "cyrillic-ext": "U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F",
       "cyrillic": "U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116",
@@ -76,15 +52,7 @@
   },
   "inter-opsz-16-24-wght-100-900": {
     "query": "Inter:opsz,wght@16..24,100..900",
-    "subsets": [
-      "cyrillic-ext",
-      "cyrillic",
-      "greek-ext",
-      "greek",
-      "vietnamese",
-      "latin-ext",
-      "latin"
-    ],
+    "subsets": ["cyrillic-ext", "cyrillic", "greek-ext", "greek", "vietnamese", "latin-ext", "latin"],
     "unicodeRanges": {
       "cyrillic-ext": "U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F",
       "cyrillic": "U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116",
@@ -101,15 +69,7 @@
   },
   "inter-opsz-16-24-wght-400-700": {
     "query": "Inter:opsz,wght@16..24,400..700",
-    "subsets": [
-      "cyrillic-ext",
-      "cyrillic",
-      "greek-ext",
-      "greek",
-      "vietnamese",
-      "latin-ext",
-      "latin"
-    ],
+    "subsets": ["cyrillic-ext", "cyrillic", "greek-ext", "greek", "vietnamese", "latin-ext", "latin"],
     "unicodeRanges": {
       "cyrillic-ext": "U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F",
       "cyrillic": "U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116",
@@ -126,15 +86,7 @@
   },
   "inter-wght-400": {
     "query": "Inter:wght@400",
-    "subsets": [
-      "cyrillic-ext",
-      "cyrillic",
-      "greek-ext",
-      "greek",
-      "vietnamese",
-      "latin-ext",
-      "latin"
-    ],
+    "subsets": ["cyrillic-ext", "cyrillic", "greek-ext", "greek", "vietnamese", "latin-ext", "latin"],
     "unicodeRanges": {
       "cyrillic-ext": "U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F",
       "cyrillic": "U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116",
@@ -151,14 +103,7 @@
   },
   "flex-full": {
     "query": "Roboto+Flex:opsz,wght@8..144,100..1000",
-    "subsets": [
-      "cyrillic-ext",
-      "cyrillic",
-      "greek",
-      "vietnamese",
-      "latin-ext",
-      "latin"
-    ],
+    "subsets": ["cyrillic-ext", "cyrillic", "greek", "vietnamese", "latin-ext", "latin"],
     "unicodeRanges": {
       "cyrillic-ext": "U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F",
       "cyrillic": "U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116",
@@ -174,14 +119,7 @@
   },
   "flex-wght-100-1000": {
     "query": "Roboto+Flex:wght@100..1000",
-    "subsets": [
-      "cyrillic-ext",
-      "cyrillic",
-      "greek",
-      "vietnamese",
-      "latin-ext",
-      "latin"
-    ],
+    "subsets": ["cyrillic-ext", "cyrillic", "greek", "vietnamese", "latin-ext", "latin"],
     "unicodeRanges": {
       "cyrillic-ext": "U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F",
       "cyrillic": "U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116",
@@ -197,14 +135,7 @@
   },
   "flex-wght-400-700": {
     "query": "Roboto+Flex:wght@400..700",
-    "subsets": [
-      "cyrillic-ext",
-      "cyrillic",
-      "greek",
-      "vietnamese",
-      "latin-ext",
-      "latin"
-    ],
+    "subsets": ["cyrillic-ext", "cyrillic", "greek", "vietnamese", "latin-ext", "latin"],
     "unicodeRanges": {
       "cyrillic-ext": "U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F",
       "cyrillic": "U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116",
@@ -220,14 +151,7 @@
   },
   "flex-opsz-12-32-wght-400-700": {
     "query": "Roboto+Flex:opsz,wght@12..32,400..700",
-    "subsets": [
-      "cyrillic-ext",
-      "cyrillic",
-      "greek",
-      "vietnamese",
-      "latin-ext",
-      "latin"
-    ],
+    "subsets": ["cyrillic-ext", "cyrillic", "greek", "vietnamese", "latin-ext", "latin"],
     "unicodeRanges": {
       "cyrillic-ext": "U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F",
       "cyrillic": "U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116",

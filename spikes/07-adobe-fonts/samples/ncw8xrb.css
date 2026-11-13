@@ -14,25 +14,56 @@
  */
 /*{"last_published":"2019-04-09 15:24:46 UTC"}*/
 
-@import url("https://p.typekit.net/p.css?s=1&k=ncw8xrb&ht=tk&f=42041.42649.42653&a=1494256&app=typekit&e=css");
+@import url('https://p.typekit.net/p.css?s=1&k=ncw8xrb&ht=tk&f=42041.42649.42653&a=1494256&app=typekit&e=css');
 
 @font-face {
-font-family:"gibbs";
-src:url("https://use.typekit.net/af/154e39/00000000000000003b9b319f/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n9&v=3") format("woff2"),url("https://use.typekit.net/af/154e39/00000000000000003b9b319f/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n9&v=3") format("woff"),url("https://use.typekit.net/af/154e39/00000000000000003b9b319f/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n9&v=3") format("opentype");
-font-display:auto;font-style:normal;font-weight:900;font-stretch:normal;
+  font-family: 'gibbs';
+  src:
+    url('https://use.typekit.net/af/154e39/00000000000000003b9b319f/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n9&v=3')
+      format('woff2'),
+    url('https://use.typekit.net/af/154e39/00000000000000003b9b319f/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n9&v=3')
+      format('woff'),
+    url('https://use.typekit.net/af/154e39/00000000000000003b9b319f/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n9&v=3')
+      format('opentype');
+  font-display: auto;
+  font-style: normal;
+  font-weight: 900;
+  font-stretch: normal;
 }
 
 @font-face {
-font-family:"covik-sans";
-src:url("https://use.typekit.net/af/573718/00000000000000003b9b349b/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3") format("woff2"),url("https://use.typekit.net/af/573718/00000000000000003b9b349b/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3") format("woff"),url("https://use.typekit.net/af/573718/00000000000000003b9b349b/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3") format("opentype");
-font-display:auto;font-style:normal;font-weight:400;font-stretch:normal;
+  font-family: 'covik-sans';
+  src:
+    url('https://use.typekit.net/af/573718/00000000000000003b9b349b/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3')
+      format('woff2'),
+    url('https://use.typekit.net/af/573718/00000000000000003b9b349b/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3')
+      format('woff'),
+    url('https://use.typekit.net/af/573718/00000000000000003b9b349b/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3')
+      format('opentype');
+  font-display: auto;
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: normal;
 }
 
 @font-face {
-font-family:"covik-sans";
-src:url("https://use.typekit.net/af/c64e73/00000000000000003b9b349f/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("woff2"),url("https://use.typekit.net/af/c64e73/00000000000000003b9b349f/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("woff"),url("https://use.typekit.net/af/c64e73/00000000000000003b9b349f/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("opentype");
-font-display:auto;font-style:normal;font-weight:700;font-stretch:normal;
+  font-family: 'covik-sans';
+  src:
+    url('https://use.typekit.net/af/c64e73/00000000000000003b9b349f/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3')
+      format('woff2'),
+    url('https://use.typekit.net/af/c64e73/00000000000000003b9b349f/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3')
+      format('woff'),
+    url('https://use.typekit.net/af/c64e73/00000000000000003b9b349f/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3')
+      format('opentype');
+  font-display: auto;
+  font-style: normal;
+  font-weight: 700;
+  font-stretch: normal;
 }
 
-.tk-gibbs { font-family: "gibbs",sans-serif; }
-.tk-covik-sans { font-family: "covik-sans",sans-serif; }
+.tk-gibbs {
+  font-family: 'gibbs', sans-serif;
+}
+.tk-covik-sans {
+  font-family: 'covik-sans', sans-serif;
+}

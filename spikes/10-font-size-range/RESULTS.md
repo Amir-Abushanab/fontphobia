@@ -17,7 +17,7 @@ Tested 2026-11-02 with Chrome 155.0.8059.79 (headless, macOS). The font is Inter
   - "Never use font sizes smaller than" offers **9, 10, 11, 12, 14, 18, 24** (third-party source, not verified in Safari);
   - also has page zoom and View → Zoom Text Only.
 - **CDP `Page.setFontSizes` matches the real pref exactly.** Setting `webkit.webprefs.default_font_size` in a profile gives identical computed sizes and `opsz` at 24 and 9. Values below 9 behaved like 9 (`standard: 6` → `1rem` = 9px), and 100 was accepted.
-- **Minimum font size changes `getComputedStyle().fontSize` and layout, but not the `opsz` input.** Chrome computes auto `opsz` from the size *before* the minimum is applied. It then reuses one value for every run of text that ends up at the same used size, whichever specified size rendered first. At minimum 20, 8px/16px/20px text all get `opsz` 20, 14 or 16 depending only on render order. This is a Chrome bug: output depends on order. It can't introduce an `opsz` value outside the range the page's own specified sizes already produce, so it doesn't widen the axis range the planner keeps. CDP can't set the minimum; it has to go through profile prefs.
+- **Minimum font size changes `getComputedStyle().fontSize` and layout, but not the `opsz` input.** Chrome computes auto `opsz` from the size _before_ the minimum is applied. It then reuses one value for every run of text that ends up at the same used size, whichever specified size rendered first. At minimum 20, 8px/16px/20px text all get `opsz` 20, 14 or 16 depending only on render order. This is a Chrome bug: output depends on order. It can't introduce an `opsz` value outside the range the page's own specified sizes already produce, so it doesn't widen the axis range the planner keeps. CDP can't set the minimum; it has to go through profile prefs.
 - **OS text scale reaches CSS px only on opt-in pages.**
   - `<meta name="text-scale" content="scale">` (Intent to Ship for Chrome 146) multiplies the root font size by the OS text scale, so `rem` and `opsz` follow.
   - Without the meta, the emulated OS scale changed nothing on desktop, including `env(preferred-text-scale)`, which stayed at 1.
@@ -28,12 +28,12 @@ Tested 2026-11-02 with Chrome 155.0.8059.79 (headless, macOS). The font is Inter
 
 **Sweep the audit should use (per page, at the narrowest and widest viewport):**
 
-| Setting | Values | Why |
-|---|---|---|
-| Default font size (CDP `standard`) | **9, 16, 72** | 9 and 72 bound Chrome and Firefox UI settings. Size → `opsz` is monotone, so the extremes bound the axis |
-| Extra presets | 12, 20, 24 | Only when the site has `em`/`rem` media queries, since content can change at those sizes. These add coverage, not axis range |
-| OS text scale | **0.85 and 2.0** at default 16, only when the page has `<meta name="text-scale">` | Opt-in pages only. The lower bound reaches fonts whose `opsz` min is below 9 (Roboto Flex: 8) |
-| Minimum font size | none | Can't widen the `opsz` range (see above). Mention it in the verify report as a known Chrome order-dependence |
+| Setting                            | Values                                                                            | Why                                                                                                                          |
+| ---------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Default font size (CDP `standard`) | **9, 16, 72**                                                                     | 9 and 72 bound Chrome and Firefox UI settings. Size → `opsz` is monotone, so the extremes bound the axis                     |
+| Extra presets                      | 12, 20, 24                                                                        | Only when the site has `em`/`rem` media queries, since content can change at those sizes. These add coverage, not axis range |
+| OS text scale                      | **0.85 and 2.0** at default 16, only when the page has `<meta name="text-scale">` | Opt-in pages only. The lower bound reaches fonts whose `opsz` min is below 9 (Roboto Flex: 8)                                |
+| Minimum font size                  | none                                                                              | Can't widen the `opsz` range (see above). Mention it in the verify report as a known Chrome order-dependence                 |
 
 ## Evidence
 
@@ -65,12 +65,12 @@ All raw numbers are in `results.json`, `results-minimum.json`, `order-dependence
 
 `sizes.mjs`, part A (CDP default size → computed / auto `opsz`):
 
-| standard | `1rem` | `0.75rem` | `small` | `16px` |
-|---|---|---|---|---|
-| 9 | 9px / 14 | 6.75px / 14 | 9px / 14 | 16px / 16 |
-| 16 | 16px / 16 | 12px / 14 | 13px / 14 | 16px / 16 |
-| 24 | 24px / 24 | 18px / 18 | 21.36px / 21.5 | 16px / 16 |
-| 72 | 72px / 32 | 54px / 32 | 64.08px / 32 | 16px / 16 |
+| standard | `1rem`    | `0.75rem`   | `small`        | `16px`    |
+| -------- | --------- | ----------- | -------------- | --------- |
+| 9        | 9px / 14  | 6.75px / 14 | 9px / 14       | 16px / 16 |
+| 16       | 16px / 16 | 12px / 14   | 13px / 14      | 16px / 16 |
+| 24       | 24px / 24 | 18px / 18   | 21.36px / 21.5 | 16px / 16 |
+| 72       | 72px / 32 | 54px / 32   | 64.08px / 32   | 16px / 16 |
 
 The `small` keyword doesn't scale linearly. It follows Blink's keyword table, so `opsz` depends on keyword sizes as well as `rem`.
 

@@ -1,5 +1,5 @@
-import {themes as prismThemes} from 'prism-react-renderer';
-import type {Config} from '@docusaurus/types';
+import { themes as prismThemes } from 'prism-react-renderer';
+import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
@@ -28,25 +28,21 @@ const config: Config = {
   onBrokenLinks: 'throw',
 
   // Idiomatic site-wide external stylesheet (rendered as <link rel="stylesheet"> in <head>).
-  stylesheets: [
-    {href: 'https://fonts.googleapis.com/css2?family=Fraunces:wght@400..700&display=swap'},
-  ],
-  headTags: [
-    {tagName: 'link', attributes: {rel: 'preconnect', href: 'https://fonts.googleapis.com'}},
-  ],
+  stylesheets: [{ href: 'https://fonts.googleapis.com/css2?family=Fraunces:wght@400..700&display=swap' }],
+  headTags: [{ tagName: 'link', attributes: { rel: 'preconnect', href: 'https://fonts.googleapis.com' } }],
 
   plugins: [
     function probePlugin() {
       return {
         name: 'probe',
-        async contentLoaded({actions}) {
+        async contentLoaded({ actions }) {
           // "Dynamic route": one component, two prerendered paths.
           for (const id of ['1', '2']) {
             actions.addRoute({
               path: `/posts/${id}`,
               component: '@site/src/components/Post/index.tsx',
               exact: true,
-              customData: {id},
+              customData: { id },
             });
           }
         },
@@ -63,7 +59,7 @@ const config: Config = {
             ],
           };
         },
-        async postBuild({outDir, routesPaths}) {
+        async postBuild({ outDir, routesPaths }) {
           console.log('[probe] postBuild', outDir, JSON.stringify(routesPaths));
         },
       };
@@ -86,8 +82,7 @@ const config: Config = {
           sidebarPath: './sidebars.ts',
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+          editUrl: 'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
         },
         blog: {
           showReadingTime: true,
@@ -97,8 +92,7 @@ const config: Config = {
           },
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+          editUrl: 'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
           // Useful options to enforce blogging best practices
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
@@ -130,7 +124,7 @@ const config: Config = {
           position: 'left',
           label: 'Tutorial',
         },
-        {to: '/blog', label: 'Blog', position: 'left'},
+        { to: '/blog', label: 'Blog', position: 'left' },
         {
           href: 'https://github.com/facebook/docusaurus',
           label: 'GitHub',

@@ -8,13 +8,18 @@ for (const f of ['InterVariable.ttf', 'DejaVuSans.ttf', 'Inter-Regular-hinted.wo
   const src = await readSfnt(new URL(`../fonts/${f}`, import.meta.url).pathname);
   const row = {};
   const cfg = {
-    'default': {},
+    default: {},
     'names 0-25': { nameIds: ids0to25 },
     'names *': { nameIds: '*', nameLangs: '*' },
     'features *': { features: '*' },
     'no hinting': { hinting: false },
   };
-  if (f === 'InterVariable.ttf') Object.assign(cfg, { 'wght 400..700': { axes: { wght: { min: 400, max: 700 } } }, 'pin 400/14': { axes: { wght: 400, opsz: 14 } } });
-  for (const [k, o] of Object.entries(cfg)) row[k] = (await woff2.compress(await subset(src, { unicodes: LATIN, ...o }))).length;
+  if (f === 'InterVariable.ttf')
+    Object.assign(cfg, {
+      'wght 400..700': { axes: { wght: { min: 400, max: 700 } } },
+      'pin 400/14': { axes: { wght: 400, opsz: 14 } },
+    });
+  for (const [k, o] of Object.entries(cfg))
+    row[k] = (await woff2.compress(await subset(src, { unicodes: LATIN, ...o }))).length;
   console.log(f, JSON.stringify(row));
 }

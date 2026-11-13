@@ -6,25 +6,25 @@ Chrome 155.0.8059.79, `DOMSnapshot.captureSnapshot` with `documents[].layout.tex
 
 The layout text includes generated text. Collect from `layout.text`, not DOM text nodes.
 
-| Construct | In layout text? | Notes |
-|---|---|---|
-| `text-transform: uppercase` / `lowercase` / `capitalize` | ✅ transformed | `straße` → `STRASSE`; `İSTANBUL` (`lang=tr`) → `istanbul`; `ǳ` → titlecase `ǲ`; `ǆ` → `Ǆ` |
-| `text-transform: full-width` | n/a in Chrome | Chrome 155 computes it as `none`. Firefox and Safari support it, so a Chrome-only crawl would miss U+FF01–FF5E |
-| `::before`/`::after`, `content: attr()` | ✅ | Tagged as pseudo-element nodes |
-| `<q>` quotes (`lang` en/de/fr, nested), `quotes:` property | ✅ | Locale-correct: `„“ ‚‘`, `« »` |
-| `::marker`: disc, decimal with `start`, `lower-greek`, `@counter-style` symbols, `::marker { content }`, `<summary>` | ✅ | Includes the suffix and trailing space: `•␠␠`, `7.␠␠`, `α.␠␠`, `✓␠␠`, `▸␠␠` |
-| `counter(c, upper-roman)` | ✅ | `IV`, `V` |
-| Shadow DOM, open **and closed** | ✅ | The snapshot pierces closed roots |
-| SVG `<text>` | ✅ | |
-| `::first-letter` | ✅ | Separate layout node; `getPlatformFontsForNode` reports its own font (Courier New:1) |
-| `<button>` | ✅ | |
-| `<input>` value, placeholder, password, `type=file`, `type=date` | ❌ | No DOM text and no layout text. The UA shadow tree isn't in the snapshot |
-| `<textarea>`, `<select>` options | ❌ in layout | Present as DOM text only |
-| `text-overflow: ellipsis` | ❌ | `…` is never in the text. `boxes=1` |
-| `hyphens: auto` | ❌ | Lines break (`boxes=5`), but the hyphen glyph isn't in the text |
-| `font-variant-caps: small-caps` (synthesized, Georgia) | ❌ | Text stays `Small Caps`. The synthesized uppercase isn't in the text |
-| `display: none` | ❌ (expected) | |
-| `visibility: hidden` | ✅ | Laid out, so it counts |
+| Construct                                                                                                            | In layout text? | Notes                                                                                                          |
+| -------------------------------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------- |
+| `text-transform: uppercase` / `lowercase` / `capitalize`                                                             | ✅ transformed  | `straße` → `STRASSE`; `İSTANBUL` (`lang=tr`) → `istanbul`; `ǳ` → titlecase `ǲ`; `ǆ` → `Ǆ`                      |
+| `text-transform: full-width`                                                                                         | n/a in Chrome   | Chrome 155 computes it as `none`. Firefox and Safari support it, so a Chrome-only crawl would miss U+FF01–FF5E |
+| `::before`/`::after`, `content: attr()`                                                                              | ✅              | Tagged as pseudo-element nodes                                                                                 |
+| `<q>` quotes (`lang` en/de/fr, nested), `quotes:` property                                                           | ✅              | Locale-correct: `„“ ‚‘`, `« »`                                                                                 |
+| `::marker`: disc, decimal with `start`, `lower-greek`, `@counter-style` symbols, `::marker { content }`, `<summary>` | ✅              | Includes the suffix and trailing space: `•␠␠`, `7.␠␠`, `α.␠␠`, `✓␠␠`, `▸␠␠`                                    |
+| `counter(c, upper-roman)`                                                                                            | ✅              | `IV`, `V`                                                                                                      |
+| Shadow DOM, open **and closed**                                                                                      | ✅              | The snapshot pierces closed roots                                                                              |
+| SVG `<text>`                                                                                                         | ✅              |                                                                                                                |
+| `::first-letter`                                                                                                     | ✅              | Separate layout node; `getPlatformFontsForNode` reports its own font (Courier New:1)                           |
+| `<button>`                                                                                                           | ✅              |                                                                                                                |
+| `<input>` value, placeholder, password, `type=file`, `type=date`                                                     | ❌              | No DOM text and no layout text. The UA shadow tree isn't in the snapshot                                       |
+| `<textarea>`, `<select>` options                                                                                     | ❌ in layout    | Present as DOM text only                                                                                       |
+| `text-overflow: ellipsis`                                                                                            | ❌              | `…` is never in the text. `boxes=1`                                                                            |
+| `hyphens: auto`                                                                                                      | ❌              | Lines break (`boxes=5`), but the hyphen glyph isn't in the text                                                |
+| `font-variant-caps: small-caps` (synthesized, Georgia)                                                               | ❌              | Text stays `Small Caps`. The synthesized uppercase isn't in the text                                           |
+| `display: none`                                                                                                      | ❌ (expected)   |                                                                                                                |
+| `visibility: hidden`                                                                                                 | ✅              | Laid out, so it counts                                                                                         |
 
 `CSS.getPlatformFontsForNode` counts pseudo-element glyphs and shows **system fallback** per node. For example, `→` fell back to Times New Roman, `★` to Songti SC and `✗` to Zapf Dingbats. That's exactly the signal for "the page uses a character the web font doesn't have".
 

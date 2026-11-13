@@ -2,6 +2,7 @@ import { Runtime } from 'foldkit'
 
 import { Message, Model, init, update, view } from './main'
 import '@fontsource-variable/inter'
+
 import './styles.css'
 
 const application = Runtime.makeApplication({

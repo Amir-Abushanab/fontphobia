@@ -13,7 +13,10 @@ const probe: Plugin = {
   buildApp: {
     order: 'post',
     handler() {
-      console.log('[probe] buildApp post, posts/2 html exists:', existsSync('dist/client/posts/2/index.html'))
+      console.log(
+        '[probe] buildApp post, posts/2 html exists:',
+        existsSync('dist/client/posts/2/index.html'),
+      )
     },
   },
 }

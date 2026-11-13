@@ -3,4 +3,4 @@ packages:
 allowBuilds:
   esbuild: true
   sharp: true
-  "@parcel/watcher": false
+  '@parcel/watcher': false

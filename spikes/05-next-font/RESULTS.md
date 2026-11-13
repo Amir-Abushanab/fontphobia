@@ -33,6 +33,7 @@ Run on 2026-11-02 with `next@16.4.4`, React 19.3.1, Node 24.21.0, macOS. The fix
      5. `font-weight`/`font-style` (from the entry, else the top level)
 
      Then a single `<name> Fallback` face, unless `adjustFontFallback: false`.
+
    - **`declarations`:** applied to every face of the call. Only `src`, `font-display`, `font-weight` and `font-style` are rejected. `unicode-range` and `font-family` are allowed.
    - **No `unicode-range` per `src` entry.** I tried `{ path, weight, unicodeRange, declarations }` on each entry. TypeScript would reject the extra keys; at runtime they are silently dropped, because the loader only reads `path`/`weight`/`style`. Both faces were emitted with no `unicode-range` and both were preloaded.
    - **One `unicode-range` per call does work.** The split can be expressed as **two `localFont()` calls** sharing a family set in `declarations` (`font-family: 'Inter Split'`), each with its own `unicode-range`. But:
@@ -54,16 +55,16 @@ Run on 2026-11-02 with `next@16.4.4`, React 19.3.1, Node 24.21.0, macOS. The fix
      - Turbopack and webpack produced identical numbers.
    - **Would fontphobia change it? Yes, for local fonts, in three ways** (`scripts/fallback-metrics.cjs`, output in `evidence/fallback-metrics.txt`):
 
-     | File | size-adjust | ascent-override |
-     |---|---|---|
-     | original Inter latin | 107.89% | 89.79% |
-     | subset to Latin-1 or ASCII, no instancing | 107.89% | 89.79% (unchanged) |
-     | ASCII without `q` | **100.00%** | **96.88%** |
-     | `wght` 300..700 (default 400 kept) | 107.89% | 89.79% (unchanged) |
-     | `wght` 500..700 (default clamps to 500) | **109.05%** | **88.83%** |
-     | `opsz` pinned at 14 (the default) | 107.89% | 89.79% (unchanged) |
-     | `opsz` 16..32 (default clamps to 16) | **106.82%** | **90.69%** |
-     | `opsz` pinned at 32 | **98.29%** | **98.56%** |
+     | File                                      | size-adjust | ascent-override    |
+     | ----------------------------------------- | ----------- | ------------------ |
+     | original Inter latin                      | 107.89%     | 89.79%             |
+     | subset to Latin-1 or ASCII, no instancing | 107.89%     | 89.79% (unchanged) |
+     | ASCII without `q`                         | **100.00%** | **96.88%**         |
+     | `wght` 300..700 (default 400 kept)        | 107.89%     | 89.79% (unchanged) |
+     | `wght` 500..700 (default clamps to 500)   | **109.05%** | **88.83%**         |
+     | `opsz` pinned at 14 (the default)         | 107.89%     | 89.79% (unchanged) |
+     | `opsz` 16..32 (default clamps to 16)      | **106.82%** | **90.69%**         |
+     | `opsz` pinned at 32                       | **98.29%**  | **98.56%**         |
 
      hhea stayed 1984/-494/0 in every case.
 
@@ -130,6 +131,7 @@ Suggested edits; not applied.
   3. hhea must be unchanged.
 
   Add these checks to the planner for this adapter. Better still, compute Next's fallback CSS before and after with Next's own function (`getFallbackMetricsFromFontFile`, loaded from the user's `next`) and require equality. That makes it a deterministic check rather than a promise.
+
 - **§6.4 `next-font-google`:**
   - The fallback comes from a precomputed table, so fontphobia's changes can't alter it. But fontphobia can't feed Google a subset either.
   - `subsets` affects only preload; every slice is always downloaded and emitted. `weight` can't name a range, and static weights get the full variable file.

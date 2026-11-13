@@ -47,8 +47,18 @@ export const splitExt = localFont({
 // silently dropped.
 export const perEntry = localFont({
   src: [
-    { path: '../fonts/inter-latin-opsz-normal.woff2', weight: '100 900', unicodeRange: 'U+0000-00FF', declarations: [{ prop: 'unicode-range', value: 'U+0000-00FF' }] },
-    { path: '../fonts/inter-latin-ext-opsz-normal.woff2', weight: '100 900', unicodeRange: 'U+0100-024F', declarations: [{ prop: 'unicode-range', value: 'U+0100-024F' }] },
+    {
+      path: '../fonts/inter-latin-opsz-normal.woff2',
+      weight: '100 900',
+      unicodeRange: 'U+0000-00FF',
+      declarations: [{ prop: 'unicode-range', value: 'U+0000-00FF' }],
+    },
+    {
+      path: '../fonts/inter-latin-ext-opsz-normal.woff2',
+      weight: '100 900',
+      unicodeRange: 'U+0100-024F',
+      declarations: [{ prop: 'unicode-range', value: 'U+0100-024F' }],
+    },
   ],
 });
 

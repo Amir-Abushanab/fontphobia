@@ -34,7 +34,11 @@
 //  - With `inline-core` and `rules: 'linked'`: the core file of a face every page draws goes into
 //    the linked stylesheet as a data: URL, which saves its request. Linked only: inline rules would
 //    put the font in every page's HTML, where it is never cached. A face whose source font a page
-//    preloads is left as a file, so that preload keeps something to load.
+//    preloads is left as a file, so that preload keeps something to load, and so is a core file
+//    above `inlineCoreMax`: the stylesheet blocks rendering, so every byte in it delays the first
+//    paint (measured on a 1.6 Mbit/s link: 91 KB of cores put it 0.95 s later). With
+//    `font-display: swap` or `fallback` the page used to paint text in a fallback font meanwhile;
+//    the report says so.
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, posix, resolve, sep } from 'node:path';
 import { gzipSync } from 'node:zlib';
@@ -89,7 +93,12 @@ export interface AutoOptions {
    * ones declared, and a style calculation in that window downloads the original fonts.
    */
   rules?: 'inline' | 'linked';
+  /** `inline-core`: the largest core file put in the stylesheet, in bytes. Default `INLINE_CORE_MAX`. */
+  inlineCoreMax?: number;
 }
+
+/** `inline-core`'s default limit: a core file this size adds about 0.1 s to the first paint at 1.6 Mbit/s. */
+export const INLINE_CORE_MAX = 16 * 1024;
 
 /** Thrown when the written files fail the checks; the output has been put back as it was. */
 export class AutoVerifyError extends Error {}
@@ -706,17 +715,33 @@ export async function autoSubset(o: AutoOptions): Promise<AutoResult> {
       const sheetRule = g.rules.find((r) => !r.inline);
       if (sheetRule) {
         place(sheetRule);
-        // inline-core: a face every audited page draws, whose source font no page preloads.
+        // inline-core: a face every audited page draws, whose source font no page preloads, and
+        // whose core file is no larger than the limit.
         const coreFile = files.find((f) => f.role === 'core');
         const everywhere = (usage.faces[g.id]?.pages.length ?? 0) === Object.keys(usage.pages).length;
+        const preloaded = g.rules.some((r) => preloadedSources.has(posix.basename(r.path)));
+        const max = o.inlineCoreMax ?? INLINE_CORE_MAX;
+        const small = !!coreFile && coreFile.bytes <= max;
         const asData =
-          inlineCore && coreFile && everywhere && !g.rules.some((r) => preloadedSources.has(posix.basename(r.path)))
+          inlineCore && coreFile && everywhere && !preloaded && small
             ? `data:font/woff2;base64,${Buffer.from(outputs.get(coreFile.name)!).toString('base64')}`
             : undefined;
-        if (asData) embedded.push({ id: face.id, bytes: coreFile!.bytes });
-        else if (inlineCore && coreFile)
+        if (asData) {
+          embedded.push({ id: face.id, bytes: coreFile!.bytes });
+          const display = sheetRule.css.rule.descriptors['font-display']?.trim().toLowerCase();
+          if (display === 'swap' || display === 'fallback')
+            notes.push(
+              `inline-core: ${face.id} has font-display: ${display}, so its pages painted text in a fallback font while it loaded; now their first paint waits for the stylesheet, ${kb(coreFile!.bytes)} larger`,
+            );
+        } else if (inlineCore && coreFile)
           notes.push(
-            `inline-core: ${face.id} stays a file (${everywhere ? 'a page preloads its source font' : `${usage.faces[g.id]?.pages.length ?? 0} of ${Object.keys(usage.pages).length} page(s) draw it`})`,
+            `inline-core: ${face.id} stays a file (${
+              !everywhere
+                ? `${usage.faces[g.id]?.pages.length ?? 0} of ${Object.keys(usage.pages).length} page(s) draw it`
+                : preloaded
+                  ? 'a page preloads its source font'
+                  : `its core file is ${kb(coreFile.bytes)}, above the ${kb(max)} limit (\`inlineCoreMax\`); in the stylesheet it would delay every page's first paint`
+            })`,
           );
         // Paths from the output's root: each page puts its own way there in front.
         const urlOf = (name: string) =>

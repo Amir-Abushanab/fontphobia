@@ -1,11 +1,7 @@
 {
   "name": "my-qwik-empty-starter",
-  "description": "Blank project with routing included",
-  "engines": {
-    "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
-  },
-  "engines-annotation": "Mostly required by sharp which needs a Node-API v9 compatible runtime",
   "private": true,
+  "description": "Blank project with routing included",
   "type": "module",
   "scripts": {
     "build": "qwik build",
@@ -40,5 +36,9 @@
     "vite": "7.3.1",
     "vite-tsconfig-paths": "^4.2.1"
   },
-  "packageManager": "pnpm@12.9.1"
+  "engines": {
+    "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
+  },
+  "packageManager": "pnpm@12.9.1",
+  "engines-annotation": "Mostly required by sharp which needs a Node-API v9 compatible runtime"
 }
