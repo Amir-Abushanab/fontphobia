@@ -1,0 +1,56 @@
+name: Live Google Fonts
+
+# The site tests get Google Fonts from a local stand-in that replays fixtures/google-fonts/
+# (packages/crawler/test/google-replay.ts), so they no longer notice when Google changes what it
+# serves. This workflow runs the two tests of fontphobia's Google features, self-host and tighten,
+# against the real fonts.googleapis.com and fonts.gstatic.com.
+#
+# It runs on a schedule and by hand only, never for a pull request or a push, so a failure here
+# blocks no merge and no release: it shows as a failed run of this workflow, and GitHub mails the
+# person who last edited the schedule. A failure means one of two things. Google answered slowly or
+# differently for a moment: run it again. Or Google changed its answers: fix what broke, then record
+# the stand-in's responses again with `FONTPHOBIA_SITES=1 FONTPHOBIA_RECORD_GOOGLE=1` after deleting
+# fixtures/google-fonts/.
+
+on:
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-google
+  cancel-in-progress: true
+
+jobs:
+  live:
+    name: Self-host and tighten against Google
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            fixtures/sites/astro/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile
+        working-directory: fixtures/sites/astro
+      - run: pnpm vitest run packages/crawler/test/sites.test.ts -t "self-host|tighten"
+        env:
+          FONTPHOBIA_SITES: '1'
+          FONTPHOBIA_LIVE_GOOGLE: '1'
+          VERIFY_ARTIFACTS: ${{ runner.temp }}/verify
+      - name: Upload verify diff images
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verify-diffs-live-google
+          path: ${{ runner.temp }}/verify
+          if-no-files-found: ignore

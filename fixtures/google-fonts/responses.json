@@ -1,0 +1,17 @@
+{
+  "https://fonts.googleapis.com/css2?family=Fraunces:wght@400..700&display=swap": {
+    "status": 200,
+    "type": "text/css; charset=utf-8",
+    "file": "4889466a802e8952.css"
+  },
+  "https://fonts.googleapis.com/css2?family=Fraunces:wght@400..700&family=Lora:wght@400;700&display=swap": {
+    "status": 200,
+    "type": "text/css; charset=utf-8",
+    "file": "0042914761610d59.css"
+  },
+  "https://fonts.gstatic.com/s/fraunces/v38/6NUu8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7hzFUPJH58nib14c7qv8oRcTn.woff2": {
+    "status": 200,
+    "type": "font/woff2",
+    "file": "88e17be075f1be50.woff2"
+  }
+}

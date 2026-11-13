@@ -1,11 +1,13 @@
 // M2 acceptance: the Astro and TanStack Start fixtures are built and crawled with no config, and
 // TanStack's SSR-only route is crawled in server mode. M4–M5: build --write, verify, revert. Opt-in: FONTPHOBIA_SITES=1, after
 // `pnpm install` in each fixture (the `sites` CI job does both).
+// First: it has to be in place before playwright-core loads.
+import { startGoogleReplay, type GoogleReplay } from './google-replay.ts';
 import { constants, cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import {
   buildProject,
   checkProject,
@@ -19,6 +21,7 @@ import { writeGoldenUsage } from './golden.ts';
 
 const sites = fileURLToPath(new URL('../../../fixtures/sites/', import.meta.url));
 const enabled = !!process.env.FONTPHOBIA_SITES;
+const liveGoogle = !!process.env.FONTPHOBIA_LIVE_GOOGLE;
 // CI uploads diff images of failing comparisons from here.
 const outDir = (name: string) => (process.env.VERIFY_ARTIFACTS ? join(process.env.VERIFY_ARTIFACTS, name) : undefined);
 
@@ -45,6 +48,19 @@ function expectFixtureUsage(faces: Record<string, Face>, cssFile: string) {
 }
 
 describe.skipIf(!enabled)('framework fixtures, no config', () => {
+  // Google Fonts is a local stand-in serving fixtures/google-fonts/ (see google-replay.ts): the
+  // fixtures' Google stylesheet and its files load the same way on every run. FONTPHOBIA_LIVE_GOOGLE=1
+  // leaves the real Google in place; the scheduled `Live Google Fonts` workflow runs the self-host and
+  // tighten tests that way, to notice when Google changes what it serves.
+  let google: GoogleReplay | undefined;
+  beforeAll(async () => {
+    if (!liveGoogle) google = await startGoogleReplay();
+  });
+  afterEach(() => {
+    expect(google?.misses.splice(0) ?? [], 'Google Fonts URLs with no recording in fixtures/google-fonts').toEqual([]);
+  });
+  afterAll(() => google?.close());
+
   for (const name of ['astro', 'tanstack-start']) {
     const root = join(sites, name);
     it(`${name}: builds, finds the output and crawls every page`, async () => {
@@ -577,12 +593,13 @@ describe.skipIf(!enabled)('framework fixtures, no config', () => {
     }
   }, 900_000);
 
-  // M7, google-fonts self-host (§6.5): needs the network (Google's CSS and files).
-  // Retried: Google sometimes answers one request with an on-the-fly /l/font?kit= URL and the next with the
-  // static file, so the first audit can record one face under two ids and pick the one that doesn't survive.
+  // M7, google-fonts self-host (§6.5). Google's CSS and files come from the recording, so every request
+  // for a URL gets the same answer. The real Google sometimes serves a face from an on-the-fly
+  // /l/font?kit= URL on one request and the static file on the next, so the first audit can record one
+  // face under two ids and pick the one that doesn't survive: retried when live.
   it(
     'astro: --allow self-host serves Fraunces from the site, renders identically, and revert restores the Google link',
-    { retry: 2, timeout: 900_000 },
+    { retry: liveGoogle ? 2 : 0, timeout: 900_000 },
     async () => {
       const root = join(sites, 'astro');
       const layout = join(root, 'src/layouts/Layout.astro');
