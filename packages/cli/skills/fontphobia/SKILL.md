@@ -181,6 +181,7 @@ measured saving even when it is off.
 | `limit-axes`     | Limits variable axes to the ranges in use; drops axes left at the default                                 | Text widths shift up to about 0.02%                        |
 | `drop-hinting`   | Removes TrueType hinting                                                                                  | Rasterization changes on Windows, layout on Linux at 1x    |
 | `split-shaping`  | Lets words mixing core and extended characters split across files                                         | Kerning is lost where they meet                            |
+| `add-preloads`   | With `auto --crawl`: preloads the core file of each face a page draws, where it has no preload            | Changes what the page loads first                          |
 | `drop-hint-refs` | Drops the reference characters FreeType's auto-hinter needs                                               | Extended characters hint differently on Linux and ChromeOS |
 
 Only pass an opt-in the user chose. Italic styles are never dropped. `--no-remainder` (config
@@ -350,7 +351,7 @@ pnpm build && pnpm dlx fontphobia auto --crawl    # measures each face in Chrome
   or fontphobia version changes, or in CI; it is not needed on every build. It also reports an
   original font a page still downloads (a script loads it by URL).
 - **Options:** `--dist`, `--dry-run`, `--json`, `--allow` (`drop-hinting`, `split-shaping`,
-  `drop-hint-refs` only), `--core-threshold`, `--no-remainder`. Crawl settings (`pages`, `ignore`,
+  `drop-hint-refs`; with `--crawl`, `add-preloads`), `--core-threshold`, `--no-remainder`. Crawl settings (`pages`, `ignore`,
   `viewports`, `locales`, `auth`) come from the config.
 - **Integrations:** each one's options take `auto: true` (static) or `auto: 'crawl'`, which
   replaces the post-build `check`. The config's `auto` key does the same for an integration

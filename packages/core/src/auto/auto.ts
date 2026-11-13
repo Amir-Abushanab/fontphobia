@@ -24,6 +24,10 @@
 //    downloads. The added range depends on the font alone, so a cached copy stays correct.
 //  - A face only a page's own <style> declares is replaced there, and font preloads are pointed at
 //    the core file, React preload hints (Next) included.
+//  - With the `add-preloads` opt-in and a crawl: a preload of the core file of each face a page
+//    draws, where the page has none. Opt-in because it changes what the page loads first, and crawl
+//    only because the static mode can't tell which faces a page draws: a preload of a font the page
+//    never draws is a wasted download.
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, posix, resolve, sep } from 'node:path';
 import { gzipSync } from 'node:zlib';
@@ -99,6 +103,8 @@ export interface AutoResult {
   stylesheet?: { file: string; bytes: number };
   /** Pages the split rules were added to. */
   linked: number;
+  /** `add-preloads`: the core-file preloads added, and the pages they were added to. */
+  preloaded?: { links: number; pages: number };
   /** Files of the output that were edited. */
   edited: string[];
   skipped: { id: string; family: string; reason: string }[];
@@ -501,6 +507,11 @@ export async function autoSubset(o: AutoOptions): Promise<AutoResult> {
   const off = (o.config?.allow ?? []).filter((a) => ['limit-axes', 'self-host', 'tighten', 'eject'].includes(a));
   if (off.length) notes.push(`${off.join(', ')}: not applied by \`auto\` (the committed flow only)`);
   const cfg: PlanConfig = { ...o.config, allow: (o.config?.allow ?? []).filter((a) => !off.includes(a)) };
+  const addPreloads = !!o.config?.allow?.includes('add-preloads');
+  if (addPreloads && mode !== 'crawl')
+    notes.push(
+      "add-preloads: not applied without `--crawl` (reading the built text can't tell which faces a page draws)",
+    );
 
   // Sources: the output's own font files. A license file sits next to the font in the project, not in the output.
   const sources = new Map<string, SourceFont>();
@@ -532,6 +543,8 @@ export async function autoSubset(o: AutoOptions): Promise<AutoResult> {
   const narrowed = new Map<string, Edit>();
   /** Font file name → the core file a preload of it should load instead. */
   const preloads = new Map<string, { to: string; pages: number }>();
+  /** Face → its core file's path from the output's root, and the characters it serves. */
+  const cores = new Map<string, { path: string; has: Set<number> }>();
   const faces: AutoResult['faces'] = [];
   const texts = new Map<string, string>();
   const textOf = (file: string) => {
@@ -673,6 +686,9 @@ export async function autoSubset(o: AutoOptions): Promise<AutoResult> {
     const n = usage.faces[g.id]?.pages.length ?? 0;
     for (const name of new Set(g.rules.map((r) => posix.basename(r.path))))
       if (core && n > (preloads.get(name)?.pages ?? -1)) preloads.set(name, { to: core.name, pages: n });
+    const corePath = core && [...fonts.keys()].find((k) => posix.basename(k) === core.name);
+    if (core && corePath)
+      cores.set(face.id, { path: corePath, has: new Set(codePointsOf(parseUnicodeRange(core.unicodeRange))) });
     faces.push({ id: face.id, family: face.family, source: face.source!.file, bytes: face.bytes! });
   }
 
@@ -726,6 +742,7 @@ export async function autoSubset(o: AutoOptions): Promise<AutoResult> {
   // The pages: the link, the preloads, and which stylesheets a page pins by hash.
   const pinned = new Set<string>();
   let linked = 0;
+  const preloaded = { links: 0, pages: 0 };
   let carrier: { rel: string; prefix: string } | undefined;
   let csp: string | undefined;
   const pages = listFiles(outDir, (r) => /\.html?$/i.test(r), {
@@ -739,11 +756,20 @@ export async function autoSubset(o: AutoOptions): Promise<AutoResult> {
       continue;
     }
     texts.delete(rel);
+    /** File names this page preloads, as they will be once its preloads point at core files. */
+    const has = new Set<string>();
     for (const m of html.matchAll(/<link\b[^>]*>/gi)) {
       const tag = m[0];
       const href = attr(tag, 'href');
       if (!href) continue;
       const name = posix.basename(href.split(/[?#]/)[0]!);
+      if (/\brel\s*=\s*["']?preload\b/i.test(tag)) {
+        try {
+          has.add(preloads.get(decodeURI(name))?.to ?? decodeURI(name));
+        } catch {
+          has.add(name);
+        }
+      }
       if (/\bintegrity\s*=/i.test(tag)) {
         pinned.add(name);
         continue;
@@ -763,20 +789,40 @@ export async function autoSubset(o: AutoOptions): Promise<AutoResult> {
         edits.push({ file: rel, start: m.index, end: m.index + tag.length, text: next, why: `preload → ${to.to}` });
     }
     hints(rel, html);
-    if (!sheetText) continue;
     const head = html.search(/<\/head\s*>/i);
     if (head < 0) continue;
-    // A crawled page that draws none of these faces doesn't need them; a page the crawl never saw might.
     const seen = mode === 'crawl' ? usage.pages[pageKey(rel)] : undefined;
-    if (seen && !sheetFaces.some((id) => seen.faces[id])) continue;
-    const prefix = hrefPrefix(outDir, rel, html);
+    let prefix: string | undefined;
+    // add-preloads: the core file of each face this page draws from it, unless the page preloads it already.
+    let links = '';
+    if (addPreloads && seen)
+      for (const [id, core] of cores) {
+        const range = seen.faces[id];
+        if (!range || has.has(posix.basename(core.path))) continue;
+        if (![...codePointsOf(parseUnicodeRange(range))].some((c) => core.has.has(c))) continue;
+        has.add(posix.basename(core.path));
+        prefix ??= hrefPrefix(outDir, rel, html);
+        links += `<link rel="preload" href="${prefix}${encodeURI(core.path)}" as="font" type="font/woff2" crossorigin>`;
+        preloaded.links++;
+      }
+    if (links) preloaded.pages++;
+    // A crawled page that draws none of these faces doesn't need them; a page the crawl never saw might.
+    const rulesHere = !!sheetText && !(seen && !sheetFaces.some((id) => seen.faces[id]));
+    if (!rulesHere) {
+      if (links) edits.push({ file: rel, start: head, end: head, text: links, why: 'preload the core file' });
+      continue;
+    }
+    prefix ??= hrefPrefix(outDir, rel, html);
+    // One edit: the preloads, then the rules, which stay the last thing in the <head>.
     edits.push({
       file: rel,
       start: head,
       end: head,
-      text: sheetName
-        ? `<link rel="stylesheet" href="${prefix}${sheetName}">`
-        : `<style data-fontphobia>\n${sheetText.replaceAll(ROOT, prefix)}</style>`,
+      text:
+        links +
+        (sheetName
+          ? `<link rel="stylesheet" href="${prefix}${sheetName}">`
+          : `<style data-fontphobia>\n${sheetText.replaceAll(ROOT, prefix)}</style>`),
       why: 'the split rules',
     });
     linked++;
@@ -855,6 +901,7 @@ export async function autoSubset(o: AutoOptions): Promise<AutoResult> {
     inlined: sheetText && !sheetName ? { bytes: Buffer.byteLength(sheetText) } : undefined,
     stylesheet: sheetName ? { file: sheetName, bytes: Buffer.byteLength(linkedText) } : undefined,
     linked,
+    preloaded: preloaded.links ? preloaded : undefined,
     edited,
     skipped,
     notes,
@@ -879,6 +926,10 @@ export function formatAuto(r: AutoResult, outDir: string): string {
     if (r.inlined) parts.push(`the split rules (${kb(r.inlined.bytes)}) in ${r.linked} page(s)`);
     if (r.stylesheet) parts.push(`${r.stylesheet.file} (${kb(r.stylesheet.bytes)}), linked from ${r.linked} page(s)`);
     L.push(`${r.written ? 'Wrote' : 'Would write'} ${parts.join(' and ')}; ${r.edited.length} file(s) edited`);
+    if (r.preloaded)
+      L.push(
+        `${r.written ? 'Added' : 'Would add'} ${r.preloaded.links} preload(s) of core files to ${r.preloaded.pages} page(s)`,
+      );
     if (r.checked)
       L.push(
         `Checked without a browser: ${r.checked.outputs} file(s) decode and match their sources, and ${r.checked.words} word(s) shape identically in ${r.checked.cases} case(s)`,

@@ -793,10 +793,13 @@ export async function planAll(
   const unknown = (cfg.allow ?? []).filter(
     (a) =>
       !(OPT_INS as readonly string[]).includes(a) &&
-      !['self-host', 'tighten', 'to-local', 'eject', 'add-preloads'].includes(a),
+      // Applied outside the planner: by `build` (the first three) and by `auto` (add-preloads).
+      !['self-host', 'tighten', 'eject', 'add-preloads'].includes(a),
   );
   if (unknown.length)
-    throw new Error(`Unknown opt-in ${unknown.join(', ')}; known: ${[...OPT_INS, 'self-host', 'tighten'].join(', ')}`);
+    throw new Error(
+      `Unknown opt-in ${unknown.join(', ')}; known: ${[...OPT_INS, 'self-host', 'tighten', 'eject', 'add-preloads'].join(', ')}`,
+    );
   const faces: FacePlan[] = [];
   // Sequential: wawoff2 is serialized anyway, and the order keeps the output stable.
   // One face that fails (a font the subsetter can't handle as planned) is left as it is, with the error; the others still plan.

@@ -318,6 +318,10 @@ async function runBuild(o: BuildFlags & { prompt?: boolean }) {
     rename: config.rename,
     licenses: config.licenses,
   };
+  if (cfg.allow.includes('add-preloads'))
+    log(
+      'add-preloads: not applied by `build`, which points the preloads a site has at the core file; `fontphobia auto --crawl` adds them',
+    );
   let write = !!(o.write || o.u);
   const r = await buildProject(root, usage, cfg, { version: pkg.version, write });
   if (o.json) {
@@ -703,7 +707,10 @@ cli
     '--rules <where>',
     'Where the split rules go: inline (default, in each page) or linked (one cached stylesheet)',
   )
-  .option('--allow <opt-in>', 'Enable an opt-in (drop-hinting, split-shaping, drop-hint-refs); repeatable')
+  .option(
+    '--allow <opt-in>',
+    'Enable an opt-in (drop-hinting, split-shaping, drop-hint-refs; with --crawl, add-preloads); repeatable',
+  )
   .option(
     '--core-threshold <auto|share>',
     "Which used characters go in core: 'auto' measures (default), 0 to 1 is a fixed share of a face's pages",

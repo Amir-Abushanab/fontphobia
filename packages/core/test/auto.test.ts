@@ -347,5 +347,58 @@ describe('auto, crawl (an audit’s usage)', () => {
     // Declared, used by no page: left alone, preload included.
     expect(read(dir, 'index.html')).toContain('href="./fonts/Inter-Regular-hinted.woff2"');
     expect(r.checked!.outputs).toBe(r.fonts.length);
+    // No preload is added unless asked for.
+    expect(r.preloaded).toBeUndefined();
+    expect(read(dir, 'about/index.html')).not.toContain('rel="preload"');
   }, 300_000);
+
+  it('add-preloads: preloads the core file of each face a page draws, where the page has no preload of it', async () => {
+    const dir = join(tmp, 'crawl-preloads');
+    cpSync(join(repo, 'fixtures/sites/static-css'), dir, { recursive: true });
+    mkdirSync(join(dir, 'fonts'));
+    for (const f of [
+      'InterVariable.ttf',
+      'DejaVuSans.ttf',
+      'Inter-Regular-hinted.woff2',
+      'Inter-LICENSE.txt',
+      'DejaVu-LICENSE.txt',
+    ])
+      cpSync(join(repo, 'fixtures/fonts', f), join(dir, 'fonts', f));
+    const usage = JSON.parse(read(repo, 'fixtures/plans/static-css/usage.json')) as UsageFileJson;
+    const r = await autoSubset({ root: dir, outDir: dir, usage, version, config: { allow: ['add-preloads'] } });
+    const preloadsOf = (rel: string) =>
+      [...read(dir, rel).matchAll(/<link rel="preload" href="([^"]+)"[^>]*>/g)].map((m) => m[1]!);
+    for (const [key, seen] of Object.entries(usage.pages)) {
+      const rel = key.endsWith('/') ? `${key.slice(1)}index.html` : key.slice(1);
+      const got = preloadsOf(rel).filter((h) => /\.core\.[0-9a-f]{8}\.woff2$/.test(h));
+      // One preload per face the page draws, each once, each reaching the file from where the page is.
+      expect(got.length).toBe(Object.keys(seen.faces).length);
+      expect(new Set(got).size).toBe(got.length);
+      const up = rel.includes('/') ? '../' : './';
+      for (const h of got) expect(h.startsWith(`${up}fonts/`)).toBe(true);
+    }
+    // The page that preloaded the source font keeps that one link, now at the core file.
+    expect(read(dir, 'index.html').match(/InterVariable\.core\.[0-9a-f]{8}\.woff2" as="font"/g)).toHaveLength(1);
+    // Added links are as a font preload has to be: `crossorigin`, or the font downloads twice.
+    expect(read(dir, 'about/index.html')).toMatch(
+      /<link rel="preload" href="\.\.\/fonts\/[^"]+\.core\.[0-9a-f]{8}\.woff2" as="font" type="font\/woff2" crossorigin><style data-fontphobia>/,
+    );
+    expect(r.preloaded!.links).toBeGreaterThan(0);
+    expect(formatAuto(r, dir)).toMatch(/Added \d+ preload\(s\) of core files to \d+ page\(s\)/);
+    expect(r.checked!.outputs).toBe(r.fonts.length);
+  }, 300_000);
+
+  it('add-preloads without a crawl adds nothing and says why', async () => {
+    const dir = site(
+      'static-preloads',
+      { 'index.html': page('<p>Hello</p>'), 'styles.css': FACE },
+      {
+        'fonts/DejaVuSans.ttf': 'DejaVuSans.ttf',
+      },
+    );
+    const r = await autoSubset({ root: dir, outDir: dir, version, config: { allow: ['add-preloads'] } });
+    expect(r.preloaded).toBeUndefined();
+    expect(read(dir, 'index.html')).not.toContain('rel="preload"');
+    expect(r.notes.join('\n')).toMatch(/add-preloads: not applied without `--crawl`/);
+  }, 120_000);
 });

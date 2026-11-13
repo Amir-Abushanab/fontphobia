@@ -72,7 +72,16 @@ type Kind =
   | 'custom'
   | { enum: readonly string[]; array?: boolean };
 const ENGINES = ['chromium', 'firefox', 'webkit', 'linux-chromium', 'linux-firefox', 'linux-webkit'];
-const ALLOW = ['limit-axes', 'drop-hinting', 'split-shaping', 'drop-hint-refs', 'self-host', 'tighten', 'eject'];
+const ALLOW = [
+  'limit-axes',
+  'drop-hinting',
+  'split-shaping',
+  'drop-hint-refs',
+  'self-host',
+  'tighten',
+  'eject',
+  'add-preloads',
+];
 const SCHEMA: Record<string, Kind | Record<string, Kind>> = {
   dist: 'string',
   build: 'string',

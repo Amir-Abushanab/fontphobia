@@ -132,6 +132,7 @@ Pass with `--allow <name>` (repeatable) or `allow: [...]` in the config. Each is
 | `limit-axes`     | Limits variable axes to the ranges in use, and drops axes every use leaves at the default                      | Text widths shift up to ~0.02% (whole pixels on Linux at 1×) |
 | `drop-hinting`   | Removes TrueType hinting                                                                                       | Changes rasterization on Windows, and layout on Linux at 1×  |
 | `split-shaping`  | Lets words that mix core and extended characters split across files                                            | Loses kerning where they meet                                |
+| `add-preloads`   | With `auto --crawl`: preloads the core file of each face a page draws, where the page has no preload of it     | Changes what the page loads first                            |
 | `drop-hint-refs` | Drops the reference characters FreeType's auto-hinter needs                                                    | Extended characters hint differently on Linux and ChromeOS   |
 
 Italic styles are never dropped, because browsers italicize `em`, `i`, `cite` and others on their own.
@@ -224,6 +225,8 @@ On this repository's test site, Inter's 859 KB file becomes a core file of 85.7 
 - a `unicode-range` on each original `@font-face` rule, listing the font's own characters. The original rule stays as the fallback for a page without the split rules, such as a server-rendered route. On a page that has them, the original font never downloads;
 - a face that only a page's own `<style>` declares, replaced there;
 - font preloads, pointed at the core file. This includes the preload hints Next.js puts in its page payloads.
+
+A page that has no preload gets none by default, because a preload changes what the page loads first. `auto --crawl --allow add-preloads` adds one for the core file of each face the page draws. It needs the crawl: the static mode can't tell which faces a page draws, and a preload of a font the page never draws is a wasted download.
 
 The split rules go in the HTML for two reasons. A hashed stylesheet keeps its file name when only the site's text changes, so writing the rules into it would let a browser holding the old copy ask for font files the new deploy no longer has. HTML is fetched fresh, so a page and its font rules always come from the same build. And a separate linked stylesheet can arrive after the page's own: in that gap the original rules are the last ones declared, and a style calculation there starts downloading the original fonts. In Chrome with slowed stylesheets that happened in 23 of 480 loads with a linked stylesheet and in none of 576 with the rules inline.
 
