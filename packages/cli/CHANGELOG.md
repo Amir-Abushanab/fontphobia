@@ -1,5 +1,17 @@
 # fontphobia
 
+## 0.6.0
+
+### Minor Changes
+
+- [#20](https://github.com/Amir-Abushanab/fontphobia/pull/20) [`a70bd83`](https://github.com/Amir-Abushanab/fontphobia/commit/a70bd832aa3ddcbf9c47bead2aacb55f71a4fbd5) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - `auto --allow inline-core` leaves a core file above 16 KB as a file. The stylesheet it goes into blocks rendering, so every byte in it delays the first paint: measured on a 1.6 Mbit/s link, 91 KB of core files there made it 0.95 s later. `inlineCoreMax` in the config sets the limit in bytes. The report also notes a face with `font-display: swap` or `fallback` whose core it embeds, since its pages used to paint text in a fallback font while the font loaded.
+  
+  The README compares fontphobia with subfont, glyphhanger, cn-font-split and the subsetting libraries.
+
+### Patch Changes
+
+- [#20](https://github.com/Amir-Abushanab/fontphobia/pull/20) [`a70bd83`](https://github.com/Amir-Abushanab/fontphobia/commit/a70bd832aa3ddcbf9c47bead2aacb55f71a4fbd5) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - The agent skill shipped with the package covers what 0.5.0 added: where the three `auto` opt-ins apply and what each costs, the note `verify` prints when a fresh paint changed pixels, CFF fonts being renamed, and the symbol-with-neighbours entries a new audit adds to `usage.json`.
+
 ## 0.5.0
 
 ### Minor Changes
