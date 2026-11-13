@@ -1,5 +1,14 @@
 # fontphobia
 
+## 0.4.1
+
+### Patch Changes
+
+- [#16](https://github.com/Amir-Abushanab/fontphobia/pull/16) [`77107a7`](https://github.com/Amir-Abushanab/fontphobia/commit/77107a75850ac04681acf185704ca24ddf9a282e) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - The automatic core choice compares candidates by compressed size. It compared uncompressed sizes
+  before, which made a larger core look more expensive than it is: a larger file compresses better.
+
+- [#16](https://github.com/Amir-Abushanab/fontphobia/pull/16) [`77107a7`](https://github.com/Amir-Abushanab/fontphobia/commit/77107a75850ac04681acf185704ca24ddf9a282e) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - The automatic core choice runs again after the shaping repair. The repair can move most of a script's letters into core and leave a few behind, and the pages that use those few then downloaded the whole extended file for them. They now go in core when that costs less. On a 48-page test site with four Greek and four Russian pages, the mean font download per page fell from 70.8 KB to 60.0 KB. The next `build --write` can therefore write different files; `check` keeps passing against the files already built.
+
 ## 0.4.0
 
 ### Minor Changes
