@@ -1,5 +1,5 @@
 // Font container formats: detect, decode to sfnt, encode WOFF2.
-import { inflateSync } from 'node:zlib';
+import { brotliCompressSync, constants as zlib, inflateSync } from 'node:zlib';
 import wawoff2Module from 'wawoff2';
 import { untag, view, writeSfnt, type Sfnt } from './sfnt.ts';
 
@@ -45,6 +45,17 @@ function serial(fn: (w: Wawoff2, b: Uint8Array) => Promise<Uint8Array>) {
 }
 export const woff2Compress = serial((w, b) => w.compress(b));
 export const woff2Decompress = serial((w, b) => w.decompress(b));
+
+/**
+ * About how large a font is once compressed, for comparing candidates: Brotli at quality 5. On Inter
+ * subsets it stays within 1% of a constant multiple of the WOFF2 size (about 1.17×), in about the
+ * time the subset takes; WOFF2 itself takes some hundred times longer. This is Node's own Brotli:
+ * Node 22, 24 and 26 (Brotli 1.1.0 and 1.2.1) give the same sizes, and a test holds them to that,
+ * because a plan must not change with the Node version (PLAN §4).
+ */
+export function compressedSize(sfnt: Uint8Array): number {
+  return brotliCompressSync(sfnt, { params: { [zlib.BROTLI_PARAM_QUALITY]: 5 } }).byteLength;
+}
 
 function decodeWoff1(buf: Uint8Array): Uint8Array {
   const dv = view(buf);

@@ -13,7 +13,7 @@ import {
 } from '../css/unicode-range.ts';
 import { parseStretchDescriptor, parseWeightDescriptor, relativeWeight } from '../css/values.ts';
 import { loadFont } from '../font/hb.ts';
-import { toSfnt } from '../font/io.ts';
+import { compressedSize, toSfnt } from '../font/io.ts';
 import { readSfnt } from '../font/sfnt.ts';
 import { glyfInstructionBytes, parseFvar, type Axis } from '../font/tables.ts';
 import { checkShaping, type ShapeCase } from '../shape/equivalence.ts';
@@ -542,6 +542,27 @@ export async function planFace(
   let C0: Set<number>;
   /** auto, when the pages use characters outside core's fixed part: that fixed part. */
   let fixedCore: Set<number> | undefined;
+  const auto = caps.split !== 'single' && (cfg.coreThreshold ?? 'auto') === 'auto';
+  /**
+   * auto: the used characters to add to `from` so the pages download the least (plan/core.ts). Sizes
+   * are of the subsets the files are made from, with the same references the files will carry,
+   * compressed.
+   */
+  const chooseFrom = (from: Set<number>) => {
+    const size = (role: Role, set: Set<number>) =>
+      set.size
+        ? compressedSize(
+            hbSubset(sfnt, { ...opts, unicodes: [...set, ...refsFor(role, set, refsOn)], glyphs: refGlyphs }),
+          )
+        : 0;
+    return chooseCore(
+      drawn.map((cs) => [...cs].filter((c) => K.has(c) && !from.has(c))),
+      (add) => {
+        const core = new Set([...from, ...add]);
+        return { core: size('core', core), ext: size('ext', new Set([...K].filter((c) => !core.has(c)))) };
+      },
+    );
+  };
   if (caps.split === 'single') C0 = new Set(K);
   else {
     const threshold = cfg.coreThreshold ?? 'auto';
@@ -560,21 +581,9 @@ export async function planFace(
     // another file lands a fraction of a pixel off (M5 notes).
     for (const c of setOf(face.inserted['list markers'])) C0.add(c);
     C0 = closure(sfnt, new Set([...C0].filter((c) => K.has(c))));
-    if (threshold === 'auto') {
-      // The used characters that make the pages download the least (plan/core.ts). Sizes are the
-      // subsets the files are compressed from, with the same references the files will carry.
+    if (auto) {
       const fixed = C0;
-      const raw = (role: Role, set: Set<number>) =>
-        set.size
-          ? hbSubset(sfnt, { ...opts, unicodes: [...set, ...refsFor(role, set, refsOn)], glyphs: refGlyphs }).byteLength
-          : 0;
-      const pick = chooseCore(
-        drawn.map((cs) => [...cs].filter((c) => K.has(c) && !fixed.has(c))),
-        (add) => {
-          const core = new Set([...fixed, ...add]);
-          return { core: raw('core', core), ext: raw('ext', new Set([...K].filter((c) => !core.has(c)))) };
-        },
-      );
+      const pick = chooseFrom(fixed);
       if (pick.measured) {
         fixedCore = fixed;
         C0 = closure(sfnt, new Set([...fixed, ...pick.add]));
@@ -585,10 +594,31 @@ export async function planFace(
   // 3. Cross-file shaping repair.
   const words = caps.split === 'full' ? wordsOf(face, K, fvar) : [];
   const splitShaping = allow.has('split-shaping');
-  const rep =
+  let rep =
     caps.split === 'full' && C0.size < K.size
       ? repairCore(sfnt, K, C0, words, opts)
       : { C: C0, moved: new Set<number>(), words: [], firstBroken: [] };
+  // auto, again: the repair can leave a page a few characters short of loading core alone, at a
+  // price the first choice never saw (it priced those pages' letters before the repair moved most
+  // of them). Choose from the repaired core, and repair what that adds, until the repair adds nothing.
+  /** auto: the characters chosen after the repair. */
+  const later = new Set<number>();
+  for (;;) {
+    if (!auto || !rep.moved.size || rep.C.size === K.size) break;
+    const from = rep.C;
+    const pick = chooseFrom(from);
+    if (!pick.add.size) break;
+    const grown = closure(sfnt, new Set([...from, ...pick.add]));
+    for (const c of grown) if (!from.has(c)) later.add(c);
+    const next = repairCore(sfnt, K, grown, words, opts);
+    rep = {
+      C: next.C,
+      moved: new Set([...rep.moved, ...next.moved]),
+      words: [...new Set([...rep.words, ...next.words])].toSorted(str),
+      firstBroken: rep.firstBroken,
+    };
+    if (!next.moved.size) break;
+  }
   let C = splitShaping ? C0 : rep.C;
   if (mut?.kind === 'mark-out-of-core') C = new Set([...C].filter((c) => !isMark(c)));
 
@@ -703,7 +733,9 @@ export async function planFace(
 
   // auto: what it put in core, and the pages that draw nothing from the other two files.
   const fixedPart = fixedCore;
-  const chosen = fixedPart ? [...C0].filter((c) => !fixedPart.has(c)) : [];
+  const chosen = fixedPart
+    ? [...new Set([...C0, ...(splitShaping ? [] : later)])].filter((c) => !fixedPart.has(c))
+    : [];
   const elsewhere = setsFor(C);
 
   const notes: string[] = [];

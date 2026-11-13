@@ -1,7 +1,16 @@
 import { deflateSync } from 'node:zlib';
 import { expect, test } from 'vitest';
-import { detectFormat, readSfnt, toSfnt, woff2Compress, woff2Decompress, hbSubset, view } from '../src/index.ts';
-import { ASCII, fixture } from './helpers.ts';
+import {
+  compressedSize,
+  detectFormat,
+  readSfnt,
+  toSfnt,
+  woff2Compress,
+  woff2Decompress,
+  hbSubset,
+  view,
+} from '../src/index.ts';
+import { ASCII, fixture, range } from './helpers.ts';
 
 test('detects containers', () => {
   expect(detectFormat(fixture('DejaVuSans.ttf'))).toBe('truetype');
@@ -21,6 +30,24 @@ test('concurrent WOFF2 calls are serialized and return valid, independent result
   }
   const decoded = await Promise.all(parallel.map((p) => woff2Decompress(p)));
   for (const d of decoded) expect(readSfnt(d).tables.has('glyf')).toBe(true);
+});
+
+test('compressedSize follows the WOFF2 size where the uncompressed size does not', async () => {
+  // A small core beside a large extended file, then the reverse: the two ends of the core choice.
+  const src = fixture('InterVariable.ttf');
+  const more = [...range(0xa0, 0x24f), ...range(0x370, 0x3ff), ...range(0x400, 0x4ff)];
+  const subsets = [ASCII, more, [...ASCII, ...more.slice(0, 700)], more.slice(700)].map((u) =>
+    hbSubset(src, { unicodes: u }),
+  );
+  const spread = async (size: (b: Uint8Array) => number) => {
+    const ratios: number[] = [];
+    for (const s of subsets) ratios.push(size(s) / (await woff2Compress(s)).byteLength);
+    return Math.max(...ratios) / Math.min(...ratios);
+  };
+  expect(await spread(compressedSize)).toBeLessThan(1.03);
+  expect(await spread((b) => b.byteLength)).toBeGreaterThan(1.2);
+  // Node's own Brotli: the same sizes on every Node version, or plans would differ between machines.
+  expect(subsets.slice(0, 2).map(compressedSize)).toEqual([48996, 153854]);
 });
 
 /** Minimal WOFF 1.0 encoder, only for testing the decoder. */
