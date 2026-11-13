@@ -12,8 +12,9 @@
 // on each page still missing a character. The cheapest candidate wins; between equals, the smaller
 // core.
 //
-// Pure and deterministic. The caller supplies the sizes (subsets as HarfBuzz writes them, before
-// WOFF2: compressing is some hundred times slower and shrinks both files by about the same ratio).
+// Pure and deterministic. The caller supplies the sizes: the subsets HarfBuzz writes, compressed with
+// fast Brotli (`compressedSize`). Uncompressed sizes mislead, because a larger file compresses better:
+// on Inter, core goes from 49% to 44% of its size as it grows while extended goes from 47% to 57%.
 
 export interface CoreSizes {
   /** Bytes of the core file once the characters are added. */

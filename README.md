@@ -8,6 +8,8 @@ Browse the example site with [original fonts](https://amir-abushanab.github.io/f
 
 fontphobia crawls your built site in Chrome, records exactly which characters, weights, features and axis values each font draws on each page, and splits every font into a small **core** file, an **extended** file and a lazy **rest** file. Text renders with the same glyphs, hinting, kerning and metrics as before, and `verify` proves it pixel for pixel.
 
+The W3C's [Incremental Font Transfer](https://www.w3.org/TR/IFT/) proposal has the same aim: a page downloads only the part of a font its text needs. No browser ships it yet. fontphobia is the stopgap: it gets there with `unicode-range`, which every browser supports today.
+
 ```sh
 pnpm dlx fontphobia@0.4.0
 ```

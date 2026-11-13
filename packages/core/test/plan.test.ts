@@ -75,6 +75,25 @@ const inter = { bytes: fixture('InterVariable.ttf'), file: 'InterVariable.ttf' }
 const filesOf = (p: FacePlan) => Object.fromEntries((p.files ?? []).map((f) => [f.role, cps(f.unicodeRange)]));
 
 describe('planner (§8)', () => {
+  it('chooses core again after the shaping repair has moved what it must', async () => {
+    // 400 English pages and 4 Greek ones. Ten Greek letters in core would cost the 404 pages more
+    // than the extended file costs four, so the first choice adds nothing. The repair then moves
+    // nine of them into core anyway (Inter kerns ν with the full stop), and θ alone is cheap to add.
+    const greek = 'βακτηρίων. θ';
+    const pages: Record<string, Record<string, string>> = {};
+    for (let i = 0; i < 400; i++) pages[`/en/${i}`] = { inter: ranges('Hello') };
+    for (let i = 0; i < 4; i++) pages[`/el/${i}`] = { inter: ranges('Hello ' + greek) };
+    const f = {
+      ...face({ text: 'Hello ' + greek, words: ['Hello ', ' βακτηρίων.', ' θ'] }),
+      pages: Object.keys(pages),
+    };
+    const p = await planFace('inter', f, usageOf({ inter: f }, pages), inter);
+    const { core } = filesOf(p);
+    expect(p.repair).toMatchObject({ count: 9, words: [' βακτηρίων.'] });
+    expect(p.coreChoice).toMatchObject({ added: 'U+3B8', count: 1, pages: 404, coreOnly: 404 });
+    expect(core!.has('θ'.codePointAt(0)!)).toBe(true);
+  });
+
   it('splits K into disjoint core, extended and rest files that cover everything the face serves', async () => {
     const f = face();
     const pages = {
