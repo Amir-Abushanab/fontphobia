@@ -11,6 +11,8 @@ The walkthrough's own crawl excludes `/bakery/**`, which the bakery builder audi
 Its rendering check masks images, as the bakery check does, to compare font rendering without JPEG rasterization noise.
 `check.allowChars` covers `≤`, which appears only in the system-monospace verification transcript inside a collapsed disclosure.
 
+The hero's "Copy for your agent" button copies a task line followed by the package's agent skill, `packages/cli/skills/fontphobia/SKILL.md`. The Pages workflow copies that file to `skills/fontphobia/SKILL.md` beside the page, so the button and the published skill are the same text. Opened from a local file, or when the fetch fails, the button copies the task line with a link to the README. Its labels are ASCII, which the core files always hold.
+
 `demo.js` uses the character ranges and sizes embedded in `index.html` to show which of this page's font files a sentence needs. The same generated metadata is available in `demo-data.json`. A deferred classic script and embedded data let the playground work over HTTP and directly from a local file. This is a calculation for the entered text, not a network measurement of the whole page. When the text needs the extended or rest file, a note says that these fonts were split for this page's text: a site that used those characters would have had them planned into core. Original fonts are loaded with `FontFace` only when the comparison is opened.
 
 After changing the page, check its existing font coverage before rebuilding:

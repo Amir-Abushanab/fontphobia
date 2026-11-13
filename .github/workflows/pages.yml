@@ -5,7 +5,8 @@ name: Pages
 on:
   push:
     branches: [main]
-    paths: ['site/**', 'examples/bakery/**', 'scripts/*bakery*', '.github/workflows/pages.yml']
+    paths:
+      ['site/**', 'examples/bakery/**', 'scripts/*bakery*', 'packages/cli/skills/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -29,6 +30,8 @@ jobs:
         with:
           node-version: 24
       - run: node scripts/check-bakery.mjs
+      # The skill doc the page's "Copy for your agent" button fetches: the file the package ships.
+      - run: mkdir -p site/skills/fontphobia && cp packages/cli/skills/fontphobia/SKILL.md site/skills/fontphobia/SKILL.md
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
