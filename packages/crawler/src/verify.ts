@@ -1060,7 +1060,9 @@ async function compare(
 ): Promise<Comparison> {
   const B = b.snap,
     A = a.snap;
-  const r: Comparison = { ...base, class: 'identical', nodes: B.nodes.length };
+  // Its own `examples`: a comparison is made twice when part of a difference is noise, and the second
+  // must not keep what the first found in the noise.
+  const r: Comparison = { ...base, examples: [], class: 'identical', nodes: B.nodes.length };
   // Same HTML and JS by construction; if the text differs anyway, the page isn't deterministic.
   const textB = B.nodes.map((n) => n.text).join('\u0000'),
     textA = A.nodes.map((n) => n.text).join('\u0000');
