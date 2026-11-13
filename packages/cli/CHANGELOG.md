@@ -1,5 +1,29 @@
 # fontphobia
 
+## 0.4.0
+
+### Minor Changes
+
+- [#13](https://github.com/Amir-Abushanab/fontphobia/pull/13) [`5a0fcff`](https://github.com/Amir-Abushanab/fontphobia/commit/5a0fcffb95be1dd544d67bdfc804d35c77713e70) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - `fontphobia auto` subsets the fonts of a built site inside its output directory. It edits no source file, writes no manifest and leaves nothing to commit; run it after every build. By default it reads the built text without a browser. `--crawl` measures each face in Chrome and writes the same files the default flow does.
+  
+  The split rules go in a `<style>` at the end of each page's `<head>`. The original `@font-face` rules stay as the fallback for pages without them, and the original fonts no longer download on pages that have them. A font whose pages would not download less is left alone. `--rules linked` (config `autoRules`) puts the rules in one cached stylesheet, `fontphobia.<hash>.css`, instead. Every run checks the written files and shaping without a browser and puts the output back if a check fails. `--verify` adds the pixel comparison.
+  
+  Every framework integration takes `auto: true` or `auto: 'crawl'`, which replaces its post-build `check`. The config's new `auto` key sets it for all of them, including the Next adapter.
+
+- [#13](https://github.com/Amir-Abushanab/fontphobia/pull/13) [`5a0fcff`](https://github.com/Amir-Abushanab/fontphobia/commit/5a0fcffb95be1dd544d67bdfc804d35c77713e70) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - `build` now chooses each font's core file by measurement. A character that pages use goes in core when that makes the font's pages download less in total, and in the extended file otherwise. Before, a character went in core only if at least half of the font's pages used it, so one accented letter on one page made that page download the whole extended file. The plan report lists what was put in core and how many pages then load only the core file.
+  
+  `coreThreshold` defaults to `'auto'`. A number from 0 to 1 keeps the fixed rule, and `coreThreshold: 0.5` is the old behavior. `build --core-threshold <auto|share>` sets it for one run. The next `build --write` after upgrading can therefore write different files; `check` keeps passing against the files already built.
+
+### Patch Changes
+
+- [#13](https://github.com/Amir-Abushanab/fontphobia/pull/13) [`5a0fcff`](https://github.com/Amir-Abushanab/fontphobia/commit/5a0fcffb95be1dd544d67bdfc804d35c77713e70) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - `verify` no longer fails on rendering noise, and no longer clears a small real change as noise.
+  
+  Chrome's GPU rasterizer does not draw every load alike. Text between about 162 and 256 device pixels tall, such as a 94 px heading at 2×, comes out with a few edge pixels one level lighter or darker each time, whatever the font. On a machine that rasterizes on the GPU (a Mac, for one), `verify` compared how many pixels differed between the two sides with how many differed between two loads of one side. That cleared most of the noise as `flaky`, reported a regression in about one run in ten of a site with such a heading, and could clear a real change smaller than the noise.
+  
+  - Chrome rasterizes pages and 2D canvases on the CPU during `verify`, which draws the same pixels on every load. On the example site all 32 comparisons are now identical on the first load, and `verify` takes half as long.
+  - A pixel difference at unchanged layout is loaded again and reported when it repeats: each pixel has to come out the same from the original fonts and from the new files on every load. The difference is confirmed once three loads in a row match the first exactly, and `verify` keeps loading, up to twelve times, while anything else on the page changes between loads.
+  - When only part of a difference repeats, the report and the diff image show that part.
+
 ## 0.3.0
 
 ### Minor Changes
