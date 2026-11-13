@@ -511,6 +511,27 @@ async function capture(
       return out;
     });
   }
+  // Paint the whole page again before the screenshot. When a font file arrives after the page has
+  // painted (the extended file, on a page that had drawn with core), Chrome repaints the text, and a
+  // glyph's faintest edge pixel just outside its element's box can keep the level of the earlier
+  // paint: one level off, depending on which file arrived first, so a comparison differed on one
+  // load and not on the next (measured: 8 of 8 loads with the extended file 400 ms late, 0 of 8 with
+  // core late; 0 of 24 after this). Changing the root's background invalidates the whole page
+  // without touching layout, focus or scroll; a change that repaints the text alone did not help.
+  // Content in a layer of its own (a scroller, `will-change`) is not repainted by it.
+  await page
+    .evaluate(async () => {
+      const root = document.documentElement;
+      const frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
+      const old = [root.style.getPropertyValue('background-color'), root.style.getPropertyPriority('background-color')];
+      root.style.setProperty('background-color', 'rgb(1, 2, 3)', 'important');
+      await frames();
+      if (old[0]) root.style.setProperty('background-color', old[0], old[1]);
+      else root.style.removeProperty('background-color');
+      if (!root.getAttribute('style')) root.removeAttribute('style');
+      await frames();
+    })
+    .catch(() => {});
   let shot: Buffer;
   try {
     shot = await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide', scale: 'device' });
