@@ -5,7 +5,16 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import { AutoVerifyError, autoSubset, formatAuto, parseStylesheet, type UsageFileJson } from '../src/index.ts';
+import {
+  AutoVerifyError,
+  autoSubset,
+  codePointsOf,
+  formatAuto,
+  parseStylesheet,
+  parseUnicodeRange,
+  sha256,
+  type UsageFileJson,
+} from '../src/index.ts';
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const tmp = mkdtempSync(join(tmpdir(), 'fontphobia-auto-'));
@@ -347,5 +356,164 @@ describe('auto, crawl (an audit’s usage)', () => {
     // Declared, used by no page: left alone, preload included.
     expect(read(dir, 'index.html')).toContain('href="./fonts/Inter-Regular-hinted.woff2"');
     expect(r.checked!.outputs).toBe(r.fonts.length);
+    // No preload is added unless asked for.
+    expect(r.preloaded).toBeUndefined();
+    expect(read(dir, 'about/index.html')).not.toContain('rel="preload"');
   }, 300_000);
+
+  it('add-preloads: preloads the core file of each face a page draws, where the page has no preload of it', async () => {
+    const dir = join(tmp, 'crawl-preloads');
+    cpSync(join(repo, 'fixtures/sites/static-css'), dir, { recursive: true });
+    mkdirSync(join(dir, 'fonts'));
+    for (const f of [
+      'InterVariable.ttf',
+      'DejaVuSans.ttf',
+      'Inter-Regular-hinted.woff2',
+      'Inter-LICENSE.txt',
+      'DejaVu-LICENSE.txt',
+    ])
+      cpSync(join(repo, 'fixtures/fonts', f), join(dir, 'fonts', f));
+    const usage = JSON.parse(read(repo, 'fixtures/plans/static-css/usage.json')) as UsageFileJson;
+    const r = await autoSubset({ root: dir, outDir: dir, usage, version, config: { allow: ['add-preloads'] } });
+    const preloadsOf = (rel: string) =>
+      [...read(dir, rel).matchAll(/<link rel="preload" href="([^"]+)"[^>]*>/g)].map((m) => m[1]!);
+    for (const [key, seen] of Object.entries(usage.pages)) {
+      const rel = key.endsWith('/') ? `${key.slice(1)}index.html` : key.slice(1);
+      const got = preloadsOf(rel).filter((h) => /\.core\.[0-9a-f]{8}\.woff2$/.test(h));
+      // One preload per face the page draws, each once, each reaching the file from where the page is.
+      expect(got.length).toBe(Object.keys(seen.faces).length);
+      expect(new Set(got).size).toBe(got.length);
+      const up = rel.includes('/') ? '../' : './';
+      for (const h of got) expect(h.startsWith(`${up}fonts/`)).toBe(true);
+    }
+    // The page that preloaded the source font keeps that one link, now at the core file.
+    expect(read(dir, 'index.html').match(/InterVariable\.core\.[0-9a-f]{8}\.woff2" as="font"/g)).toHaveLength(1);
+    // Added links are as a font preload has to be: `crossorigin`, or the font downloads twice.
+    expect(read(dir, 'about/index.html')).toMatch(
+      /<link rel="preload" href="\.\.\/fonts\/[^"]+\.core\.[0-9a-f]{8}\.woff2" as="font" type="font\/woff2" crossorigin><style data-fontphobia>/,
+    );
+    expect(r.preloaded!.links).toBeGreaterThan(0);
+    expect(formatAuto(r, dir)).toMatch(/Added \d+ preload\(s\) of core files to \d+ page\(s\)/);
+    expect(r.checked!.outputs).toBe(r.fonts.length);
+  }, 300_000);
+
+  /** The static-css fixture as a built site, with its fonts, and the usage an audit of it gave. */
+  const crawled = (name: string) => {
+    const dir = join(tmp, name);
+    cpSync(join(repo, 'fixtures/sites/static-css'), dir, { recursive: true });
+    mkdirSync(join(dir, 'fonts'));
+    for (const f of [
+      'InterVariable.ttf',
+      'DejaVuSans.ttf',
+      'Inter-Regular-hinted.woff2',
+      'Inter-LICENSE.txt',
+      'DejaVu-LICENSE.txt',
+    ])
+      cpSync(join(repo, 'fixtures/fonts', f), join(dir, 'fonts', f));
+    return { dir, usage: JSON.parse(read(repo, 'fixtures/plans/static-css/usage.json')) as UsageFileJson };
+  };
+  const relOf = (key: string) => (key.endsWith('/') ? `${key.slice(1)}index.html` : key.slice(1));
+  const charsOf = (range: string | undefined) => new Set(codePointsOf(parseUnicodeRange(range ?? '')));
+
+  it('prefetch-extended: pages prefetch the extended files other pages need and they do not', async () => {
+    const { dir, usage } = crawled('crawl-prefetch');
+    // A fixed share, so that a character one page uses stays in the extended file.
+    const r = await autoSubset({
+      root: dir,
+      outDir: dir,
+      usage,
+      version,
+      config: { allow: ['prefetch-extended'], coreThreshold: 0.9 },
+    });
+    let links = 0;
+    for (const e of Object.values(r.manifest.entries)) {
+      const ext = e.outputs.find((x) => x.role === 'ext');
+      if (!ext) continue;
+      const has = charsOf(ext.unicodeRange);
+      const needs = (key: string) => [...charsOf(usage.pages[key]!.faces[e.id])].some((c) => has.has(c));
+      const anyone = Object.keys(usage.pages).some(needs);
+      for (const key of Object.keys(usage.pages)) {
+        const name = ext.file.split('/').pop()!;
+        const tag = new RegExp(
+          `<link rel="prefetch" href="[^"]*${name.replaceAll('.', '\\.')}" as="font" type="font/woff2" crossorigin>`,
+        );
+        const want = anyone && !needs(key);
+        expect(tag.test(read(dir, relOf(key))), `${key} ${name}`).toBe(want);
+        if (want) links++;
+      }
+    }
+    expect(links).toBeGreaterThan(0);
+    expect(r.prefetched!.pages).toBeGreaterThan(0);
+    expect(formatAuto(r, dir)).toMatch(/page\(s\) now prefetch \d+ extended file\(s\)/);
+  }, 300_000);
+
+  it('inline-core: with linked rules, the core of a face every page draws goes in the stylesheet', async () => {
+    const { dir, usage } = crawled('crawl-embed');
+    // No page preloads the font.
+    writeFileSync(join(dir, 'index.html'), read(dir, 'index.html').replace(/<link rel="preload"[^>]*>\n?/g, ''));
+    const r = await autoSubset({
+      root: dir,
+      outDir: dir,
+      usage,
+      version,
+      rules: 'linked',
+      config: { allow: ['inline-core', 'add-preloads'] },
+    });
+    // Inter's upright face is on all three pages; the italic and DejaVu are on one.
+    expect(r.embedded!.map((e) => e.id)).toEqual(['inter-100-900-normal']);
+    const sheet = read(dir, r.stylesheet!.file);
+    const data = [...sheet.matchAll(/url\('?(data:font\/woff2;base64,[A-Za-z0-9+/=]+)'?\)/g)].map((m) => m[1]!);
+    expect(data).toHaveLength(1);
+    const core = r.manifest.entries['inter-100-900-normal']!.outputs.find((x) => x.role === 'core')!;
+    expect(core.url).toBe(data[0]);
+    expect(sha256(new Uint8Array(Buffer.from(data[0]!.split(',')[1]!, 'base64')))).toBe(core.sha256);
+    // Nothing preloads a core file that is in the stylesheet; the faces left as files still get theirs.
+    const name = core.file.split('/').pop()!;
+    for (const key of Object.keys(usage.pages)) expect(read(dir, relOf(key))).not.toContain(name);
+    expect(read(dir, 'edge.html')).toMatch(/<link rel="preload" href="[^"]*DejaVuSans\.core\./);
+    expect(r.notes.join('\n')).toMatch(/inline-core: deja-400-normal stays a file \(1 of 3 page\(s\) draw it\)/);
+    expect(r.checked!.outputs).toBe(r.fonts.length);
+  }, 300_000);
+
+  it('inline-core leaves a face whose source font a page preloads, and needs linked rules', async () => {
+    const a = crawled('crawl-embed-preloaded');
+    const linked = await autoSubset({
+      root: a.dir,
+      outDir: a.dir,
+      usage: a.usage,
+      version,
+      rules: 'linked',
+      config: { allow: ['inline-core'] },
+    });
+    expect(linked.embedded).toBeUndefined();
+    expect(linked.notes.join('\n')).toMatch(
+      /inline-core: inter-100-900-normal stays a file \(a page preloads its source font\)/,
+    );
+    expect(read(a.dir, linked.stylesheet!.file)).not.toContain('data:font');
+    const b = crawled('crawl-embed-inline');
+    const inline = await autoSubset({
+      root: b.dir,
+      outDir: b.dir,
+      usage: b.usage,
+      version,
+      config: { allow: ['inline-core'] },
+    });
+    expect(inline.embedded).toBeUndefined();
+    expect(inline.notes.join('\n')).toMatch(/inline-core: not applied without `--rules linked`/);
+    expect(read(b.dir, 'index.html')).not.toContain('data:font');
+  }, 300_000);
+
+  it('add-preloads without a crawl adds nothing and says why', async () => {
+    const dir = site(
+      'static-preloads',
+      { 'index.html': page('<p>Hello</p>'), 'styles.css': FACE },
+      {
+        'fonts/DejaVuSans.ttf': 'DejaVuSans.ttf',
+      },
+    );
+    const r = await autoSubset({ root: dir, outDir: dir, version, config: { allow: ['add-preloads'] } });
+    expect(r.preloaded).toBeUndefined();
+    expect(read(dir, 'index.html')).not.toContain('rel="preload"');
+    expect(r.notes.join('\n')).toMatch(/add-preloads: not applied without `--crawl`/);
+  }, 120_000);
 });

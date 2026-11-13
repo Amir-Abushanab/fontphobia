@@ -16,6 +16,7 @@ import type { CapturedFace, FontFacts, Run, StyleRow, Visit } from './capture.ts
 import { styleOf, STYLE_PROPS } from './capture.ts';
 import { applyDeclared, weightSteps } from './declared.ts';
 import { attribute, computedStyle, matchFaces, type Wanted } from './match.ts';
+import { phraseAround } from './phrases.ts';
 import {
   contentCounterStyles,
   counterChars,
@@ -476,6 +477,27 @@ export function buildUsage(visits: Visit[], facts: Map<string, FontFacts>, opts:
 
     const addWords = (text: string, owners: (Live | null)[], st: Parsed) => {
       const chars = [...text];
+      /** The face's shaping context for this style, with its axis ranges widened to the style's values. */
+      const contextFor = (f: Live) => {
+        const c = contextOf(st, f);
+        const ctx = f.usage.contexts.get(c.key) ?? {
+          features: c.features,
+          axes: new Map<string, [number, number]>(),
+          words: new Set<string>(),
+        };
+        f.usage.contexts.set(c.key, ctx);
+        for (const [t, val] of c.axes) {
+          const r = ctx.axes.get(t);
+          if (!r) ctx.axes.set(t, [val, val]);
+          else {
+            r[0] = Math.min(r[0], val);
+            r[1] = Math.max(r[1], val);
+          }
+        }
+        return ctx;
+      };
+      /** Each word of the run, and the face that draws all of it (undefined: none, or more than one). */
+      const tokens: { text: string; face?: Live }[] = [];
       let i = 0;
       while (i < chars.length) {
         if (isSpace(chars[i]!)) {
@@ -493,27 +515,22 @@ export function buildUsage(visits: Visit[], facts: Map<string, FontFacts>, opts:
           if (f) {
             const before = s === i && i > 0 ? ' ' : '';
             const after = e === j && j < chars.length ? ' ' : '';
-            const c = contextOf(st, f);
-            const ctx = f.usage.contexts.get(c.key) ?? {
-              features: c.features,
-              axes: new Map<string, [number, number]>(),
-              words: new Set<string>(),
-            };
-            f.usage.contexts.set(c.key, ctx);
-            for (const [t, val] of c.axes) {
-              const r = ctx.axes.get(t);
-              if (!r) ctx.axes.set(t, [val, val]);
-              else {
-                r[0] = Math.min(r[0], val);
-                r[1] = Math.max(r[1], val);
-              }
-            }
-            ctx.words.add(before + chars.slice(s, e).join('') + after);
+            contextFor(f).words.add(before + chars.slice(s, e).join('') + after);
           }
+          if (s === i && e === j) tokens.push({ text: chars.slice(i, j).join(''), face: f ?? undefined });
+          else if (s === i) tokens.push({ text: chars.slice(i, j).join('') });
           s = e;
         }
         i = j;
       }
+      // A word of symbols only, with its neighbours the same face draws (phrases.ts).
+      tokens.forEach((t, k) => {
+        const f = t.face;
+        if (!f) return;
+        const side = (n: (typeof tokens)[number] | undefined) => (n?.face?.usage === f.usage ? n.text : undefined);
+        const phrase = phraseAround(side(tokens[k - 1]), t.text, side(tokens[k + 1]));
+        if (phrase) contextFor(f).words.add(phrase);
+      });
     };
 
     const runAttributed = new Map<number, (Live | null)[]>();

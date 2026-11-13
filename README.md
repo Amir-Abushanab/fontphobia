@@ -34,6 +34,7 @@ pnpm dlx fontphobia@0.4.1
 - [Licenses](#licenses)
 - [Limitations](#limitations)
 - [Development](#development)
+- [Credits](#credits)
 
 ## Requirements
 
@@ -123,15 +124,18 @@ fontphobia finds where each face comes from and edits it there.
 
 Pass with `--allow <name>` (repeatable) or `allow: [...]` in the config. Each is listed in the plan with its measured saving.
 
-| Opt-in           | What it does                                                                                                   | Why it isn't the default                                     |
-| ---------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `self-host`      | Serves Google Fonts from your site, split                                                                      | Changes where fonts load from                                |
-| `eject`          | Serves `next/font/google`, Astro Fonts API and `@nuxt/fonts` families from your site, split                    | Replaces the framework's font loading in your code           |
-| `tighten`        | Drops families and weights nothing asks for from Google URLs and from `next/font`, Astro and Nuxt font options | A page the audit never saw, or CMS text, could ask for one   |
-| `limit-axes`     | Limits variable axes to the ranges in use, and drops axes every use leaves at the default                      | Text widths shift up to ~0.02% (whole pixels on Linux at 1×) |
-| `drop-hinting`   | Removes TrueType hinting                                                                                       | Changes rasterization on Windows, and layout on Linux at 1×  |
-| `split-shaping`  | Lets words that mix core and extended characters split across files                                            | Loses kerning where they meet                                |
-| `drop-hint-refs` | Drops the reference characters FreeType's auto-hinter needs                                                    | Extended characters hint differently on Linux and ChromeOS   |
+| Opt-in              | What it does                                                                                                   | Why it isn't the default                                     |
+| ------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `self-host`         | Serves Google Fonts from your site, split                                                                      | Changes where fonts load from                                |
+| `eject`             | Serves `next/font/google`, Astro Fonts API and `@nuxt/fonts` families from your site, split                    | Replaces the framework's font loading in your code           |
+| `tighten`           | Drops families and weights nothing asks for from Google URLs and from `next/font`, Astro and Nuxt font options | A page the audit never saw, or CMS text, could ask for one   |
+| `limit-axes`        | Limits variable axes to the ranges in use, and drops axes every use leaves at the default                      | Text widths shift up to ~0.02% (whole pixels on Linux at 1×) |
+| `drop-hinting`      | Removes TrueType hinting                                                                                       | Changes rasterization on Windows, and layout on Linux at 1×  |
+| `split-shaping`     | Lets words that mix core and extended characters split across files                                            | Loses kerning where they meet                                |
+| `add-preloads`      | With `auto --crawl`: preloads the core file of each face a page draws, where the page has no preload of it     | Changes what the page loads first                            |
+| `prefetch-extended` | With `auto --crawl`: pages prefetch, when idle, the extended files other pages need and they don't             | Every visitor downloads those files once                     |
+| `inline-core`       | With `auto --rules linked`: the core file of a face every page draws goes in the stylesheet as a `data:` URL   | The stylesheet grows by the core file, on every page         |
+| `drop-hint-refs`    | Drops the reference characters FreeType's auto-hinter needs                                                    | Extended characters hint differently on Linux and ChromeOS   |
 
 Italic styles are never dropped, because browsers italicize `em`, `i`, `cite` and others on their own.
 
@@ -223,6 +227,13 @@ On this repository's test site, Inter's 859 KB file becomes a core file of 85.7 
 - a `unicode-range` on each original `@font-face` rule, listing the font's own characters. The original rule stays as the fallback for a page without the split rules, such as a server-rendered route. On a page that has them, the original font never downloads;
 - a face that only a page's own `<style>` declares, replaced there;
 - font preloads, pointed at the core file. This includes the preload hints Next.js puts in its page payloads.
+
+A page that has no preload gets none by default, because a preload changes what the page loads first. `auto --crawl --allow add-preloads` adds one for the core file of each face the page draws. It needs the crawl: the static mode can't tell which faces a page draws, and a preload of a font the page never draws is a wasted download.
+
+Two more opt-ins trade bytes for requests:
+
+- **`--allow prefetch-extended`** (with `--crawl`) adds a `<link rel="prefetch">` of an extended file to the pages that don't need it, when some other page does. The browser fetches it when idle, so a visitor who goes on to a page that needs it finds it cached. Every visitor then downloads the file once. `verify`'s bytes per page don't count a prefetch; the `auto` report gives its size. Safari ignores `rel="prefetch"`.
+- **`--allow inline-core`** (with `--rules linked`) puts the core file of a face every page draws into the linked stylesheet as a `data:` URL, which saves its request. The stylesheet grows by the core file and is downloaded before the page renders. A face whose source font a page preloads stays a file. `verify` counts the embedded bytes in each page's total. A `Content-Security-Policy` with `font-src` has to allow `data:`.
 
 The split rules go in the HTML for two reasons. A hashed stylesheet keeps its file name when only the site's text changes, so writing the rules into it would let a browser holding the old copy ask for font files the new deploy no longer has. HTML is fetched fresh, so a page and its font rules always come from the same build. And a separate linked stylesheet can arrive after the page's own: in that gap the original rules are the last ones declared, and a style calculation there starts downloading the original fonts. In Chrome with slowed stylesheets that happened in 23 of 480 loads with a linked stylesheet and in none of 576 with the rules inline.
 
@@ -336,7 +347,6 @@ The project's own `LICENSE` and `package.json` never count as a font's license. 
 ## Limitations
 
 - **Text the crawl can't see** isn't counted when the files are planned: pages behind a login (use `auth`), text added by scripts after load, and content added later. Its characters render from the extended file when they are in Latin-1, Latin Extended-A or the alphabets of your `locales`, and from the rest file otherwise. With `remainder: false`, what would come from the rest file renders in the next font in the stack.
-- **CFF fonts** that need a rename because of an OFL Reserved Font Name aren't supported yet.
 - **`apply-kit` publishes your Adobe kit**, which changes every site that uses it. It refuses a kit whose draft has unpublished changes, reads each change back from Adobe and publishes only if it matches, and `revert` restores the previous styles only if nobody edited the kit since (otherwise it says which styles to add back, or `revert --keep-kits` leaves the kit as it is). Another site sharing the kit can run `fontphobia apply-kit --check` to see whether it lost a style it uses. It doesn't change the character set: Adobe's API doesn't reflect the web UI's setting, so the audit report says which one to pick and you change it on fonts.adobe.com.
 
 ## Development
@@ -376,5 +386,9 @@ pnpm plans:update   # re-crawl the fixtures and rewrite fixtures/plans/*
 - Merging that pull request runs `.github/workflows/release.yml`. It typechecks, tests, checks the packed package, publishes to npm with provenance over trusted publishing, tags `fontphobia@<version>` and creates the GitHub release from the changelog entry. It never versions.
 
 The version pull request needs the repository setting "Allow GitHub Actions to create and approve pull requests". GitHub does not run CI on a pull request that Actions opened. To run it, start it on the pull request's branch with `gh workflow run ci.yml --ref changeset-release/main`. The release workflow also runs the typecheck and the tests before it publishes.
+
+## Credits
+
+fontphobia started from [a prompt Shu Ding posted](https://x.com/shuding/status/2115855028737200211) for having an agent shrink a site's web fonts without changing how anything renders. It turns that prompt into a tool. A few things the prompt drops are kept by default, because dropping them can change rendering: hinting and full variable axes are [opt-ins](#opt-ins), and `build` keeps every OpenType feature.
 
 MIT © Amir Abushanab

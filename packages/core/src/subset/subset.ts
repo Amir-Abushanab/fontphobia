@@ -4,6 +4,7 @@ import { getSubsetWasm, hbTag, loadFont } from '../font/hb.ts';
 import { toSfnt, woff2Compress, woff2Decompress } from '../font/io.ts';
 import { readSfnt, withTables } from '../font/sfnt.ts';
 import { renameTable, RENAMED_IDS } from '../font/rename.ts';
+import { renameCff } from '../font/cff.ts';
 import {
   parseFvar,
   parseHead,
@@ -148,7 +149,12 @@ export function postProcess(source: Uint8Array, subset: Uint8Array, opts: Subset
   patch.head = setHeadDates(out.get('head')!, h.created, h.modified);
   const srcOs2 = parseOs2(source);
   if (srcOs2 && out.get('OS/2')) patch['OS/2'] = setXAvgCharWidth(out.get('OS/2')!, srcOs2.xAvgCharWidth);
-  if (opts.rename) patch.name = renameTable(subset, opts.rename.from, opts.rename.to);
+  if (opts.rename) {
+    patch.name = renameTable(subset, opts.rename.from, opts.rename.to);
+    // A CFF font's PostScript names live in the CFF table too. CFF2 holds none.
+    const cff = out.get('CFF ');
+    if (cff) patch['CFF '] = renameCff(cff, opts.rename.from, opts.rename.to);
+  }
   const result = withTables(subset, patch);
 
   checkMetrics(

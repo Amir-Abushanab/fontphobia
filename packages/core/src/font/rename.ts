@@ -20,12 +20,13 @@ const dec16 = (b: Uint8Array) => {
 };
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/** The name table with `from` replaced by `to` in the family-bearing records. PostScript names (6, 25) drop spaces. */
+/**
+ * The name table with `from` replaced by `to` in the family-bearing records. PostScript names (6, 25) drop
+ * spaces. A CFF font also names itself in its CFF table, which `renameCff` (cff.ts) rewrites.
+ */
 export function renameTable(sfnt: Uint8Array, from: string, to: string): Uint8Array {
   const t = readSfnt(sfnt).tables.get('name');
   if (!t) throw new Error('Font has no name table');
-  if (readSfnt(sfnt).tables.has('CFF '))
-    throw new Error("Can't rename a CFF font yet: its PostScript name lives in the CFF table too");
   const d = new DataView(t.buffer, t.byteOffset, t.byteLength);
   const format = d.getUint16(0),
     count = d.getUint16(2),
@@ -43,7 +44,8 @@ export function renameTable(sfnt: Uint8Array, from: string, to: string): Uint8Ar
       const value = wide ? dec16(bytes) : String.fromCharCode(...bytes);
       const ps = nid === 6 || nid === 25;
       let next = value.replace(patterns[0]!, ps ? to.replace(/\s+/g, '') : to);
-      if (ps) next = next.replace(patterns[1]!, to.replace(/\s+/g, ''));
+      // The unique ID (3) usually embeds the PostScript name, as in "3.052;ADBO;SourceSans3-Regular;ADOBE".
+      if (ps || nid === 3) next = next.replace(patterns[1]!, to.replace(/\s+/g, ''));
       if (next !== value) {
         if (!wide && /[^\x20-\x7e]/.test(next)) continue; // Mac Roman can't hold it: drop the legacy record
         bytes = wide ? enc16(next) : Uint8Array.from(next, (c) => c.charCodeAt(0));

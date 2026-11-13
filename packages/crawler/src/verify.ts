@@ -110,12 +110,19 @@ export interface Comparison {
   pixels: number;
   examples: NodeDiff[];
   diffImage?: string;
+  /**
+   * The page as it loaded against a fresh paint of itself (the fresh paint is what is compared):
+   * pixels an earlier paint left behind when a font file arrived after the page had drawn, and the
+   * largest change of a color channel among them. `original`: the same count with the original fonts.
+   */
+  leftover?: { pixels: number; levels: number; original: number };
 }
 
 export interface PageFonts {
   page: string;
   before: { bytes: number; requests: number };
-  after: { bytes: number; requests: number };
+  /** `inCss`: bytes of files the build put in the stylesheet as data: URLs, counted in `bytes`. */
+  after: { bytes: number; requests: number; inCss?: number };
   faces: Record<string, { before: number; after: number }>;
 }
 
@@ -213,6 +220,8 @@ interface Snapshot {
   nodes: { key: string; text: string; boxes: Box[]; owner?: number }[];
   png: PNG;
   fonts: { url: string; bytes: number; status: number }[];
+  /** Pixels of the page as it loaded that a fresh paint changed, and the largest change of a color channel. */
+  leftover?: { pixels: number; levels: number };
 }
 
 async function launch(engine: Engine, linux: () => Promise<LinuxBrowsers>): Promise<Browser> {
@@ -510,13 +519,62 @@ async function capture(
       return out;
     });
   }
-  let shot: Buffer;
-  try {
-    shot = await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide', scale: 'device' });
-  } catch {
-    shot = await page.screenshot({ animations: 'disabled', caret: 'hide', scale: 'device' });
+  const take = async () => {
+    try {
+      return await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide', scale: 'device' });
+    } catch {
+      return await page.screenshot({ animations: 'disabled', caret: 'hide', scale: 'device' });
+    }
+  };
+  // The page as it loaded, then the whole page painted again. The second is what is compared; what
+  // the fresh paint changed is reported (`leftover`).
+  //
+  // When a font file arrives after the page has painted (the extended file, on a page that had drawn
+  // with core), Chrome repaints the text, and a glyph's faintest edge pixel just outside its
+  // element's box can keep the level of the earlier paint: one level off, depending on which file
+  // arrived first. A comparison then differed on one load and not on the next (measured: 8 of 8
+  // loads with the extended file 400 ms late, 0 of 8 with core late; 0 of 24 once painted again).
+  // Changing the root's background invalidates the whole page without touching layout, focus or
+  // scroll; a change that repaints the text alone did not help. Content in a layer of its own (a
+  // scroller, `will-change`) is not repainted by it.
+  const asLoaded = await take();
+  await page
+    .evaluate(async () => {
+      const root = document.documentElement;
+      const frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
+      const old = [root.style.getPropertyValue('background-color'), root.style.getPropertyPriority('background-color')];
+      root.style.setProperty('background-color', 'rgb(1, 2, 3)', 'important');
+      await frames();
+      if (old[0]) root.style.setProperty('background-color', old[0], old[1]);
+      else root.style.removeProperty('background-color');
+      if (!root.getAttribute('style')) root.removeAttribute('style');
+      await frames();
+    })
+    .catch(() => {});
+  const shot = await take();
+  const png = PNG.sync.read(shot);
+  let leftover: Snapshot['leftover'];
+  if (!asLoaded.equals(shot)) {
+    const was = PNG.sync.read(asLoaded);
+    if (was.width === png.width && was.height === png.height) {
+      let pixels = 0;
+      let levels = 0;
+      for (let k = 0; k < png.data.length; k += 4) {
+        const d = Math.max(
+          Math.abs(png.data[k]! - was.data[k]!),
+          Math.abs(png.data[k + 1]! - was.data[k + 1]!),
+          Math.abs(png.data[k + 2]! - was.data[k + 2]!),
+          Math.abs(png.data[k + 3]! - was.data[k + 3]!),
+        );
+        if (d) {
+          pixels++;
+          levels = Math.max(levels, d);
+        }
+      }
+      if (pixels) leftover = { pixels, levels };
+    }
   }
-  return { page, cdp, snap: { nodes, png: PNG.sync.read(shot), fonts } };
+  return { page, cdp, snap: { nodes, png, fonts, leftover } };
 }
 
 /** A short CSS selector per element (by backend node id): up to 4 levels, stopping at an id. */
@@ -826,6 +884,7 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
               ours,
             );
         }
+        if (a.snap.leftover) c = { ...c, leftover: { ...a.snap.leftover, original: b.snap.leftover?.pixels ?? 0 } };
         comparisons.push(c);
         if (t.dpr === dprsFor(t.engine)[0] && t.engine === engines[0])
           record(t.page, b.snap.fonts, a.snap.fonts, hitsA);
@@ -935,6 +994,15 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
           );
       }
     }
+    // A file the build put in the stylesheet as a data: URL (`auto`'s inline-core) makes no request:
+    // it is downloaded with the stylesheet, by every page that loads it.
+    for (const id of inlined)
+      for (const out of o.manifest.entries[id]?.outputs ?? []) {
+        if (!/^data:/i.test(out.url)) continue;
+        row.after.bytes += out.bytes;
+        row.after.inCss = (row.after.inCss ?? 0) + out.bytes;
+        if (o.usage.pages[page]?.faces[id]) face(id).after += out.bytes;
+      }
     // Drawn in the audit, but none of its files loaded and its CSS doesn't name them (inlined data: URLs do): the page doesn't use the build.
     for (const id of Object.keys(o.usage.pages[page]?.faces ?? {})) {
       if (o.manifest.entries[id] && !loaded.has(id) && !inlined.has(id))

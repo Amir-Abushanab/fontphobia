@@ -5,20 +5,31 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
+  cffNames,
+  checkShaping,
   deriveName,
   detectLicense,
+  hbSubset,
   licenseRefusal,
+  loadFont,
   nameStrings,
+  numGlyphs,
+  parseName,
   planFace,
+  postProcess,
   readSfnt,
+  RENAMED_IDS,
+  renameCff,
+  subsetFont,
   toSfnt,
   withTables,
+  woff2Decompress,
   type License,
   type PlanConfig,
   type UsageFaceJson,
   type UsageFileJson,
 } from '../src/index.ts';
-import { fixture } from './helpers.ts';
+import { ASCII, fixture } from './helpers.ts';
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const OFL = readFileSync(join(repo, 'fixtures/fonts/Inter-LICENSE.txt'), 'utf8');
@@ -221,8 +232,8 @@ describe('Reserved Font Names (§11)', () => {
 });
 
 describe('renames (§11)', () => {
-  const plan = async (cssFamily: string, cfg: PlanConfig = {}) => {
-    const bytes = fixture('DejaVuSans.ttf');
+  const plan = async (cssFamily: string, cfg: PlanConfig = {}, font = 'DejaVuSans.ttf', reserved = ['DejaVu']) => {
+    const bytes = fixture(font);
     const face: UsageFaceJson = {
       family: cssFamily,
       descriptors: { 'font-family': cssFamily, src: 'url(f.ttf)' },
@@ -244,7 +255,7 @@ describe('renames (§11)', () => {
       faces: { x: face },
       pages: { '/': { faces: { x: 'U+20-7E' }, bytes: 0, fonts: [] } },
     } as unknown as UsageFileJson;
-    const license: License = { id: 'OFL-1.1', open: true, reserved: ['DejaVu'], from: 'OFL.txt' };
+    const license: License = { id: 'OFL-1.1', open: true, reserved, from: 'OFL.txt' };
     const outputs = new Map<string, Uint8Array>();
     const p = await planFace(
       'x',
@@ -254,8 +265,10 @@ describe('renames (§11)', () => {
       { remainder: false, ...cfg },
       outputs,
     );
-    const names = nameStrings(await toSfnt([...outputs.values()][0]!));
+    const out = await toSfnt([...outputs.values()][0]!);
+    const names = nameStrings(out);
     return {
+      out,
       rename: p.license?.rename,
       family: names.get(1),
       full: names.get(4),
@@ -285,6 +298,143 @@ describe('renames (§11)', () => {
     });
     expect(await plan('DejaVu Sans', { rename: { 'DejaVu Sans': 'Sans Subset' } })).toMatchObject({
       family: 'Sans Subset',
+    });
+  });
+
+  describe('CFF fonts', () => {
+    const cffOf = (sfnt: Uint8Array) => readSfnt(sfnt).tables.get('CFF ')!;
+    const sourceSans = fixture('SourceSans3-Regular.otf');
+    const unicodes = new Set(ASCII);
+    const texts = [
+      'The quick brown fox jumps over the lazy dog. 0123456789',
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZ & (?!) {}[]',
+      'fi ffl Th AVATAR WAVE',
+    ];
+
+    /** Every glyph's outline and advance, and shaping `cases`, against the unrenamed subset. */
+    const sameGlyphs = (plain: Uint8Array, renamed: Uint8Array, cases: string[]) => {
+      const a = loadFont(plain).font,
+        b = loadFont(renamed).font;
+      expect(numGlyphs(renamed)).toBe(numGlyphs(plain));
+      for (let g = 0; g < numGlyphs(plain); g++) {
+        expect(b.glyphToJson(g), `glyph ${g}`).toEqual(a.glyphToJson(g));
+        expect(b.glyphHAdvance(g), `glyph ${g}`).toBe(a.glyphHAdvance(g));
+      }
+      const shaped = checkShaping(
+        plain,
+        [{ sfnt: renamed, ranges: [[0, 0x10ffff]] }],
+        cases.map((text) => ({ text })),
+      );
+      expect(shaped.map((r) => r.verdict)).toEqual(cases.map(() => ({ kind: 'identical' })));
+    };
+
+    it('the fixture declares the Reserved Font Name "Source"', () => {
+      const fx = join(repo, 'fixtures/fonts');
+      expect(detectLicense(sourceSans, join(fx, 'SourceSans3-Regular.otf'), fx)).toMatchObject({
+        id: 'OFL-1.1',
+        reserved: ['Source'],
+      });
+    });
+
+    it('the planner renames in the name table and the CFF table', async () => {
+      const to = deriveName('Source Sans 3', ['Source'])!;
+      const r = await plan('Source Sans 3', {}, 'SourceSans3-Regular.otf', ['Source']);
+      expect(r.rename).toEqual({ from: 'Source Sans 3', to });
+      expect(r.family).toBe(to);
+      expect(cffNames(cffOf(r.out))).toMatchObject({ fontName: `${to.replace(/\s+/g, '')}-Regular`, familyName: to });
+    });
+
+    describe.each([
+      ['longer', 'Srce Sans 3 Subset'],
+      ['shorter', 'S3'],
+    ])('to a %s name', (_, to) => {
+      const ps = to.replace(/\s+/g, '');
+      const rename = { from: 'Source Sans 3', to };
+      const both = (async () => ({
+        plain: await subsetFont(sourceSans, { unicodes }),
+        renamed: await subsetFont(sourceSans, { unicodes, rename }),
+      }))();
+
+      it('rewrites the family-bearing name records, and the reserved word is gone from them', async () => {
+        const { renamed } = await both;
+        const names = nameStrings(renamed.decoded);
+        expect(names.get(1)).toBe(to);
+        expect(names.get(4)).toBe(to);
+        expect(names.get(6)).toBe(`${ps}-Regular`);
+        expect(names.get(3)).toBe(`3.052;ADBO;${ps}-Regular;ADOBE`);
+        for (const r of parseName(renamed.decoded).filter((x) => RENAMED_IDS.has(x.nameID)))
+          expect(r.value, `name ID ${r.nameID}`).not.toContain('Source');
+      });
+
+      it('rewrites the CFF FontName and FamilyName, and keeps Notice, Copyright and version', async () => {
+        const { plain, renamed } = await both;
+        const before = cffNames(cffOf(plain.decoded));
+        const after = cffNames(cffOf(renamed.decoded));
+        expect(before).toMatchObject({ fontName: 'SourceSans3-Regular', familyName: 'Source Sans 3', cidKeyed: false });
+        expect(after).toMatchObject({ fontName: `${ps}-Regular`, familyName: to });
+        for (const s of [after.fontName, after.fullName, after.familyName]) expect(s ?? '').not.toContain('Source');
+        // Strings decode one byte per character, so equal strings are equal bytes.
+        expect(after.notice).toBe(before.notice);
+        expect(after.copyright).toBe(before.copyright);
+        expect(after.version).toBe(before.version);
+        expect(after.copyright).toContain("Reserved Font Name 'Source'");
+      });
+
+      it('shifts everything after the String INDEX both ways', async () => {
+        const { plain, renamed } = await both;
+        const grew = to.length > rename.from.length;
+        expect(cffOf(renamed.decoded).length - cffOf(plain.decoded).length > 0).toBe(grew);
+      });
+
+      it('draws and shapes exactly as the unrenamed subset', async () => {
+        const { plain, renamed } = await both;
+        sameGlyphs(plain.decoded, renamed.decoded, texts);
+      });
+
+      it('survives the WOFF2 round trip with its CFF table unchanged', async () => {
+        const opts = { unicodes, rename };
+        const processed = postProcess(sourceSans, hbSubset(sourceSans, opts), opts);
+        const { woff2, decoded } = await subsetFont(sourceSans, opts);
+        expect(cffOf(await woff2Decompress(woff2))).toEqual(cffOf(processed));
+        expect(cffOf(decoded)).toEqual(cffOf(processed));
+      });
+    });
+
+    describe('CID-keyed', () => {
+      const notdef = fixture('AND-Regular.otf');
+      const text = 'AZaz09一中𠀀';
+      const cps = new Set([...text].map((c) => c.codePointAt(0)!));
+      const plain = subsetFont(notdef, { unicodes: cps });
+
+      it('rewrites the Name INDEX and the Font DICT FontNames, and shifts the Font DICT Private offsets', async () => {
+        const renamed = await subsetFont(notdef, { unicodes: cps, rename: { from: 'AND', to: 'Box Font' } });
+        const before = cffNames(cffOf((await plain).decoded));
+        expect(before).toMatchObject({ fontName: 'AND-Regular', fdFontNames: ['AND-Regular-Generic'], cidKeyed: true });
+        expect(cffNames(cffOf(renamed.decoded))).toEqual({
+          ...before,
+          fontName: 'BoxFont-Regular',
+          fdFontNames: ['BoxFont-Regular-Generic'],
+        });
+        expect(nameStrings(renamed.decoded).get(6)).toBe('BoxFont-Regular');
+        sameGlyphs((await plain).decoded, renamed.decoded, [text]);
+      });
+
+      it('rewrites FullName and FamilyName', async () => {
+        const to = 'A Considerably Longer Box Family';
+        const renamed = await subsetFont(notdef, { unicodes: cps, rename: { from: 'Adobe NotDef', to } });
+        const before = cffNames(cffOf((await plain).decoded));
+        expect(cffNames(cffOf(renamed.decoded))).toEqual({ ...before, fullName: to, familyName: to });
+        sameGlyphs((await plain).decoded, renamed.decoded, [text]);
+      });
+
+      it("refuses when a Font DICT's Private offset can't hold the shifted value at its width", () => {
+        // makeotf writes this offset as a 3-byte integer (HarfBuzz writes 5 bytes), so a big enough shift overflows it.
+        const cff = cffOf(notdef);
+        expect(cffNames(renameCff(cff, 'AND', 'Box Font')).fontName).toBe('BoxFont-Regular');
+        expect(() => renameCff(cff, 'AND', 'X'.repeat(20_000))).toThrow(
+          /Font DICT 0's Private offset is a 3-byte number and can't hold/,
+        );
+      });
     });
   });
 });

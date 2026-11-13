@@ -86,6 +86,18 @@ function lines(r: VerifyResult, root: string, md: boolean): string[] {
       item(`flaky: ${where(c)}: ${c.causes.join('; ')}`);
     for (const c of b.comparisons.filter((x) => x.class === 'sub-pixel rounding').slice(0, 5))
       item(`sub-pixel rounding: ${where(c)}: text boxes moved up to ${c.maxDx} px, no line or height changes`);
+    // Not a difference between the two sides: what each page showed before it was painted again.
+    const left = b.comparisons.filter((x) => x.leftover);
+    if (left.length) {
+      const worst = left.reduce((m, x) => (x.leftover!.pixels > m.leftover!.pixels ? x : m));
+      item(
+        `note: in ${left.length} comparison(s) the page as it loaded was not what a fresh paint of it gives (the fresh paint is what is compared): up to ${worst.leftover!.pixels} px, ${Math.max(...left.map((x) => x.leftover!.levels))} of 255 levels at most. Chrome keeps them from an earlier paint when a font file arrives after the page has drawn, so a visitor can get the same`,
+      );
+      for (const c of left.toSorted((x, y) => y.leftover!.pixels - x.leftover!.pixels).slice(0, 3))
+        L.push(
+          `${md ? '  - ' : '      '}${where(c)}: ${c.leftover!.pixels} px, up to ${c.leftover!.levels} level(s); ${c.leftover!.original} px with the original fonts`,
+        );
+    }
     for (const x of b.rejected) item(`regression: ${x.browser} rejects ${x.file}: ${x.error}`);
     for (const x of b.loads) item(`regression: ${x.page}: ${x.problem}`);
 
@@ -98,8 +110,8 @@ function lines(r: VerifyResult, root: string, md: boolean): string[] {
       for (const p of b.bytes)
         L.push(
           md
-            ? `| ${p.page} | ${kb(p.before.bytes)} | ${kb(p.after.bytes)} | ${p.before.requests} → ${p.after.requests} |`
-            : `  ${p.page.padEnd(30)} ${kb(p.before.bytes).padStart(9)} → ${kb(p.after.bytes).padStart(9)}  (${p.before.requests} → ${p.after.requests} requests)`,
+            ? `| ${p.page} | ${kb(p.before.bytes)} | ${kb(p.after.bytes)} | ${p.before.requests} → ${p.after.requests}${p.after.inCss ? `; ${kb(p.after.inCss)} in the stylesheet` : ''} |`
+            : `  ${p.page.padEnd(30)} ${kb(p.before.bytes).padStart(9)} → ${kb(p.after.bytes).padStart(9)}  (${p.before.requests} → ${p.after.requests} requests${p.after.inCss ? `; ${kb(p.after.inCss)} in the stylesheet` : ''})`,
         );
       if (md) L.push('');
       item(

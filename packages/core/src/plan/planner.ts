@@ -116,6 +116,8 @@ export interface SourceFont {
 export type Role = 'core' | 'ext' | 'rest';
 export const OPT_INS = ['limit-axes', 'drop-hinting', 'split-shaping', 'drop-hint-refs'] as const;
 export type OptInId = (typeof OPT_INS)[number];
+/** Opt-ins only `fontphobia auto` applies: they change what a page loads, which it does by editing the built HTML. */
+export const AUTO_OPT_INS = ['add-preloads', 'prefetch-extended', 'inline-core'] as const;
 
 export interface PlannedFile {
   role: Role;
@@ -793,10 +795,13 @@ export async function planAll(
   const unknown = (cfg.allow ?? []).filter(
     (a) =>
       !(OPT_INS as readonly string[]).includes(a) &&
-      !['self-host', 'tighten', 'to-local', 'eject', 'add-preloads'].includes(a),
+      // Applied outside the planner: by `build` (the first three) and by `auto` (the rest).
+      !['self-host', 'tighten', 'eject', ...AUTO_OPT_INS].includes(a),
   );
   if (unknown.length)
-    throw new Error(`Unknown opt-in ${unknown.join(', ')}; known: ${[...OPT_INS, 'self-host', 'tighten'].join(', ')}`);
+    throw new Error(
+      `Unknown opt-in ${unknown.join(', ')}; known: ${[...OPT_INS, 'self-host', 'tighten', 'eject', ...AUTO_OPT_INS].join(', ')}`,
+    );
   const faces: FacePlan[] = [];
   // Sequential: wawoff2 is serialized anyway, and the order keeps the output stable.
   // One face that fails (a font the subsetter can't handle as planned) is left as it is, with the error; the others still plan.

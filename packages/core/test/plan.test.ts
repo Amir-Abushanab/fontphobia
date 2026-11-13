@@ -94,6 +94,13 @@ describe('planner (§8)', () => {
     expect(core!.has('θ'.codePointAt(0)!)).toBe(true);
   });
 
+  it('refuses an opt-in it does not know', async () => {
+    const f = face();
+    const usage = usageOf({ inter: f }, { '/': { inter: ranges('Hello') } });
+    await expect(planAll(usage, new Map(), { allow: ['to-local'] })).rejects.toThrow(/Unknown opt-in to-local/);
+    await expect(planAll(usage, new Map(), { allow: ['add-preloads'] })).resolves.toBeDefined();
+  });
+
   it('splits K into disjoint core, extended and rest files that cover everything the face serves', async () => {
     const f = face();
     const pages = {
