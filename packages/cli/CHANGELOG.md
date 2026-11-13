@@ -1,5 +1,27 @@
 # fontphobia
 
+## 0.5.0
+
+### Minor Changes
+
+- [#18](https://github.com/Amir-Abushanab/fontphobia/pull/18) [`357ebf0`](https://github.com/Amir-Abushanab/fontphobia/commit/357ebf00452d4e10e304f31d273be385217b667d) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - Three opt-ins for `fontphobia auto`, each changing what a page loads and so off by default. `allow: [...]` in the config takes them too. `build` does not apply them.
+  
+  - `--crawl --allow add-preloads` preloads the core file of each face a page draws, where the page has no preload of it.
+  - `--crawl --allow prefetch-extended` adds a `<link rel="prefetch">` of an extended file to the pages that don't need it, when another page does. A visitor who goes on to that page finds the file cached. Every visitor downloads it once.
+  - `--rules linked --allow inline-core` puts the core file of a face every page draws into the linked stylesheet as a `data:` URL, which saves its request. `verify` counts those bytes in each page's total.
+  
+  The first two need the crawl, because reading the built text can't tell which faces a page draws.
+  
+  `--allow to-local` is now refused as an unknown opt-in. It was accepted and did nothing.
+
+- [#18](https://github.com/Amir-Abushanab/fontphobia/pull/18) [`357ebf0`](https://github.com/Amir-Abushanab/fontphobia/commit/357ebf00452d4e10e304f31d273be385217b667d) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - CFF fonts (`.otf` with PostScript outlines) under the OFL with a Reserved Font Name are now subset. The rename the license requires is written into the CFF table as well as the name table; before, such a font was left as it was with an error. A renamed font's unique ID (name ID 3) no longer keeps the reserved name either.
+
+### Patch Changes
+
+- [#18](https://github.com/Amir-Abushanab/fontphobia/pull/18) [`357ebf0`](https://github.com/Amir-Abushanab/fontphobia/commit/357ebf00452d4e10e304f31d273be385217b667d) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - The shaping check now sees a symbol together with the words on each side of it. A font can pick a glyph from what stands across a space: Inter draws a raised "±" or "×" between digits or capitals ("1 ± 2") and the plain one elsewhere. With the symbol in the extended file and the digits in core, the browser drew the plain one, and only `verify` caught it. `audit` now records such a symbol with its neighbours, so the plan moves it into core. The next `audit` adds these to `usage.json`.
+
+- [#18](https://github.com/Amir-Abushanab/fontphobia/pull/18) [`357ebf0`](https://github.com/Amir-Abushanab/fontphobia/commit/357ebf00452d4e10e304f31d273be385217b667d) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - `verify` compares each page after painting all of it again, and reports what that changed. When the extended file arrived after a page had already painted with the core file, Chrome could leave one edge pixel of a glyph a single level off, so a comparison differed on one load and matched on the next, and `verify` reported it as flaky on every run. The comparison no longer depends on the order the font files arrive in. Pixels the page showed before the fresh paint are listed in a note with their count and size, because a visitor can get them too; they do not fail the run.
+
 ## 0.4.1
 
 ### Patch Changes

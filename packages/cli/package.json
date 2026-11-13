@@ -1,6 +1,6 @@
 {
   "name": "fontphobia",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Shrink a site's web fonts without changing how anything renders.",
   "keywords": [
     "cli",
