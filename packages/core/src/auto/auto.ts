@@ -68,6 +68,7 @@ import { listFiles } from '../project/detect.ts';
 import { kb } from '../report/audit.ts';
 import type { FontFacts } from '../usage/capture.ts';
 import { fontFacts, sha256 } from '../usage/facts.ts';
+import { phraseAround } from '../usage/phrases.ts';
 import { verifyStatic, type StaticVerify } from '../verify/static.ts';
 
 export interface AutoOptions {
@@ -226,13 +227,19 @@ async function staticUsage(
   let lists = false;
   let truncated = false;
   const addWords = (text: string) => {
-    for (const w of text.split(/\s+/)) {
-      // Only a word with a character outside ASCII can end up split between two files.
-      // eslint-disable-next-line no-control-regex -- anything outside ASCII
-      if (!/[^\x00-\x7f]/.test(w)) continue;
+    const keep = (w: string) => {
       if (words.size >= MAX_WORDS) truncated = true;
       else words.add(w);
-    }
+    };
+    const tokens = text.split(/\s+/).filter(Boolean);
+    tokens.forEach((w, k) => {
+      // Only a word with a character outside ASCII can end up split between two files.
+      // eslint-disable-next-line no-control-regex -- anything outside ASCII
+      if (/[^\x00-\x7f]/.test(w)) keep(w);
+      // A word of symbols only, with its neighbours (usage/phrases.ts).
+      const phrase = phraseAround(tokens[k - 1], w, tokens[k + 1]);
+      if (phrase) keep(phrase);
+    });
   };
   const files = listFiles(outDir, (r) => TEXT_FILE.test(r), {
     skip: (_rel, n) => n === 'node_modules' || n.startsWith('.'),

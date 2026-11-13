@@ -13,6 +13,7 @@ export * from './usage/match.ts';
 export * from './usage/rules.ts';
 export * from './usage/declared.ts';
 export * from './usage/build.ts';
+export * from './usage/phrases.ts';
 export * from './usage/json.ts';
 export * from './usage/facts.ts';
 export * from './project/profiles.ts';
