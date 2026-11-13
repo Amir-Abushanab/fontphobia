@@ -18,6 +18,7 @@ import { readSfnt } from '../font/sfnt.ts';
 import { glyfInstructionBytes, parseFvar, type Axis } from '../font/tables.ts';
 import { checkShaping, type ShapeCase } from '../shape/equivalence.ts';
 import { hbSubset, subsetFont, type AxisSetting, type SubsetOptions } from '../subset/subset.ts';
+import { chooseCore } from './core.ts';
 import { detectLicense, licenseRefusal, renameFor, type License } from './license.ts';
 import { localeChars } from './locale.ts';
 import { cmapAliases, hintRefs, macosReferenceGlyphs, reverseCmap } from './hintrefs.ts';
@@ -75,8 +76,12 @@ export interface UsageFileJson {
 }
 
 export interface PlanConfig {
-  /** A character goes in core if at least this share of the face's pages use it (default 0.5). */
-  coreThreshold?: number;
+  /**
+   * Which of the characters the site uses go in core (§8.2). 'auto' (default): the ones that make
+   * the face's pages download the least in total, measured (plan/core.ts). A number from 0 to 1:
+   * the ones at least this share of the face's pages use.
+   */
+  coreThreshold?: number | 'auto';
   /** The third, lazy "rest" file (default true). */
   remainder?: boolean;
   /** Opt-ins: limit-axes, drop-hinting, split-shaping. */
@@ -152,6 +157,11 @@ export interface FacePlan {
   /** @font-face descriptors that change (limit-axes). */
   descriptors?: Record<string, string>;
   hinting?: boolean;
+  /**
+   * `coreThreshold: 'auto'`, when the site uses characters outside core's fixed part: the ones put
+   * in core, and how many of the face's pages then load no other file of the face.
+   */
+  coreChoice?: { added: string; count: number; pages: number; coreOnly: number };
   /** Characters moved into core so words shape as they did unsplit (§8.3). */
   repair?: { moved: string; count: number; words: string[]; truncated?: boolean };
   /** Words that shape differently across files (only with split-shaping). */
@@ -495,27 +505,6 @@ export async function planFace(
     locales,
   };
 
-  // 2. Core: base ∪ characters on ≥ coreThreshold of pages ∪ marks in use, ∩ K.
-  let C0: Set<number>;
-  if (caps.split === 'single') C0 = new Set(K);
-  else {
-    const threshold = cfg.coreThreshold ?? 0.5;
-    const n = face.pages.length;
-    const counts = new Map<number, number>();
-    for (const p of face.pages)
-      for (const c of setOf(usage.pages[p]?.faces[id])) counts.set(c, (counts.get(c) ?? 0) + 1);
-    C0 = new Set(CORE_BASE);
-    for (const [c, k] of counts) if (n && k / n >= threshold) C0.add(c);
-    for (const c of used) if (isMark(c)) C0.add(c);
-    // Decomposed text (e + U+0301): Firefox and WebKit match fonts on the composed cluster (é), so the
-    // composed character goes with its base and marks (M5 notes).
-    for (const c of composedInUse(face)) if (cmap.has(c) && servable.has(c)) C0.add(c);
-    // List markers: WebKit lays a marker out with the primary font (core), so a marker symbol from
-    // another file lands a fraction of a pixel off (M5 notes).
-    for (const c of setOf(face.inserted['list markers'])) C0.add(c);
-    C0 = closure(sfnt, new Set([...C0].filter((c) => K.has(c))));
-  }
-
   // Options: features (§8.7), axes (§8.6), hinting (§8.8).
   const allow = new Set(cfg.allow ?? []);
   const fvar = parseFvar(sfnt)?.axes ?? [];
@@ -533,6 +522,65 @@ export async function planFace(
   });
   const final = { limit: allow.has('limit-axes') && !!axesLimit, dropHinting: allow.has('drop-hinting') && hinted };
   const opts = optsFor(final);
+  const refsOn = !allow.has('drop-hint-refs');
+  /**
+   * What a file's cmap carries outside its unicode-range. For FreeType's auto-hinter: the reference
+   * letters (core has them already) and every code point sharing a glyph with one in the file. For
+   * macOS: its reference glyphs' code points, when the source maps them.
+   */
+  const refsFor = (role: Role, set: Set<number>, withRefs: boolean): number[] => {
+    const hintBase = role === 'core' || !withRefs ? [] : hintRefs(set, cmap);
+    const macRefs = refGlyphs.flatMap((g) => byGlyph.get(g) ?? []).filter((c) => !set.has(c));
+    return [
+      ...new Set([...hintBase, ...macRefs, ...cmapAliases([...set, ...hintBase, ...macRefs], hbFont, byGlyph)]),
+    ].toSorted((a, b) => a - b);
+  };
+
+  // 2. Core: its fixed part, plus the used characters `coreThreshold` picks, ∩ K.
+  /** For each page of the face, the characters it draws there. */
+  const drawn = face.pages.map((p) => setOf(usage.pages[p]?.faces[id]));
+  let C0: Set<number>;
+  /** auto, when the pages use characters outside core's fixed part: that fixed part. */
+  let fixedCore: Set<number> | undefined;
+  if (caps.split === 'single') C0 = new Set(K);
+  else {
+    const threshold = cfg.coreThreshold ?? 'auto';
+    C0 = new Set(CORE_BASE);
+    if (threshold !== 'auto') {
+      const n = face.pages.length;
+      const counts = new Map<number, number>();
+      for (const cs of drawn) for (const c of cs) counts.set(c, (counts.get(c) ?? 0) + 1);
+      for (const [c, k] of counts) if (n && k / n >= threshold) C0.add(c);
+    }
+    for (const c of used) if (isMark(c)) C0.add(c);
+    // Decomposed text (e + U+0301): Firefox and WebKit match fonts on the composed cluster (é), so the
+    // composed character goes with its base and marks (M5 notes).
+    for (const c of composedInUse(face)) if (cmap.has(c) && servable.has(c)) C0.add(c);
+    // List markers: WebKit lays a marker out with the primary font (core), so a marker symbol from
+    // another file lands a fraction of a pixel off (M5 notes).
+    for (const c of setOf(face.inserted['list markers'])) C0.add(c);
+    C0 = closure(sfnt, new Set([...C0].filter((c) => K.has(c))));
+    if (threshold === 'auto') {
+      // The used characters that make the pages download the least (plan/core.ts). Sizes are the
+      // subsets the files are compressed from, with the same references the files will carry.
+      const fixed = C0;
+      const raw = (role: Role, set: Set<number>) =>
+        set.size
+          ? hbSubset(sfnt, { ...opts, unicodes: [...set, ...refsFor(role, set, refsOn)], glyphs: refGlyphs }).byteLength
+          : 0;
+      const pick = chooseCore(
+        drawn.map((cs) => [...cs].filter((c) => K.has(c) && !fixed.has(c))),
+        (add) => {
+          const core = new Set([...fixed, ...add]);
+          return { core: raw('core', core), ext: raw('ext', new Set([...K].filter((c) => !core.has(c)))) };
+        },
+      );
+      if (pick.measured) {
+        fixedCore = fixed;
+        C0 = closure(sfnt, new Set([...fixed, ...pick.add]));
+      }
+    }
+  }
 
   // 3. Cross-file shaping repair.
   const words = caps.split === 'full' ? wordsOf(face, K, fvar) : [];
@@ -556,7 +604,6 @@ export async function planFace(
   const stem = basename(src.file, extname(src.file));
   const cache = new Map<string, PlannedFile>();
   const bytesOf = new Map<string, Uint8Array>();
-  const refsOn = !allow.has('drop-hint-refs');
   const build = async (
     role: Role,
     set: Set<number>,
@@ -568,14 +615,7 @@ export async function planFace(
     const key = `${role}|${fmt(set)}|${JSON.stringify(o)}|${withRefs && role !== 'core'}`;
     const hit = cache.get(key);
     if (hit) return hit;
-    // For FreeType's auto-hinter, outside the unicode-range: the reference letters (core has them
-    // already) and every code point sharing a glyph with one in the file.
-    const hintBase = role === 'core' || !withRefs ? [] : hintRefs(set, cmap);
-    // macOS's reference glyphs come with their code points when the source maps them (outside the unicode-range too).
-    const macRefs = refGlyphs.flatMap((g) => byGlyph.get(g) ?? []).filter((c) => !set.has(c));
-    const refs = [
-      ...new Set([...hintBase, ...macRefs, ...cmapAliases([...set, ...hintBase, ...macRefs], hbFont, byGlyph)]),
-    ].toSorted((a, b) => a - b);
+    const refs = refsFor(role, set, withRefs);
     const r = await subsetFont(sfnt, { ...o, unicodes: [...set, ...refs], glyphs: refGlyphs });
     const h = sha256(r.woff2);
     const refSet = new Set(refs);
@@ -661,6 +701,11 @@ export async function planFace(
     });
   }
 
+  // auto: what it put in core, and the pages that draw nothing from the other two files.
+  const fixedPart = fixedCore;
+  const chosen = fixedPart ? [...C0].filter((c) => !fixedPart.has(c)) : [];
+  const elsewhere = setsFor(C);
+
   const notes: string[] = [];
   if (unknownLocales.length) notes.push(`CLDR has no characters for ${unknownLocales.join(', ')}`);
   if (face.wordsTruncated) notes.push('word list was capped: the shaping repair saw only part of the text');
@@ -682,6 +727,12 @@ export async function planFace(
     hinting: !final.dropHinting,
     axes: final.limit ? axesLimit : undefined,
     descriptors: final.limit && axesLimit ? axisDescriptors(face, axesLimit) : undefined,
+    coreChoice: fixedPart && {
+      added: fmt(chosen),
+      count: chosen.length,
+      pages: drawn.length,
+      coreOnly: drawn.filter((cs) => ![...cs].some((c) => elsewhere.ext.has(c) || elsewhere.rest.has(c))).length,
+    },
     repair:
       rep.moved.size && !splitShaping
         ? {

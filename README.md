@@ -4,7 +4,7 @@ Shrink your site's web fonts without changing how anything renders.
 
 **[Read the walkthrough](https://amir-abushanab.github.io/fontphobia/)**: fontphobia on a real site, step by step, with its actual output.
 
-Browse the bakery with [original fonts](https://amir-abushanab.github.io/fontphobia/bakery/before/) or [optimized fonts](https://amir-abushanab.github.io/fontphobia/bakery/after/). Both versions have the same photos, menu filters and content; the walkthrough reports font savings separately from total resource savings.
+Browse the example site with [original fonts](https://amir-abushanab.github.io/fontphobia/bakery/before/) or [optimized fonts](https://amir-abushanab.github.io/fontphobia/bakery/after/). Both versions have the same photos, menu filters and content; the walkthrough reports font savings separately from total resource savings.
 
 fontphobia crawls your built site in Chrome, records exactly which characters, weights, features and axis values each font draws on each page, and splits every font into a small **core** file, an **extended** file and a lazy **rest** file. Text renders with the same glyphs, hinting, kerning and metrics as before, and `verify` proves it pixel for pixel.
 
@@ -26,6 +26,7 @@ pnpm dlx fontphobia@0.3.0
 - [Opt-ins](#opt-ins)
 - [Commands](#commands)
 - [Keeping the subsets up to date](#keeping-the-subsets-up-to-date)
+- [Auto mode](#auto-mode)
 - [CI](#ci)
 - [Configuration](#configuration)
 - [Licenses](#licenses)
@@ -82,9 +83,11 @@ Run everything from the project root (or pass `--cwd`). (If pnpm refuses a relea
    The result goes to `.fontphobia/usage.json`. Reruns revisit only pages whose HTML, CSS or fonts changed.
 
 2. **Plan.** This step is deterministic and needs no browser. Each face is split into three files:
-   - **core:** characters used on at least half of the face's pages (`coreThreshold`); it loads like the original did;
-   - **extended:** every other character any page uses; it loads only on pages that need one of them;
+   - **core:** printable ASCII and common punctuation, plus the characters your pages use that cost less here than in the extended file; it loads like the original did;
+   - **extended:** the Latin and locale characters no page uses yet, and the used characters that cost less here; it loads only on pages that need one of them;
    - **rest:** everything else in the original font, so content added later still renders; it rarely loads.
+
+   Where a used character costs less is measured. In core it adds its own bytes to every page that uses the font. In the extended file it adds that whole file to each page that uses the character. fontphobia builds the candidate splits and keeps the one where the font's pages download the least in total. A few accented letters that one page uses go in core. The alphabet of a page in another script stays in the extended file when several other pages would each have to carry it. To use a fixed rule instead, set `coreThreshold` (or pass `--core-threshold`) to a number from 0 to 1: a character then goes in core when at least that share of the font's pages use it.
 
    Each rule gets a `unicode-range`, so the browser picks the files. Characters that shape together (ligatures, marks, contextual forms) are kept in the same file, so every word shapes exactly as before.
 
@@ -94,7 +97,7 @@ Run everything from the project root (or pass `--cwd`). (If pnpm refuses a relea
    - every recorded word is shaped with HarfBuzz from the original and from the split files, and the results must be identical;
    - every page is loaded before and after in the browser, and the layout and pixels are compared.
 
-   Each difference is classified, and a real one fails the run, naming the element where it happened. Diff images go to `.fontphobia/verify/`. Content that changes on its own between loads (script-driven animations, canvases, embeds) can't be compared: hide it with `--mask <selector>`, or skip a page with `--ignore <glob>`.
+   Each difference is classified, and a real one fails the run, naming the element where it happened. A pixel difference at unchanged layout counts when loading both sides again repeats it. Chrome rasterizes on the CPU during `verify`, because its GPU rasterizer does not draw every load alike. Diff images go to `.fontphobia/verify/`. Content that changes on its own between loads (script-driven animations, canvases, embeds) can't be compared: hide it with `--mask <selector>`, or skip a page with `--ignore <glob>`.
 
 ## Font sources
 
@@ -134,17 +137,18 @@ Italic styles are never dropped, because browsers italicize `em`, `i`, `cite` an
 
 Every command except `inspect` and `subset` takes `--cwd <dir>`, and most take `--json`.
 
-| Command          | What it does                                                                                                               | Key options                                                                                                                                |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `fontphobia`     | Audit, plan, ask, write, verify                                                                                            | `--write`/`-u`, `--allow`, `--ci`                                                                                                          |
-| `audit`          | Crawl and write `.fontphobia/usage.json` and `report.md`                                                                   | `--dist`, `--build-cmd`, `--start-cmd` (SSR routes), `--url`, `--pages`, `--ignore`, `--viewports`, `--locales`, `--rebuild`, `--no-cache` |
-| `build`          | Plan from `usage.json` (no browser). Shows the plan and diff; `--write` applies                                            | `--write`, `--allow`, `--no-remainder`                                                                                                     |
-| `verify`         | Check the files and shaping, then compare every page before and after                                                      | `--browsers`, `--dpr`, `--viewports`, `--mask`, `--ignore`, `--timeout`, `--baseline overlay\|worktree`, `--hinting`, `--no-browser`       |
-| `check`          | Are the subsets still up to date? Exits 1 when the site would render differently, or when there was nothing to check       | `--url` (crawl production), `--mode warn`, `--strict`, `--allow-chars`                                                                     |
-| `revert`         | Put everything back from the manifest                                                                                      | `--dry-run`, `--keep-kits`                                                                                                                 |
-| `apply-kit`      | Adobe Fonts: remove kit styles nothing uses, through the Typekit API (`TYPEKIT_TOKEN` from fonts.adobe.com/account/tokens) | `--yes`, `--check`                                                                                                                         |
-| `inspect <font>` | A font's tables, axes, features, hinting and sizes                                                                         |                                                                                                                                            |
-| `subset <font>`  | Low level: subset one font to WOFF2                                                                                        | `--unicodes`, `--text`, `--features`, `--axis`, `-o`                                                                                       |
+| Command          | What it does                                                                                                                | Key options                                                                                                                                |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `fontphobia`     | Audit, plan, ask, write, verify                                                                                             | `--write`/`-u`, `--allow`, `--ci`                                                                                                          |
+| `audit`          | Crawl and write `.fontphobia/usage.json` and `report.md`                                                                    | `--dist`, `--build-cmd`, `--start-cmd` (SSR routes), `--url`, `--pages`, `--ignore`, `--viewports`, `--locales`, `--rebuild`, `--no-cache` |
+| `build`          | Plan from `usage.json` (no browser). Shows the plan and diff; `--write` applies                                             | `--write`, `--allow`, `--core-threshold`, `--no-remainder`                                                                                 |
+| `verify`         | Check the files and shaping, then compare every page before and after                                                       | `--browsers`, `--dpr`, `--viewports`, `--mask`, `--ignore`, `--timeout`, `--baseline overlay\|worktree`, `--hinting`, `--no-browser`       |
+| `check`          | Are the subsets still up to date? Exits 1 when the site would render differently, or when there was nothing to check        | `--url` (crawl production), `--mode warn`, `--strict`, `--allow-chars`                                                                     |
+| `auto`           | Subset the built output in place: no source edits and nothing to commit. Run it after every build ([Auto mode](#auto-mode)) | `--dist`, `--crawl`, `--rules`, `--verify`, `--dry-run`, `--allow`, `--core-threshold`, `--no-remainder`                                   |
+| `revert`         | Put everything back from the manifest                                                                                       | `--dry-run`, `--keep-kits`                                                                                                                 |
+| `apply-kit`      | Adobe Fonts: remove kit styles nothing uses, through the Typekit API (`TYPEKIT_TOKEN` from fonts.adobe.com/account/tokens)  | `--yes`, `--check`                                                                                                                         |
+| `inspect <font>` | A font's tables, axes, features, hinting and sizes                                                                          |                                                                                                                                            |
+| `subset <font>`  | Low level: subset one font to WOFF2                                                                                         | `--unicodes`, `--text`, `--features`, `--axis`, `-o`                                                                                       |
 
 **About `verify`:**
 
@@ -187,7 +191,79 @@ Run it after your build with your framework's hook:
 
 - **Install:** the integrations need fontphobia in the project: `pnpm add -D fontphobia@0.3.0`.
 - **Options:** each one takes `{ mode: 'warn' | 'error', strict, allowChars }`. The Next adapter reads them from the config's `check` key instead.
-- **What they skip:** none of them subsets anything, opens a browser or touches the network.
+- **What they skip:** none of them subsets anything, opens a browser or touches the network, unless `auto` is set ([Auto mode](#auto-mode)).
+
+## Auto mode
+
+`fontphobia auto` subsets the fonts of a built site inside its output directory. It edits no source file, writes no manifest and leaves nothing to commit. The output is subset again on every build, so `check` and `revert` are not needed.
+
+```sh
+pnpm build && pnpm dlx fontphobia@0.3.0 auto
+```
+
+It learns what the site uses in one of two ways:
+
+|                                               | `auto` (static)                                           | `auto --crawl`                                 |
+| --------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------- |
+| Chrome                                        | Not needed                                                | Needed wherever the build runs                 |
+| Where usage comes from                        | The text of the built HTML and the strings in its scripts | A crawl of the output, the way `audit` does it |
+| Which face gets a character                   | Every face of a family the output names that can draw it  | The face that draws it                         |
+| OpenType features kept                        | All of the font's                                         | The ones the pages turn on                     |
+| Text that CSS generates (counters, `content`) | Not seen; it renders from the extended or rest file       | Counted                                        |
+| File sizes                                    | Larger                                                    | The same files the default flow writes         |
+
+On this repository's test site, Inter's 859 KB file becomes a core file of 85.7 KB with `auto` and 55.6 KB with `auto --crawl`.
+
+**What it writes**, all inside the output directory:
+
+- the core, extended and rest files, next to each font;
+- the split `@font-face` rules, in a `<style>` at the end of each page's `<head>`. Rules declared later are checked first, so the split files draw the text;
+- a `unicode-range` on each original `@font-face` rule, listing the font's own characters. The original rule stays as the fallback for a page without the split rules, such as a server-rendered route. On a page that has them, the original font never downloads;
+- a face that only a page's own `<style>` declares, replaced there;
+- font preloads, pointed at the core file. This includes the preload hints Next.js puts in its page payloads.
+
+The split rules go in the HTML for two reasons. A hashed stylesheet keeps its file name when only the site's text changes, so writing the rules into it would let a browser holding the old copy ask for font files the new deploy no longer has. HTML is fetched fresh, so a page and its font rules always come from the same build. And a separate linked stylesheet can arrive after the page's own: in that gap the original rules are the last ones declared, and a style calculation there starts downloading the original fonts. In Chrome with slowed stylesheets that happened in 23 of 480 loads with a linked stylesheet and in none of 576 with the rules inline.
+
+**To use a linked stylesheet instead,** pass `--rules linked` or set `autoRules: 'linked'` in the config. The rules then go in one file, `fontphobia.<hash>.css`, at the output's root, linked last in each page.
+
+|                                                 | `inline` (default)            | `linked`                                                        |
+| ----------------------------------------------- | ----------------------------- | --------------------------------------------------------------- |
+| Cost per page view                              | The rules, in the HTML        | Nothing after the first visit: the file is cached               |
+| Extra request                                   | None                          | One, on a first visit and after a deploy that changes the rules |
+| The original font downloading anyway            | Never seen                    | Now and then, in the gap described above                        |
+| A Content-Security-Policy with no inline styles | The browser ignores the rules | Works                                                           |
+
+**A font that would not get smaller is left alone.** For each font, `auto` adds up what its pages would download from the split files, plus the rules in each page's HTML, and compares that with the one file they download now. A font already cut small, such as a Google or Fontsource slice whose pages use most of it, is skipped with that reason. When the total drops but some page downloads more, a note names the pages.
+
+**Checks on every run**, without a browser: each written file decodes and is validated against its source font, the rules keep the original descriptors, and every word found shapes the same from the split files as from the source (outlines, advances and positions). These are the first two stages of `verify`. If one fails, the output is put back as it was and the command exits 1.
+
+**The pixel comparison** needs Chrome, so it is a flag: `fontphobia auto --verify` loads each page before and after and compares layout and pixels, as `verify` does. The checks on every run compare glyphs and positions directly, and those are what change with the site's text. The browser comparison covers how a browser handles the rules and the files, which depends on the fonts and the fontphobia version. Run it when adopting auto mode, after changing a font or upgrading fontphobia, or in CI. It also reports an original font that a page still downloads next to its split files.
+
+**With a framework integration:** each integration's options take `auto`, which replaces the post-build `check`:
+
+```js
+fontphobia({ auto: true }); // static
+fontphobia({ auto: 'crawl' }); // Chrome
+```
+
+The config's `auto` key does the same for every integration that isn't given the option. The Next adapter takes no options, so it reads this key:
+
+```ts
+export default defineConfig({ auto: true });
+```
+
+Both modes were run with `--verify` on real builds of Astro (Fontsource), Nuxt (`@nuxt/fonts`), Next.js (`next/font/local`, static export) and TanStack Start: every comparison was identical.
+
+**Limits of auto mode:**
+
+- **Static output only.** It needs prerendered HTML. A page rendered by a server does not have the split rules and keeps loading the original fonts.
+- **The rules add to each page's HTML:** 0.6 KB and 1.4 KB compressed per page on two test sites (six faces and two). A `Content-Security-Policy` that forbids inline styles makes the browser ignore them, and the original fonts load; `auto` adds a note when a page sets one in a `<meta>` tag. Use `--rules linked` on such a site.
+- **Faces it leaves alone:** fonts another origin serves (a Google Fonts link, an Adobe kit), rules inside `@media` or `@supports`, rules a script declares, families nothing in the output names, and fonts the [license rules](#licenses) refuse. Each is listed in the report with the reason.
+- **Opt-ins:** `limit-axes`, `self-host`, `eject` and `tighten` are not applied. They change a face's descriptors or where it is served from.
+- **Scripts are not rewritten.** A `document.fonts.load()` call waits for the core file only. A script that loads a font file by its URL (`new FontFace(...)`) still downloads the original; `--verify` reports it.
+- **A stylesheet loaded with an `integrity` hash is not edited.** Its faces are still split, but a character none of a font's files has makes the original font download.
+- **A project with committed subsets is refused.** Run `fontphobia revert` first to switch.
+- **Build time and size:** planning and compressing takes a few seconds per face on every build, and the original fonts stay in the output next to the split files.
 
 ## CI
 
@@ -199,6 +275,7 @@ Three recipes; full workflow files are in [docs/ci.md](https://github.com/Amir-A
   pnpm dlx fontphobia@0.3.0 check --url https://example.com
   ```
   This crawls the live site and compares what it draws with the files. It catches content from a CMS that the repo never sees.
+- **Auto mode:** run `pnpm dlx fontphobia@0.3.0 auto` after the build step, and add `--verify` in a job that has Chrome.
 - **Verify on Windows and Linux** when you change fonts. Hinting and rasterization differ by OS, so run `pnpm dlx fontphobia@0.3.0 verify` on `windows-latest`, and add `--hinting` on `ubuntu-latest`.
 
 ## Configuration
@@ -218,12 +295,14 @@ export default defineConfig({
   viewports: [360, 768, 1280, 1920],
   locales: ['en', 'fr'], // their characters (quotes and so on) go into the subsets
   maxPages: 500,
-  coreThreshold: 0.5, // share of a face's pages a character needs to be in core
+  coreThreshold: 'auto', // which used characters go in core: 'auto' measures; 0 to 1 is a fixed share of a face's pages
   remainder: true, // the lazy rest file
   allow: [], // opt-ins
   rename: { 'Source Serif 4': 'SrcSerif Subset' }, // internal name for OFL Reserved Font Names
   licenses: { allow: [] }, // families you have the rights to modify
   check: { mode: 'error', strict: false, allowChars: '' },
+  auto: false, // integrations subset the build output instead of running check: true, 'static' or 'crawl'
+  autoRules: 'inline', // where auto puts the split rules: 'inline' (each page) or 'linked' (one cached stylesheet)
   verify: { browsers: ['chromium'], hinting: false, viewports: [360, 1280], dprs: [1, 2] },
 });
 ```
@@ -254,7 +333,7 @@ The project's own `LICENSE` and `package.json` never count as a font's license. 
 
 ## Limitations
 
-- **Text the crawl can't see** isn't in core or extended: pages behind a login (use `auth`), text added by scripts after load, and content added later. It renders from the rest file. With `remainder: false`, it renders in the next font in the stack.
+- **Text the crawl can't see** isn't counted when the files are planned: pages behind a login (use `auth`), text added by scripts after load, and content added later. Its characters render from the extended file when they are in Latin-1, Latin Extended-A or the alphabets of your `locales`, and from the rest file otherwise. With `remainder: false`, what would come from the rest file renders in the next font in the stack.
 - **CFF fonts** that need a rename because of an OFL Reserved Font Name aren't supported yet.
 - **`apply-kit` publishes your Adobe kit**, which changes every site that uses it. It refuses a kit whose draft has unpublished changes, reads each change back from Adobe and publishes only if it matches, and `revert` restores the previous styles only if nobody edited the kit since (otherwise it says which styles to add back, or `revert --keep-kits` leaves the kit as it is). Another site sharing the kit can run `fontphobia apply-kit --check` to see whether it lost a style it uses. It doesn't change the character set: Adobe's API doesn't reflect the web UI's setting, so the audit report says which one to pick and you change it on fonts.adobe.com.
 

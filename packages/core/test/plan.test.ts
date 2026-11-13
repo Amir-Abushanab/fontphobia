@@ -12,6 +12,7 @@ import {
   codePointsOf,
   deriveName,
   detectLicense,
+  formatPlan,
   licenseRefusal,
   limitAxes,
   loadFont,
@@ -81,7 +82,9 @@ describe('planner (§8)', () => {
       '/a': { inter: ranges('Hello') },
       '/b': { inter: ranges('Hello café') },
     };
-    const p = await planFace('inter', { ...f, pages: Object.keys(pages) }, usageOf({ inter: f }, pages), inter);
+    const p = await planFace('inter', { ...f, pages: Object.keys(pages) }, usageOf({ inter: f }, pages), inter, {
+      coreThreshold: 0.5,
+    });
     expect(p.status).toBe('planned');
     const { core, ext, rest } = filesOf(p);
     for (const [a, b] of [
@@ -107,11 +110,12 @@ describe('planner (§8)', () => {
     expect(p.optIns!.find((o) => o.id === 'limit-axes')!.saving).toBeGreaterThan(10_000);
   }, 60_000);
 
-  it('puts characters most pages use in core, rarer ones in extended', async () => {
+  it('with a number for coreThreshold, puts characters that share of the pages use in core', async () => {
     const f = face({ text: 'ab¿¡', words: [] });
     const pages = { '/1': { i: ranges('ab¿') }, '/2': { i: ranges('ab¿') }, '/3': { i: ranges('ab¡') } };
     const p = await planFace('i', { ...f, pages: Object.keys(pages) }, usageOf({ i: f }, pages), inter, {
       remainder: false,
+      coreThreshold: 0.5,
     });
     const { core, ext, rest } = filesOf(p);
     expect(core!.has(0xbf)).toBe(true); // ¿ on 2 of 3 pages
@@ -122,6 +126,47 @@ describe('planner (§8)', () => {
       coreThreshold: 1,
     });
     expect(filesOf(strict).ext!.has(0xbf)).toBe(true);
+    expect(p.coreChoice).toBeUndefined();
+  }, 60_000);
+
+  it("chooses core by what the pages download (coreThreshold: 'auto', the default)", async () => {
+    const f = face();
+    const pages = {
+      '/': { inter: ranges('Hello') },
+      '/a': { inter: ranges('Hello') },
+      '/b': { inter: ranges('Hello café') },
+    };
+    const usage = usageOf({ inter: f }, pages);
+    const p = await planFace('inter', { ...f, pages: Object.keys(pages) }, usage, inter);
+    const { core, ext } = filesOf(p);
+    // é is on one page of three. In the extended file it would cost that page the whole file.
+    expect(core!.has(0xe9)).toBe(true);
+    expect(ext!.has(0xf1)).toBe(true); // ñ: not used, kept as the safety net
+    expect(p.coreChoice).toEqual({ added: 'U+E9', count: 1, pages: 3, coreOnly: 3 });
+    // é went in with the other letters of "café", so there was nothing to repair.
+    expect(p.repair).toBeUndefined();
+    expect(formatPlan({ version: 1, faces: [p], optIns: [] }, usage)).toContain(
+      'Inter 100 900 normal: 1 character(s) (é); 3 of 3 page(s) load only the core file',
+    );
+  }, 60_000);
+
+  it('auto leaves characters in extended when the other pages would pay more for them than their page saves', async () => {
+    const cmap = new Set(loadFont(fixture('InterVariable.ttf')).face.collectUnicodes());
+    const cyrillic = String.fromCodePoint(...[...cmap].filter((c) => c >= 0x400 && c <= 0x4ff));
+    expect([...cyrillic].length).toBeGreaterThan(200);
+    const f = face({ text: `Hello ñ${cyrillic}`, words: [] });
+    const pages: Record<string, Record<string, string>> = {
+      '/es': { inter: ranges('Hello ñ') },
+      '/ru': { inter: ranges(`Hello${cyrillic}`) },
+    };
+    for (let i = 0; i < 10; i++) pages[`/${i}`] = { inter: ranges('Hello') };
+    const p = await planFace('inter', { ...f, pages: Object.keys(pages) }, usageOf({ inter: f }, pages), inter, {
+      remainder: false,
+    });
+    const { core, ext } = filesOf(p);
+    expect(core!.has(0xf1)).toBe(true); // ñ: one character on every page costs less than a file on /es
+    expect(ext!.has(0x416)).toBe(true); // Ж: eleven pages would each pay for the Cyrillic one page uses
+    expect(p.coreChoice).toEqual({ added: 'U+F1', count: 1, pages: 12, coreOnly: 11 });
   }, 60_000);
 
   it('adds locale characters, every Latin character for inputs, and respects unicode-range', async () => {
@@ -151,6 +196,7 @@ describe('planner (§8)', () => {
     };
     const p = await planFace('inter', { ...f, pages: Object.keys(pages) }, usageOf({ inter: f }, pages), inter, {
       remainder: false,
+      coreThreshold: 0.5,
       allow: ['limit-axes', 'split-shaping'],
     });
     expect(p.axes).toEqual({ opsz: 16, wght: { min: 400, max: 700 } });

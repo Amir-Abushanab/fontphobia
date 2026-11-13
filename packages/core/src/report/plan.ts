@@ -135,6 +135,21 @@ export function formatPlan(plan: Plan, usage: UsageFileJson): string {
       `Font bytes per page: median ${kb(now)} → ${kb(after)} (${pct(now, after)} less); biggest drop ${max.page} ${kb(max.now)} → ${kb(max.after)}`,
     );
   }
+  const chosen = planned.filter((f) => f.coreChoice);
+  if (chosen.length) {
+    L.push('', 'Core choice: used characters put in core so the pages download less in total');
+    for (const f of chosen) {
+      const c = f.coreChoice!;
+      // The characters themselves, when they print: marks and controls would not read as a list.
+      const shown = [...codePointsOf(parseUnicodeRange(c.added))]
+        .map((cp) => String.fromCodePoint(cp))
+        .filter((ch) => /[\p{L}\p{N}\p{P}\p{S}]/u.test(ch));
+      const list = shown.length ? ` (${shown.slice(0, 12).join(' ')}${shown.length > 12 ? ' …' : ''})` : '';
+      L.push(
+        `  ${label(f, usage)}: ${c.count} character(s)${list}; ${c.coreOnly} of ${c.pages} page(s) load only the core file`,
+      );
+    }
+  }
   const repaired = planned.filter((f) => f.repair);
   if (repaired.length) {
     L.push('', 'Shaping repair: characters moved into core so words shape exactly as they did unsplit');

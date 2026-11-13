@@ -17,6 +17,7 @@ import {
 } from '@fontphobia/core';
 import { findRuntime, formatVerify, launchChrome, verify, verifyMarkdown, type Comparison } from '../src/index.ts';
 import { firefox, webkit } from 'playwright-core';
+import { PNG } from 'pngjs';
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const tmp = mkdtempSync(join(tmpdir(), 'fontphobia-verify-'));
@@ -45,9 +46,9 @@ const runtime = chrome && (process.env.FONTPHOBIA_LINUX || !process.env.CI) ? aw
 
 // CI uploads diff images of failing comparisons from here.
 const outDir = (name: string) => (process.env.VERIFY_ARTIFACTS ? join(process.env.VERIFY_ARTIFACTS, name) : undefined);
-// `flaky` is a difference that a reload cleared, and it passes like `identical`. Every differing pixel counts, so
-// one-off rasterizer noise shows up as this: Chrome on macOS now and then draws the rounded corners of form
-// controls a few pixels differently for one load.
+// `flaky` is a pixel difference that further loads didn't repeat, and it passes like `identical`. Every
+// differing pixel counts, so one-off rasterizer noise shows up as this. Chrome's GPU rasterizer was the
+// main source (large text, the corners of form controls); verify rasterizes on the CPU.
 const settled = (c: Comparison) => (c.class === 'flaky' ? 'identical' : c.class);
 const differences = (r: Awaited<ReturnType<typeof verify>>) => {
   // Logged, so a CI run says where the noise was and how big.
@@ -70,9 +71,12 @@ function copy(name: string) {
     cpSync(join(repo, 'fixtures/fonts', f), join(root, 'fonts', f));
   return root;
 }
+// A fixed share for core, so the fixture's pages draw from the extended file too. The default
+// ('auto') puts everything these three pages use in core, and the tests below need text that
+// crosses files: for the pixel comparison, and for the mutation that renames the extended file.
 async function built(name: string, mutation?: Mutation) {
   const root = copy(name);
-  await buildProject(root, usage, { mutation }, { version: '1', write: true });
+  await buildProject(root, usage, { mutation, coreThreshold: 0.5 }, { version: '1', write: true });
   return root;
 }
 
@@ -134,6 +138,23 @@ describe.skipIf(!chrome)('verify in Chrome (§10.3)', () => {
     expect(verifyMarkdown(md, r, root)).toBe(md); // replaces its own section
   }, 300_000);
 
+  it('draws large text the same on every load', async () => {
+    // Chrome's GPU rasterizer changes edge pixels of text between about 162 and 256 device pixels tall
+    // from load to load. Rasterized on the CPU, the first load of each side already matches.
+    const root = await built('large');
+    const home = join(root, 'index.html');
+    writeFileSync(home, readFileSync(home, 'utf8').replace('</head>', '<style>h1 { font-size: 94px }</style></head>'));
+    const r = await verify({ root, usage, viewports: [1280], dprs: [1, 2], ignore: ['/about/', '/edge.html'] });
+    expect(differences(r)).toEqual([]);
+    expect(r.ok).toBe(true);
+    // Measured on macOS, where Chrome rasterizes on the GPU unless told not to: not even a reload is needed.
+    if (process.platform === 'darwin')
+      expect(r.browser!.comparisons.map((c) => `${c.page} ${c.dpr} ${c.class} ${c.causes.join('; ')}`)).toEqual([
+        '/ 1 identical ',
+        '/ 2 identical ',
+      ]);
+  }, 300_000);
+
   it('--mask hides content that differs by itself between loads; --ignore skips pages', async () => {
     const root = await built('mask');
     // A canvas painted from crypto randomness (verify seeds Math.random, not this) and hidden text that moves.
@@ -147,8 +168,10 @@ document.querySelector('.ghost').style.marginLeft=v[0]+'px';</script></body>`,
     writeFileSync(join(root, 'about/index.html'), page);
     const o = { root, usage, viewports: [1280], dprs: [1], pages: ['/about/'], maxPages: 1 };
     const about = (r: Awaited<ReturnType<typeof verify>>) => r.browser!.comparisons.find((c) => c.page === '/about/')!;
+    // Unmasked, the canvas differs on the first load and never the same way twice.
     const noisy = about(await verify(o));
-    expect(noisy.class).not.toBe('identical');
+    expect(noisy.class).toBe('flaky');
+    expect(noisy.causes.join()).toMatch(/none of its \d+ px repeated in \d+ more load\(s\)$/);
     expect(noisy.pixels).toBeGreaterThan(canvas * 0.9);
     // Masked, the canvas no longer counts: nothing differs, or a few pixels do for one load (`flaky`).
     const masked = await verify({ ...o, mask: ['#noise'] });
@@ -157,6 +180,40 @@ document.querySelector('.ghost').style.marginLeft=v[0]+'px';</script></body>`,
     expect(about(masked).pixels).toBeLessThan(canvas * 0.1);
     const skipped = await verify({ ...o, ignore: ['/about/'] });
     expect(skipped.browser!.comparisons.map((c) => c.page)).not.toContain('/about/');
+  }, 300_000);
+
+  it('reports the pixels that differ on every load, without the noise around them', async () => {
+    const root = await built('repeat');
+    // A square that is dark only where the page loads fontphobia's files stands in for a changed glyph
+    // at identical layout. The canvas is painted from crypto randomness and differs on every load.
+    const file = join(root, 'about/index.html');
+    writeFileSync(
+      file,
+      readFileSync(file, 'utf8').replace(
+        '</body>',
+        `<div id="mark" style="width:6px;height:6px;margin:24px 0"></div><canvas id="noise" width="200" height="60"></canvas>
+<script>const c=document.getElementById('noise').getContext('2d');const v=crypto.getRandomValues(new Uint8Array(3));c.fillStyle='rgb('+v.join(',')+')';c.fillRect(0,0,200,60);
+if(![...document.styleSheets].some((s)=>[...s.cssRules].some((r)=>r.cssText.includes('/__fontphobia/before/'))))document.getElementById('mark').style.background='#000'</script></body>`,
+      ),
+    );
+    const o = { root, usage, viewports: [1280], dprs: [1], ignore: ['/', '/edge.html'] };
+    const about = (r: Awaited<ReturnType<typeof verify>>) => r.browser!.comparisons.find((c) => c.page === '/about/')!;
+    // Alone, the square repeats exactly and is reported.
+    const quiet = await verify({ ...o, mask: ['#noise'] });
+    expect(quiet.ok).toBe(false);
+    expect(about(quiet)).toMatchObject({ class: 'regression', pixels: 36, moved: 0 });
+    // Next to the canvas it is still the 36 pixels of the square, in the count and in the diff image.
+    const noisy = await verify(o);
+    expect(noisy.ok).toBe(false);
+    expect(about(noisy)).toMatchObject({ class: 'regression', pixels: 36, moved: 0 });
+    expect(about(noisy).causes).toEqual([
+      'pixels differ outside the text boxes the verifier maps (form controls or replaced content)',
+    ]);
+    const diff = PNG.sync.read(readFileSync(about(noisy).diffImage!));
+    let red = 0;
+    for (let k = 0; k < diff.data.length; k += 4)
+      if (diff.data[k] === 255 && diff.data[k + 1] === 0 && diff.data[k + 2] === 0) red++;
+    expect(red).toBe(36);
   }, 300_000);
 
   it('notices a site that was not rebuilt after build --write', async () => {

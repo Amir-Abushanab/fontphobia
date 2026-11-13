@@ -1,5 +1,5 @@
 /* Little Levain: a small static site that self-hosts two variable fonts, the way most sites do. */
-/* fontphobia:begin inter-100-900-normal 0.2.0 (generated; rerun `fontphobia build`) */
+/* fontphobia:begin inter-100-900-normal 0.3.0 (generated; rerun `fontphobia build`) */
 @font-face {
   font-family: 'Inter';
   src: url('../fonts/InterVariable.rest.332a34cd.woff2') format('woff2');
@@ -10,21 +10,21 @@
 }
 @font-face {
   font-family: 'Inter';
-  src: url('../fonts/InterVariable.ext.54feb7e0.woff2') format('woff2');
+  src: url('../fonts/InterVariable.ext.de3ee4bb.woff2') format('woff2');
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
-  unicode-range: U+A1-AC, U+AE-AF, U+B1-B6, U+B8-E1, U+E3-E7, U+EA-148, U+14A-1C3, U+1C5-254, U+256-27B, U+27E-284, U+286-290, U+292-2A4, U+2A6-2B8, U+2E0-2E4, U+300-304, U+306-30A, U+30C, U+30F, U+313, U+315, U+31B, U+323, U+326-328, U+32C, U+337-338, U+342-343, U+346-36F, U+483-489, U+1D00, U+1D0D, U+1D1B, U+1D43, U+1D47-1D49, U+1D4D, U+1D4F-1D50, U+1D52, U+1D56-1D58, U+1D5B, U+1D62-1D65, U+1D9C, U+1DA0, U+1DBB, U+1DC0-1DF5, U+1DFC-1E9B, U+1E9D-1EFF, U+2000-200B, U+2011-2012, U+2015-2017, U+201A-201B, U+201E-2025, U+2027, U+202F-2055, U+2057, U+205F, U+2071, U+207F, U+2090-209C, U+20A0-20AB, U+20AD-20AF, U+20B1-20B5, U+20B8-20BA, U+20BC-20C0, U+20DB-20DE, U+20E8, U+20F0, U+212A-212B, U+2132, U+2160-217F, U+2183-2186, U+2212, U+2C7C, U+2C7F, U+2DFF, U+A69F, U+A7FF;
+  unicode-range: U+A1-AC, U+AE-AF, U+B1-B6, U+B8-E1, U+E3-E6, U+EA-FA, U+FC-148, U+14A-1C3, U+1C5-254, U+256-27B, U+27E-284, U+286-290, U+292-2A4, U+2A6-2B8, U+2E0-2E4, U+300-304, U+306-30A, U+30C, U+30F, U+313, U+315, U+31B, U+323, U+326-328, U+32C, U+337-338, U+342-343, U+346-36F, U+483-489, U+1D00, U+1D0D, U+1D1B, U+1D43, U+1D47-1D49, U+1D4D, U+1D4F-1D50, U+1D52, U+1D56-1D58, U+1D5B, U+1D62-1D65, U+1D9C, U+1DA0, U+1DBB, U+1DC0-1DF5, U+1DFC-1E9B, U+1E9D-1EFF, U+2000-200B, U+2011-2012, U+2015-2017, U+201A-201B, U+201E-2025, U+2027, U+202F-2055, U+2057, U+205F, U+2071, U+207F, U+2090-209C, U+20A0-20AB, U+20AD-20AF, U+20B1-20B5, U+20B8-20BA, U+20BC-20C0, U+20DB-20DE, U+20E8, U+20F0, U+212A-212B, U+2132, U+2160-217F, U+2183-2186, U+2212, U+2C7C, U+2C7F, U+2DFF, U+A69F, U+A7FF;
 }
 @font-face {
   font-family: 'Inter';
-  src: url('../fonts/InterVariable.core.d74e9ae8.woff2') format('woff2');
+  src: url('../fonts/InterVariable.core.710f1ae1.woff2') format('woff2');
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
 /* fontphobia:end inter-100-900-normal */
-/* fontphobia:begin fraunces-100-900-normal 0.2.0 (generated; rerun `fontphobia build`) */
+/* fontphobia:begin fraunces-100-900-normal 0.3.0 (generated; rerun `fontphobia build`) */
 @font-face {
   font-family: 'Fraunces';
   src: url('../fonts/Fraunces.rest.f2f69b4a.woff2') format('woff2');
@@ -35,15 +35,15 @@
 }
 @font-face {
   font-family: 'Fraunces';
-  src: url('../fonts/Fraunces.ext.5d2a488c.woff2') format('woff2');
+  src: url('../fonts/Fraunces.ext.20700339.woff2') format('woff2');
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
-  unicode-range: U+A1-FF, U+131, U+152-153, U+300-301, U+303-304, U+308, U+2032-2033, U+2212;
+  unicode-range: U+A1-BC, U+BE-E7, U+EA-FA, U+FC-FF, U+131, U+152-153, U+300-301, U+303-304, U+308, U+2032-2033, U+2212;
 }
 @font-face {
   font-family: 'Fraunces';
-  src: url('../fonts/Fraunces.core.c9537fed.woff2') format('woff2');
+  src: url('../fonts/Fraunces.core.d2ca4adb.woff2') format('woff2');
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;

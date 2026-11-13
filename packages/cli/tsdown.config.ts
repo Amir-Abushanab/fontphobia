@@ -17,6 +17,7 @@ export default defineConfig({
     rspack: 'src/rspack.ts',
     webpack: 'src/webpack.ts',
     'check-runtime': 'src/check-runtime.ts',
+    'auto-runtime': 'src/auto-runtime.ts',
   },
   format: 'esm',
   platform: 'node',

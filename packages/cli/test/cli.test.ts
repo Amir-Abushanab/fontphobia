@@ -1,12 +1,13 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, expect, test } from 'vitest';
 
 const cli = fileURLToPath(new URL('../src/cli.ts', import.meta.url));
-const font = fileURLToPath(new URL('../../../fixtures/fonts/InterVariable.ttf', import.meta.url));
+const fixtures = fileURLToPath(new URL('../../../fixtures/', import.meta.url));
+const font = join(fixtures, 'fonts/InterVariable.ttf');
 const run = (...args: string[]) => execFileSync(process.execPath, [cli, ...args], { encoding: 'utf8' });
 const tmp = mkdtempSync(join(tmpdir(), 'fontphobia-cli-'));
 afterAll(() => rmSync(tmp, { recursive: true, force: true }));
@@ -46,3 +47,22 @@ test('bad arguments exit non-zero with a message', () => {
     execFileSync(process.execPath, [cli, 'subset', font, '-o', join(tmp, 'x.ttf')], { stdio: 'pipe' }),
   ).toThrow(/must end in .woff2/);
 });
+
+test('build --core-threshold sets the rule for core, and rejects anything but auto or a share', () => {
+  const root = join(tmp, 'site');
+  cpSync(join(fixtures, 'sites/static-css'), root, { recursive: true });
+  mkdirSync(join(root, 'fonts'));
+  for (const f of ['InterVariable.ttf', 'DejaVuSans.ttf', 'Inter-Regular-hinted.woff2'])
+    cpSync(join(fixtures, 'fonts', f), join(root, 'fonts', f));
+  const args = ['build', '--cwd', root, '--usage', join(fixtures, 'plans/static-css/usage.json'), '--no-remainder'];
+  // The default measures, and this fixture then gets a coreChoice (the golden plan has it). A share doesn't.
+  const { plan } = JSON.parse(run(...args, '--json', '--core-threshold', '0.5'));
+  const inter = plan.faces.find((f: { id: string }) => f.id === 'inter-100-900-normal');
+  expect(inter.status).toBe('planned');
+  expect(inter.coreChoice).toBeUndefined();
+  expect(inter.repair.count).toBe(5);
+  for (const value of ['2', 'half'])
+    expect(() => execFileSync(process.execPath, [cli, ...args, '--core-threshold', value], { stdio: 'pipe' })).toThrow(
+      /--core-threshold must be 'auto' or a number between 0 and 1/,
+    );
+}, 120_000);

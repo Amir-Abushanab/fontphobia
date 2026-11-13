@@ -1,17 +1,16 @@
 Face                          Now     Core       Ext      Rest         Median page
-Fraunces 100 900 normal   65.7 KB  43.8 KB   41.4 KB   22.0 KB   65.7 KB → 43.8 KB
-Inter 100 900 normal     341.3 KB  45.9 KB  185.5 KB  192.7 KB  341.3 KB → 45.9 KB
+Fraunces 100 900 normal   65.7 KB  45.0 KB   41.3 KB   22.0 KB   65.7 KB → 45.0 KB
+Inter 100 900 normal     341.3 KB  46.1 KB  185.8 KB  192.7 KB  341.3 KB → 46.1 KB
 
-Font bytes per page: median 407.1 KB → 131.1 KB (68% less); biggest drop /about.html 407.1 KB → 89.7 KB
+Font bytes per page: median 407.1 KB → 91.1 KB (78% less); biggest drop / 407.1 KB → 91.1 KB
 
-Shaping repair: characters moved into core so words shape exactly as they did unsplit
-  Inter 100 900 normal: 3 character(s), +344 B core; e.g. "crème", "°C,", "pâte"
+Core choice: used characters put in core so the pages download less in total
+  Fraunces 100 900 normal: 4 character(s) (½ è é û); 4 of 4 page(s) load only the core file
+  Inter 100 900 normal: 9 character(s) (° · â ç è é û € →); 4 of 4 page(s) load only the core file
 
 Opt-ins (would change rendering, not applied):
-  limit-axes     saves  72.8 KB  opsz 9–72, wght 400–900; text widths shift up to ~0.02% (whole pixels on Linux at 1×) (2 faces)
-  drop-hinting   saves    248 B  changes text layout on Linux at 1× and rasterization on Windows
-  split-shaping  saves    344 B  loses kerning or contextual forms in 3 words where core and extended characters meet
-  drop-hint-refs saves  17.4 KB  characters from the extended file hint differently on Linux and ChromeOS (FreeType's auto-hinter) (2 faces)
+  limit-axes     saves  73.3 KB  opsz 9–72, wght 400–900; text widths shift up to ~0.02% (whole pixels on Linux at 1×) (2 faces)
+  drop-hint-refs saves  17.6 KB  characters from the extended file hint differently on Linux and ChromeOS (FreeType's auto-hinter) (2 faces)
 
 Font files and CSS
   6 output file(s): bytes match the manifest, they decode and validate, and the CSS loads them with the original descriptors
@@ -21,14 +20,19 @@ Shaping equivalence
   inter-100-900-normal: 622 word(s), 2390 case(s): 2390 identical
 
 In the browser ("before" is this build with the original fonts swapped back)
-  chromium 157.0.8103.39 · 4 page(s) · 32 comparison(s): 32 identical, 0 sub-pixel rounding, 0 regression(s)
+  chromium 157.0.8103.39 · 4 page(s) · 32 comparison(s): 27 identical, 0 sub-pixel rounding, 0 regression(s), 5 flaky (a pixel difference that didn't reproduce)
+  flaky: / @768px DPR 2: pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions); identical on load 3
+  flaky: / @1280px DPR 2: pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions); a load of the original and a load of the new files are pixel-identical (3 loads each)
+  flaky: / @1920px DPR 2: pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions); the original fonts differ from themselves between loads by 32 px
+  flaky: /about.html @1280px DPR 2: pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions); the original fonts differ from themselves between loads by 25 px
+  flaky: /about.html @1920px DPR 2: pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions); the original fonts differ from themselves between loads by 53 px
 
 Font bytes per page
-  median 407.1 KB → 131.1 KB (68% less)
-  /                               407.1 KB →  275.2 KB  (2 → 3 requests)
-  /about.html                     407.1 KB →   89.7 KB  (2 → 2 requests)
-  /journal/levain.html            407.1 KB →  275.2 KB  (2 → 3 requests)
-  /menu.html                      407.1 KB →  131.1 KB  (2 → 3 requests)
+  median 407.1 KB → 91.1 KB (78% less)
+  /                               407.1 KB →   91.1 KB  (2 → 2 requests)
+  /about.html                     407.1 KB →   91.1 KB  (2 → 2 requests)
+  /journal/levain.html            407.1 KB →   91.1 KB  (2 → 2 requests)
+  /menu.html                      407.1 KB →   91.1 KB  (2 → 2 requests)
   every extended and rest file loaded only on pages that use one of its characters
 
 Verify passed: no differences.

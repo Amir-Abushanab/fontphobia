@@ -105,8 +105,11 @@ describe.skipIf(!browser)('the live font examples', () => {
       expect(await content(page, '#demo-after')).toBe(`${(core.bytes / 1024).toFixed(1)} KB`);
       await page.locator('#demo-text').fill('aaaa');
       expect(await content(page, '#demo-after')).toBe(`${(core.bytes / 1024).toFixed(1)} KB`);
+      expect(await visible(page, '#demo-built')).toBe(false);
       await page.getByRole('button', { name: 'Greek', exact: true }).click();
       expect(await content(page, '[data-file="rest"] .file-state')).toBe('Needed');
+      // Another file is needed: the note says the split was made for this page's text.
+      expect(await visible(page, '#demo-built')).toBe(true);
       await page.locator('#demo-text').fill('Ω');
       const rest = inter.outputs.find((o) => o.role === 'rest')!;
       expect(await content(page, '#demo-after')).toBe(`${((core.bytes + rest.bytes) / 1024).toFixed(1)} KB`);

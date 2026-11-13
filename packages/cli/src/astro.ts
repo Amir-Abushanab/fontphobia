@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkProject, formatCheck, type UsageFileJson } from '@fontphobia/core';
 import { loadConfig, selfUrl } from './config.ts';
+import { postBuildCheck } from './integration.ts';
 import { devWarningScript, fontphobia as vitePlugin } from './vite.ts';
 
 export interface FontphobiaAstroOptions {
@@ -17,6 +18,8 @@ export interface FontphobiaAstroOptions {
   strict?: boolean;
   /** Characters `check` never reports. */
   allowChars?: string;
+  /** Subset the build output on every build instead of checking committed subsets (see `fontphobia auto`). */
+  auto?: boolean | 'static' | 'crawl';
 }
 
 interface Logger {
@@ -49,6 +52,10 @@ export default function fontphobia(o: FontphobiaAstroOptions = {}) {
         }
       },
       'astro:build:done': async ({ dir, logger }: { dir: URL; logger: Logger }) => {
+        if (o.auto) {
+          await postBuildCheck(root, fileURLToPath(dir), { auto: o.auto }, logger);
+          return;
+        }
         // Options given to the integration win; the rest come from fontphobia.config's `check` (as in check-runtime).
         const fromConfig = (await loadConfig(root, selfUrl(import.meta.url))).config.check ?? {};
         const c = {

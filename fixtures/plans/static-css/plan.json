@@ -159,10 +159,16 @@
     {
       "adapter": "css",
       "bytes": {
-        "core": 54232,
-        "ext": 197868,
+        "core": 56896,
+        "ext": 190180,
         "now": 879708,
         "rest": 200724
+      },
+      "coreChoice": {
+        "added": "U+B7, U+D8, U+E2, U+E4, U+F1, U+FF, U+103, U+111, U+219-21A, U+3A9, U+1EBF, U+1EC7, U+1EDF, U+201E, U+2022, U+25A0, U+25CF",
+        "coreOnly": 3,
+        "count": 18,
+        "pages": 3
       },
       "family": "Inter",
       "features": [
@@ -171,22 +177,22 @@
       ],
       "files": [
         {
-          "bytes": 54232,
-          "count": 114,
-          "hintRefs": "U+2BC, U+2EE",
-          "name": "InterVariable.core.d70d411e.woff2",
+          "bytes": 56896,
+          "count": 127,
+          "hintRefs": "U+2BC, U+2EE, U+2126",
+          "name": "InterVariable.core.945fd8d4.woff2",
           "role": "core",
-          "sha256": "d70d411e7749495ad0711cd627f08d45a814e3359d7df5302c68115a572a9e1a",
-          "unicodeRange": "U+20-7E, U+A0, U+E2, U+E4, U+E9, U+EF, U+103, U+111, U+21A, U+301, U+308, U+2010, U+2013-2014, U+2018-2019, U+201C-201D, U+2026, U+2713"
+          "sha256": "945fd8d45b4c24978a48a5468d0b16fbae7e68936dc251df4afef8d3daaa5015",
+          "unicodeRange": "U+20-7E, U+A0, U+B7, U+D8, U+E2, U+E4, U+E9, U+EF, U+F1, U+FF, U+103, U+111, U+219-21A, U+301, U+308, U+3A9, U+1EBF, U+1EC7, U+1EDF, U+2010, U+2013-2014, U+2018-2019, U+201C-201E, U+2022, U+2026, U+25A0, U+25CF, U+2713"
         },
         {
-          "bytes": 197868,
-          "count": 1098,
-          "hintRefs": "U+30, U+43, U+45, U+48, U+4C, U+4F, U+51, U+53-55, U+58, U+5A, U+62-6B, U+6E-73, U+75-76, U+78-7A, U+392-396, U+398, U+39E-39F, U+3B1-3B9, U+3BB-3BC, U+3BE-3C1, U+3C3-3C4, U+3C6-3C9, U+411-412, U+415, U+417, U+41E-41F, U+421, U+428, U+42D, U+435, U+437, U+43D-441, U+443-445, U+448, U+2126, U+2206",
-          "name": "InterVariable.ext.aef52e6f.woff2",
+          "bytes": 190180,
+          "count": 1085,
+          "hintRefs": "U+30, U+43, U+45, U+48, U+4C, U+4F, U+51, U+53-55, U+58, U+5A, U+62-6B, U+6E-73, U+75-76, U+78-7A, U+3B9, U+411-412, U+415, U+417, U+41E-41F, U+421, U+428, U+42D, U+435, U+437, U+43D-441, U+443-445, U+448",
+          "name": "InterVariable.ext.651e8fd9.woff2",
           "role": "ext",
-          "sha256": "aef52e6f783b7d3ba759499ac288b8743dfc18fe88065171ec227074d185df12",
-          "unicodeRange": "U+A1-AC, U+AE-E1, U+E3, U+E5-E8, U+EA-EE, U+F0-102, U+104-110, U+112-148, U+14A-1C3, U+1C5-219, U+21B-254, U+256-27B, U+27E-284, U+286-290, U+292-2A4, U+2A6-2B8, U+2E0-2E4, U+300, U+302-304, U+306-307, U+309-30A, U+30C, U+30F, U+313, U+315, U+31B, U+323, U+326-328, U+32C, U+337-338, U+342-343, U+346-36F, U+3A9, U+483-489, U+1D00, U+1D0D, U+1D1B, U+1D43, U+1D47-1D49, U+1D4D, U+1D4F-1D50, U+1D52, U+1D56-1D58, U+1D5B, U+1D62-1D65, U+1D9C, U+1DA0, U+1DBB, U+1DC0-1DF5, U+1DFC-1E9B, U+1E9D-1EFF, U+2000-200B, U+2011-2012, U+2015-2017, U+201A-201B, U+201E-2025, U+2027, U+202F-2055, U+2057, U+205F, U+2071, U+207F, U+2090-209C, U+20A0-20AF, U+20B1-20B5, U+20B8-20BA, U+20BC-20C0, U+20DB-20DE, U+20E8, U+20F0, U+212A-212B, U+2132, U+2160-217F, U+2183-2186, U+2212, U+25A0, U+25CF, U+2C7C, U+2C7F, U+2DFF, U+A69F, U+A7FF"
+          "sha256": "651e8fd9e36c011ed91ae913e047abdf6b8ad34567cd367ec147e6c358f6d4ce",
+          "unicodeRange": "U+A1-AC, U+AE-B6, U+B8-D7, U+D9-E1, U+E3, U+E5-E8, U+EA-EE, U+F0, U+F2-FE, U+100-102, U+104-110, U+112-148, U+14A-1C3, U+1C5-218, U+21B-254, U+256-27B, U+27E-284, U+286-290, U+292-2A4, U+2A6-2B8, U+2E0-2E4, U+300, U+302-304, U+306-307, U+309-30A, U+30C, U+30F, U+313, U+315, U+31B, U+323, U+326-328, U+32C, U+337-338, U+342-343, U+346-36F, U+483-489, U+1D00, U+1D0D, U+1D1B, U+1D43, U+1D47-1D49, U+1D4D, U+1D4F-1D50, U+1D52, U+1D56-1D58, U+1D5B, U+1D62-1D65, U+1D9C, U+1DA0, U+1DBB, U+1DC0-1DF5, U+1DFC-1E9B, U+1E9D-1EBE, U+1EC0-1EC6, U+1EC8-1EDE, U+1EE0-1EFF, U+2000-200B, U+2011-2012, U+2015-2017, U+201A-201B, U+201F-2021, U+2023-2025, U+2027, U+202F-2055, U+2057, U+205F, U+2071, U+207F, U+2090-209C, U+20A0-20AF, U+20B1-20B5, U+20B8-20BA, U+20BC-20C0, U+20DB-20DE, U+20E8, U+20F0, U+212A-212B, U+2132, U+2160-217F, U+2183-2186, U+2212, U+2C7C, U+2C7F, U+2DFF, U+A69F, U+A7FF"
         },
         {
           "bytes": 200724,
@@ -223,30 +229,15 @@
           "applied": false,
           "change": "characters from the extended file hint differently on Linux and ChromeOS (FreeType's auto-hinter)",
           "id": "drop-hint-refs",
-          "saving": 13672
+          "saving": 7000
         },
         {
           "applied": false,
           "change": "opsz 14–32, wght 300–900; text widths shift up to ~0.02% (whole pixels on Linux at 1×)",
           "id": "limit-axes",
-          "saving": 8100
-        },
-        {
-          "applied": false,
-          "change": "loses kerning or contextual forms in 3 words where core and extended characters meet",
-          "id": "split-shaping",
-          "saving": 844
+          "saving": 8148
         }
       ],
-      "repair": {
-        "count": 5,
-        "moved": "U+E2, U+E4, U+103, U+111, U+21A",
-        "words": [
-          " đây",
-          "Pässword",
-          "Țară "
-        ]
-      },
       "source": {
         "bytes": 879708,
         "file": "fonts/InterVariable.ttf",
@@ -260,7 +251,7 @@
       "applied": false,
       "faces": 2,
       "id": "limit-axes",
-      "saving": 31172
+      "saving": 31220
     },
     {
       "applied": false,
@@ -270,15 +261,9 @@
     },
     {
       "applied": false,
-      "faces": 1,
-      "id": "split-shaping",
-      "saving": 844
-    },
-    {
-      "applied": false,
       "faces": 3,
       "id": "drop-hint-refs",
-      "saving": 21400
+      "saving": 14728
     }
   ],
   "version": 1

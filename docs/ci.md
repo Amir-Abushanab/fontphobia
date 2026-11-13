@@ -80,3 +80,22 @@ jobs:
 ```
 
 `verify` builds the site itself (it finds the build command from the framework, or use `build` in the config) and serves it. For an SSR site, set `start` in the config to the production server command.
+
+## 4. Auto mode
+
+With `fontphobia auto` there are no committed subsets to check. The output is subset after every build, and each run checks its own files without a browser. Add `--verify` where Chrome is available to also compare the pages before and after; GitHub's runner images have Chrome.
+
+```yaml
+# .github/workflows/deploy.yml (the build job)
+- run: pnpm install --frozen-lockfile
+- run: pnpm build
+- run: pnpm dlx fontphobia@0.3.0 auto --verify
+- if: failure()
+  uses: actions/upload-artifact@v7
+  with:
+    name: fontphobia-verify
+    path: .fontphobia/verify
+# deploy the output directory from here
+```
+
+`auto --crawl` keeps its visit cache in `.fontphobia/cache`. Restoring that directory between runs (with `actions/cache`) means a page is visited again only when something it loads changed.

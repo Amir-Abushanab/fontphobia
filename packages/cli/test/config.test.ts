@@ -85,7 +85,7 @@ describe('loadConfig validation', () => {
       viewports: [360, 768, 1280, 1920],
       locales: ['en', 'fr'],
       maxPages: 500,
-      coreThreshold: 0.5,
+      coreThreshold: 'auto',
       remainder: true,
       allow: [],
       rename: { 'Source Serif 4': 'SrcSerif Subset' },
@@ -94,6 +94,10 @@ describe('loadConfig validation', () => {
       verify: { browsers: ['chromium'], hinting: false, viewports: [360, 1280], dprs: [1, 2] },
     };
     expect((await load(json(c))).config).toEqual(c);
+  });
+  it('accepts a share of pages for coreThreshold', async () => {
+    for (const coreThreshold of [0, 0.5, 1])
+      expect((await load(json({ coreThreshold }))).config).toEqual({ coreThreshold });
   });
   bad({ ignore: '/admin/**' }, 'fontphobia.config.json: "ignore" must be an array of strings');
   bad({ coreThreshhold: 0.5 }, 'fontphobia.config.json: unknown key "coreThreshhold"; did you mean "coreThreshold"?');
@@ -112,7 +116,10 @@ describe('loadConfig validation', () => {
   bad({ check: { mode: 'fail' } }, '"check.mode" must be one of');
   bad({ verify: { browsers: ['ie'] } }, '"verify.browsers" must be an array of');
   bad({ allow: ['nope'] }, '"allow" must be an array of');
-  bad({ coreThreshold: 2 }, '"coreThreshold" must be a number between 0 and 1');
-  bad({ coreThreshold: -0.1 }, '"coreThreshold" must be a number between 0 and 1');
+  bad({ coreThreshold: 2 }, `"coreThreshold" must be 'auto' or a number between 0 and 1`);
+  bad({ coreThreshold: -0.1 }, `"coreThreshold" must be 'auto' or a number between 0 and 1`);
+  bad({ coreThreshold: 'half' }, `"coreThreshold" must be 'auto' or a number between 0 and 1`);
+  bad({ auto: 'chrome' }, `"auto" must be true, false, 'static' or 'crawl'`);
+  bad({ autoRules: 'file' }, '"autoRules" must be one of');
   bad([], 'must be an object');
 });

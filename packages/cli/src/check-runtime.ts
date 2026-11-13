@@ -2,7 +2,7 @@
 // `integration.ts`: `node check-runtime.mjs '{"root":…,"outputDir":…,"o":{…}}'`. Prints the level
 // (`info` or `warn`) on the first line and the report after it; exits 1 when the build should fail.
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { checkProject, formatCheck, type UsageFileJson } from '@fontphobia/core';
 import { loadConfig, selfUrl } from './config.ts';
 import type { FontphobiaCheckOptions, Logger } from './integration.ts';
@@ -15,7 +15,16 @@ export async function runCheck(
 ): Promise<void> {
   // Options given to the integration win; the rest come from fontphobia.config's `check`.
   // A config that fails to load fails the check with its error.
-  const fromConfig = (await loadConfig(root, selfUrl(import.meta.url))).config.check ?? {};
+  const { config } = await loadConfig(root, selfUrl(import.meta.url));
+  // The config's `auto`, for an integration that wasn't given the option (the Next adapter takes none).
+  if (opts.auto === undefined && config.auto) {
+    const [{ runAuto }, { formatAuto }] = await Promise.all([import('./auto-run.ts'), import('@fontphobia/core')]);
+    const { result, outDir, failed } = await runAuto({ root, outDir: outputDir, crawl: config.auto === 'crawl' });
+    const n = Object.keys(failed).length;
+    log.info(`${formatAuto(result, relative(root, outDir) || '.')}${n ? `\n${n} page(s) could not be loaded` : ''}`);
+    return;
+  }
+  const fromConfig = config.check ?? {};
   const o = {
     ...fromConfig,
     ...Object.fromEntries(Object.entries(opts).filter(([, v]) => v !== undefined)),

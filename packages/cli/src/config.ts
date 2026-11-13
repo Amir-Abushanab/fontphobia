@@ -17,7 +17,12 @@ export interface Config {
   viewports?: number[];
   locales?: string[];
   maxPages?: number;
-  coreThreshold?: number;
+  /**
+   * Which of the characters the site uses go in each font's core file. 'auto' (default): the ones
+   * that make the font's pages download the least in total, measured. A number from 0 to 1: the
+   * ones at least this share of the font's pages use.
+   */
+  coreThreshold?: number | 'auto';
   remainder?: boolean;
   allow?: string[];
   rename?: Record<string, string>;
@@ -28,6 +33,17 @@ export interface Config {
     mode?: 'warn' | 'error';
     /** Fail on warnings too (characters that would load the rest file). */ strict?: boolean;
   };
+  /**
+   * What the framework integrations do after a build when their own `auto` option isn't given:
+   * subset the output (`true` or `'static'`: no browser; `'crawl'`: in Chrome) instead of `check`.
+   */
+  auto?: boolean | 'static' | 'crawl';
+  /**
+   * Where `auto` puts the split rules: `inline` (default), in each page's <head>, or `linked`, in
+   * one cached stylesheet. Linked suits a Content-Security-Policy without inline styles; the
+   * original fonts can download now and then while that stylesheet is still on its way.
+   */
+  autoRules?: 'inline' | 'linked';
   /** `verify` (§10.3): engines, page cap (default 200), viewports, device pixel ratios, masks and the load timeout. */
   verify?: {
     browsers?: ('chromium' | 'firefox' | 'webkit' | 'linux-chromium' | 'linux-firefox' | 'linux-webkit')[];
@@ -52,6 +68,8 @@ type Kind =
   | 'string[]'
   | 'number[]'
   | 'record'
+  /** Checked by its own rule in validate(). */
+  | 'custom'
   | { enum: readonly string[]; array?: boolean };
 const ENGINES = ['chromium', 'firefox', 'webkit', 'linux-chromium', 'linux-firefox', 'linux-webkit'];
 const ALLOW = ['limit-axes', 'drop-hinting', 'split-shaping', 'drop-hint-refs', 'self-host', 'tighten', 'eject'];
@@ -66,12 +84,14 @@ const SCHEMA: Record<string, Kind | Record<string, Kind>> = {
   viewports: 'number[]',
   locales: 'string[]',
   maxPages: 'number',
-  coreThreshold: 'number',
+  coreThreshold: 'custom',
   remainder: 'boolean',
   allow: { enum: ALLOW, array: true },
   rename: 'record',
   licenses: { allow: 'string[]' },
   check: { allowChars: 'string', mode: { enum: ['warn', 'error'] }, strict: 'boolean' },
+  auto: 'custom',
+  autoRules: { enum: ['inline', 'linked'] },
   verify: {
     browsers: { enum: ENGINES, array: true },
     hinting: 'boolean',
@@ -147,7 +167,7 @@ function validate(name: string, c: unknown): void {
   };
   for (const [key, spec] of Object.entries(SCHEMA)) {
     const v = c[key];
-    if (v === undefined) continue;
+    if (v === undefined || spec === 'custom') continue;
     if (typeof spec === 'string' || 'enum' in spec) {
       one(key, v, spec as Kind);
       continue;
@@ -159,7 +179,10 @@ function validate(name: string, c: unknown): void {
         one(`${key}.${k2}`, (v as Record<string, unknown>)[k2], kind);
   }
   const t = c.coreThreshold;
-  if (t !== undefined && ((t as number) < 0 || (t as number) > 1)) bad('coreThreshold', 'a number between 0 and 1');
+  if (t !== undefined && t !== 'auto' && !(isNum(t) && (t as number) >= 0 && (t as number) <= 1))
+    bad('coreThreshold', "'auto' or a number between 0 and 1");
+  if (c.auto !== undefined && typeof c.auto !== 'boolean' && c.auto !== 'static' && c.auto !== 'crawl')
+    bad('auto', "true, false, 'static' or 'crawl'");
 }
 
 const NAMES = [
