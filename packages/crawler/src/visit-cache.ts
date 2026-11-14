@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import type { VisitOptions, VisitResult } from './visit.ts';
 
 /** Bump when the shape of a cached visit, or what a visit records, changes. */
-export const VISIT_CACHE_VERSION = 1;
+export const VISIT_CACHE_VERSION = 2;
 
 interface Entry {
   v: number;

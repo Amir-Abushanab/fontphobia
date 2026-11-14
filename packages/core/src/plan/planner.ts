@@ -71,6 +71,8 @@ export interface UsageFileJson {
       faces: Record<string, string>;
       bytes: number;
       fonts: { url: string; status: number; bytes: number; sha256?: string; faces: string[] }[];
+      /** What the largest contentful paint was, over the crawl's viewports. */
+      lcp?: ('text' | 'image')[];
     }
   >;
 }

@@ -86,9 +86,25 @@ The same comparison with the bakery's two faces changed to `font-display: block`
 
 With `block`, embedding showed text as soon or sooner and shifted the layout less; only the rest of the page painted later. With `swap` (part D), it took away text that had painted in a fallback font at 0.4 s.
 
+## F. A page led by a photo, with `font-display: block`
+
+Part E's pages are led by text. Here the hero photo is timed with the Element Timing API, on the home page at 1280 px (an 80 KB photo beside the heading) and on a phone page with the photo moved above the heading.
+
+| Page, link                       | Photo shown, files | Photo shown, embedded |
+| -------------------------------- | ------------------ | --------------------- |
+| Desktop, 80 KB photo, 1.6 Mbit/s | 1.62 s             | 1.26 s                |
+| Desktop, 80 KB photo, 700 kbit/s | 3.60 s             | 2.76 s                |
+| Phone, 334 KB photo, 1.6 Mbit/s  | 2.50 s             | 2.50 s                |
+| Phone, 334 KB photo, 700 kbit/s  | 9.00 s             | 9.02 s                |
+| Phone, 29 KB photo, 1.6 Mbit/s   | 0.50 s             | 1.00 s                |
+| Phone, 29 KB photo, 700 kbit/s   | 1.04 s             | 2.16 s                |
+
+A photo that arrives after the stylesheet anyway is not delayed; the desktop one showed sooner, because embedded fonts don't compete with it as separate files do. A photo that would arrive first waits for the stylesheet: the 29 KB one took twice as long.
+
 ## What came of it
 
-- `auto --allow inline-core` holds at most 96 KB of core files in the stylesheet, counted over every face, smallest first, and at most 16 KB once a face with `font-display` swap, fallback or optional is among them. `inlineCoreMax: { block, swap }` changes the two. It notes a swap face whose core it embeds. (0.6.0 had a 16 KB limit per file.)
+- The crawl records each page's largest contentful paint, text or image, in `usage.json`.
+- `auto --allow inline-core` holds at most 96 KB of core files in the stylesheet, counted over every face, smallest first, when every page is led by text, and at most 16 KB when a page is led by an image, without a crawl, or once a face with `font-display` swap, fallback or optional is among them. This is cautious: the bakery's pages are led by their photos at some width, so nothing is embedded there, although the desktop photo showed sooner embedded. `inlineCoreMax: { block, swap }` changes the two. It notes a swap face whose core it embeds. (0.6.0 had a 16 KB limit per file.)
 - Not done:
   - estimating opt-in savings with the Brotli estimate instead of WOFF2;
   - compressing WOFF2 in worker threads;

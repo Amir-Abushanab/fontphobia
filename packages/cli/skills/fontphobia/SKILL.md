@@ -356,8 +356,8 @@ pnpm build && pnpm dlx fontphobia auto --crawl    # measures each face in Chrome
     needs. Its bytes are in the `auto` report, not in `verify`'s per-page totals. Safari ignores it.
   - `inline-core` (`--rules linked`): the core of a face every page draws goes in the stylesheet as
     a `data:` URL (`font-src` must allow `data:`), unless a page preloads its source font. The
-    stylesheet blocks the first paint, so it holds 96 KB of cores in all, 16 KB once a face has
-    font-display swap, fallback or optional (`inlineCoreMax: { block, swap }`).
+    stylesheet blocks the first paint, so it holds 96 KB of cores in all when every page is led
+    by text and every face has font-display block, else 16 KB (`inlineCoreMax: { block, swap }`).
 - **Every run checks, without a browser,** that each file decodes and matches its source, that the
   rules keep the original descriptors and that every word shapes identically. A failure puts the
   output back as it was and exits 1.

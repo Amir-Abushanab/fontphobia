@@ -40,7 +40,9 @@
 //    (measured on the bakery site, 91 KB of cores, 1.6 Mbit/s; spike 13):
 //     - block (and auto, the default): text was hidden until the font arrived anyway. Embedded, it
 //       showed as soon or sooner (1.31-1.34 s against 1.28-1.45 s), with less layout shift; only
-//       the rest of the page painted later. A large allowance.
+//       the rest of the page painted later. A large allowance, but only when the crawl saw text as
+//       every page's largest contentful paint: a hero image that would have painted before the
+//       stylesheet arrived waits for it (a 29 KB photo: 0.50 s as files, 1.00 s embedded).
 //     - swap, fallback, optional: text painted in a fallback font at 0.40 s; embedded, nothing
 //       painted until 1.34 s. A small allowance, and a note for a face embedded anyway.
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -644,6 +646,17 @@ export async function autoSubset(o: AutoOptions): Promise<AutoResult> {
   const inlineDecision = new Map<string, { embed: true; display: string } | { embed: false; why: string }>();
   if (inlineCore) {
     const pageCount = Object.keys(usage.pages).length;
+    // The large allowance needs every page's largest paint to be text (recorded by the crawl).
+    const imageLed = Object.entries(usage.pages)
+      .filter(([, p]) => p.lcp?.includes('image'))
+      .map(([k]) => k);
+    const unknown = mode !== 'crawl' || Object.values(usage.pages).some((p) => !p.lcp?.length);
+    const blockWhy = unknown
+      ? "what each page's largest contentful paint is isn't known (`--crawl` records it)"
+      : imageLed.length
+        ? `${imageLed.length} page(s) have an image as their largest contentful paint (${imageLed.slice(0, 3).join(', ')}${imageLed.length > 3 ? '…' : ''}), which the stylesheet would delay`
+        : undefined;
+    if (blockWhy) allowance.block = Math.min(allowance.block, allowance.swap);
     const candidates: { id: string; bytes: number; display: string }[] = [];
     for (const g of groups) {
       const face = planned.get(g.id);
@@ -674,7 +687,11 @@ export async function autoSubset(o: AutoOptions): Promise<AutoResult> {
         inlineDecision.set(c.id, {
           embed: false,
           why: `with it the stylesheet would hold ${kb(total + c.bytes)} of fonts, above the ${kb(cap)} allowed ${
-            withSwap ? 'once a face has font-display swap, fallback or optional' : 'for font-display block'
+            withSwap
+              ? 'once a face has font-display swap, fallback or optional'
+              : blockWhy
+                ? `for font-display block when ${blockWhy}`
+                : 'for font-display block'
           } (\`inlineCoreMax\`): it blocks every page's first paint`,
         });
     }

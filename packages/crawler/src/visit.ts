@@ -158,7 +158,7 @@ async function run(
   if (ct && !/html/i.test(ct)) return { status, finalUrl, links: [], bodies };
 
   // Font-size sweep visits only need sizes; lazy content was already scrolled into view at each viewport.
-  await settle(page, () => inflightFonts, o.fontSize === 16 && !o.textScale);
+  const lcp = await settle(page, () => inflightFonts, o.fontSize === 16 && !o.textScale);
 
   const origin = new URL(finalUrl).origin;
   await cdp.send('DOM.enable');
@@ -548,6 +548,7 @@ async function run(
     lang: inPage.lang || undefined,
     emMediaQueries,
     textScaleMeta: inPage.textScaleMeta,
+    lcp,
     notes,
   };
   const links = inPage.links.filter((l) => {
@@ -600,9 +601,37 @@ export function sitePath(p: string, base: string): string {
 export const matchesPage = (globs: RegExp[], p: string, base: string): boolean =>
   globs.some((r) => r.test(p) || r.test(sitePath(p, base)));
 
-/** Wait for fonts and lazy content: fonts.ready, a scroll through the page, then no font requests in flight. */
-async function settle(page: Page, inflight: () => number, scroll: boolean) {
+/**
+ * Wait for fonts and lazy content: fonts.ready, a scroll through the page, then no font requests in
+ * flight. Returns what the largest contentful paint was, read before the scroll can change it.
+ */
+async function settle(page: Page, inflight: () => number, scroll: boolean): Promise<'text' | 'image' | undefined> {
   await page.evaluate(() => document.fonts.ready.then(() => undefined)).catch(() => {});
+  // The largest contentful paint: text, or an image (an <img>, a video poster, a CSS background).
+  // `auto --allow inline-core` reads it: a stylesheet full of fonts delays an image that would
+  // otherwise paint before it arrives (spike 13). Buffered entries arrive in a task of their own.
+  const lcp = await page
+    .evaluate(
+      () =>
+        new Promise<'text' | 'image' | undefined>((resolve) => {
+          let last: 'text' | 'image' | undefined;
+          const take = (es: PerformanceEntryList) => {
+            for (const e of es as (PerformanceEntry & { url: string })[]) last = e.url ? 'image' : 'text';
+          };
+          try {
+            const o = new PerformanceObserver((l) => take(l.getEntries()));
+            o.observe({ type: 'largest-contentful-paint', buffered: true });
+            setTimeout(() => {
+              take(o.takeRecords());
+              o.disconnect();
+              resolve(last);
+            }, 100);
+          } catch {
+            resolve(undefined);
+          }
+        }),
+    )
+    .catch(() => undefined);
   if (scroll)
     await page
       .evaluate(async () => {
@@ -634,6 +663,7 @@ async function settle(page: Page, inflight: () => number, scroll: boolean) {
     await new Promise((r) => setTimeout(r, 25));
     quiet = inflight() > 0 ? 0 : quiet + 1;
   }
+  return lcp;
 }
 
 /** Runs in the page. Keep it self-contained: Playwright serializes the function source. */
