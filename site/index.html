@@ -592,16 +592,30 @@ const AGENT_TASK =
   'in Chrome and prints a plan and a diff; show me the plan and apply it only when I agree. Then run verify and ' +
   "tell me the bytes before and after per page. Use the reference below, fontphobia's own skill doc, for the " +
   'commands, the opt-ins and how to read the reports.\n\n---\n\n';
-const agentText = fetch('skills/fontphobia/SKILL.md')
-  .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); })
-  .then((md) => AGENT_TASK + md.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n+/, '').trim() + '\n')
-  .catch(() => AGENT_TASK + 'Reference: https://github.com/Amir-Abushanab/fontphobia#readme\n');
+// Fetched only when someone points at, focuses or clicks the button: few visitors use it, and the
+// file exists only on the published site (the Pages workflow copies it in).
+let agentText;
+const loadAgentText = () =>
+  (agentText ??= fetch('skills/fontphobia/SKILL.md')
+    .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); })
+    .then((md) => AGENT_TASK + md.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n+/, '').trim() + '\n')
+    .catch(() => AGENT_TASK + 'Reference: https://github.com/Amir-Abushanab/fontphobia#readme\n'));
 const agentBtn = document.getElementById('agentCopy');
 const agentLabel = agentBtn.querySelector('.agent-label');
+for (const e of ['pointerenter', 'focus', 'touchstart']) agentBtn.addEventListener(e, loadAgentText, { once: true, passive: true });
 let agentReset;
 agentBtn.addEventListener('click', async () => {
+  const text = loadAgentText();
   let ok = true;
-  try { await navigator.clipboard.writeText(await agentText); } catch { ok = false; }
+  try {
+    // A ClipboardItem given a promise keeps the click's permission while the text arrives (Safari
+    // drops it across an await); writeText once it's there where ClipboardItem isn't available.
+    if (window.ClipboardItem && navigator.clipboard.write)
+      await navigator.clipboard.write([new ClipboardItem({ 'text/plain': text.then((t) => new Blob([t], { type: 'text/plain' })) })]);
+    else await navigator.clipboard.writeText(await text);
+  } catch {
+    try { await navigator.clipboard.writeText(await text); } catch { ok = false; }
+  }
   agentLabel.textContent = ok ? 'Copied' : 'Copy failed';
   agentBtn.classList.toggle('copied', ok);
   clearTimeout(agentReset);

@@ -99,6 +99,15 @@ describe('loadConfig validation', () => {
     for (const coreThreshold of [0, 0.5, 1])
       expect((await load(json({ coreThreshold }))).config).toEqual({ coreThreshold });
   });
+  it('accepts inlineCoreMax as a number or as block and swap allowances', async () => {
+    for (const inlineCoreMax of [0, 65536, { block: 98304 }, { block: 98304, swap: 16384 }])
+      expect((await load(json({ inlineCoreMax }))).config).toEqual({ inlineCoreMax });
+  });
+  bad({ inlineCoreMax: '16k' }, '"inlineCoreMax" must be a number of bytes, or { block, swap } with numbers of bytes');
+  bad(
+    { inlineCoreMax: { swp: 1 } },
+    '"inlineCoreMax" must be a number of bytes, or { block, swap } with numbers of bytes',
+  );
   bad({ ignore: '/admin/**' }, 'fontphobia.config.json: "ignore" must be an array of strings');
   bad({ coreThreshhold: 0.5 }, 'fontphobia.config.json: unknown key "coreThreshhold"; did you mean "coreThreshold"?');
   bad({ banana: 1 }, 'fontphobia.config.json: unknown key "banana"');

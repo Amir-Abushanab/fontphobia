@@ -494,8 +494,75 @@ describe('auto, crawl (an audit’s usage)', () => {
     });
     expect(r.embedded).toBeUndefined();
     expect(read(dir, r.stylesheet!.file)).not.toContain('data:font');
+    // The fixture's faces have font-display: swap, so the small allowance applies.
     expect(r.notes.join('\n')).toMatch(
-      /inline-core: inter-100-900-normal stays a file \(its core file is [\d.]+ KB, above the 16\.0 KB limit \(`inlineCoreMax`\)/,
+      /inline-core: inter-100-900-normal stays a file \(with it the stylesheet would hold [\d.]+ KB of fonts, above the 16\.0 KB allowed once a face has font-display swap, fallback or optional \(`inlineCoreMax`\)/,
+    );
+  }, 300_000);
+
+  it('inline-core allows more with font-display: block, counted over every face it embeds', async () => {
+    const { dir, usage } = crawled('crawl-embed-block');
+    writeFileSync(join(dir, 'index.html'), read(dir, 'index.html').replace(/<link rel="preload"[^>]*>\n?/g, ''));
+    writeFileSync(
+      join(dir, 'styles.css'),
+      read(dir, 'styles.css').replaceAll('font-display: swap', 'font-display: block'),
+    );
+    // DejaVu drawn on every page too, so that two faces compete for the allowance.
+    for (const p of Object.values(usage.pages)) p.faces['deja-400-normal'] ??= 'U+20, U+41';
+    usage.faces['deja-400-normal']!.pages = Object.keys(usage.pages);
+    // Every page's largest contentful paint is text, as the crawl records it.
+    for (const p of Object.values(usage.pages)) p.lcp = ['text'];
+    const run = async (name: string, inlineCoreMax?: { block: number }) => {
+      const d = join(tmp, name);
+      cpSync(dir, d, { recursive: true });
+      return autoSubset({
+        root: d,
+        outDir: d,
+        usage,
+        version,
+        rules: 'linked',
+        inlineCoreMax,
+        config: { allow: ['inline-core'] },
+      });
+    };
+    // The default block allowance (96 KB) holds both cores; nothing is noted about swap.
+    const both = await run('crawl-embed-block-default');
+    expect(both.embedded!.map((e) => e.id).toSorted()).toEqual(['deja-400-normal', 'inter-100-900-normal']);
+    expect(both.notes.join('\n')).not.toMatch(/font-display: swap/);
+    // A smaller one takes the smaller core first, and says why the other stays a file.
+    const deja = both.embedded!.find((e) => e.id === 'deja-400-normal')!.bytes;
+    const one = await run('crawl-embed-block-small', { block: deja + 1000 });
+    expect(one.embedded!.map((e) => e.id)).toEqual(['deja-400-normal']);
+    expect(one.notes.join('\n')).toMatch(
+      /inline-core: inter-100-900-normal stays a file \(with it the stylesheet would hold [\d.]+ KB of fonts, above the [\d.]+ KB allowed for font-display block/,
+    );
+  }, 300_000);
+
+  it('inline-core keeps the small allowance when a page is led by an image, or when nothing says', async () => {
+    const { dir, usage } = crawled('crawl-embed-image');
+    writeFileSync(join(dir, 'index.html'), read(dir, 'index.html').replace(/<link rel="preload"[^>]*>\n?/g, ''));
+    writeFileSync(
+      join(dir, 'styles.css'),
+      read(dir, 'styles.css').replaceAll('font-display: swap', 'font-display: block'),
+    );
+    const run = async (name: string, lcp: (key: string) => ('text' | 'image')[] | undefined) => {
+      const d = join(tmp, name);
+      cpSync(dir, d, { recursive: true });
+      const u = structuredClone(usage);
+      for (const [k, p] of Object.entries(u.pages)) p.lcp = lcp(k);
+      return autoSubset({ root: d, outDir: d, usage: u, version, rules: 'linked', config: { allow: ['inline-core'] } });
+    };
+    // A photo leads the about page: the stylesheet would delay it.
+    const image = await run('crawl-embed-image-led', (k) => (k === '/about/' ? ['image', 'text'] : ['text']));
+    expect(image.embedded).toBeUndefined();
+    expect(image.notes.join('\n')).toMatch(
+      /inline-core: inter-100-900-normal stays a file \(with it the stylesheet would hold [\d.]+ KB of fonts, above the 16\.0 KB allowed for font-display block when 1 page\(s\) have an image as their largest contentful paint \(\/about\/\), which the stylesheet would delay/,
+    );
+    // An audit from before the crawl recorded it: nothing to go on.
+    const unknown = await run('crawl-embed-unknown', () => undefined);
+    expect(unknown.embedded).toBeUndefined();
+    expect(unknown.notes.join('\n')).toMatch(
+      /allowed for font-display block when what each page's largest contentful paint is isn't known \(`--crawl` records it\)/,
     );
   }, 300_000);
 
