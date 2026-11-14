@@ -45,10 +45,12 @@ export interface Config {
    */
   autoRules?: 'inline' | 'linked';
   /**
-   * `auto --allow inline-core`: the largest core file put in the stylesheet, in bytes (default
-   * 16384). The stylesheet blocks rendering, so each byte in it delays the first paint.
+   * `auto --allow inline-core`: how many bytes of core files the stylesheet may hold, over all the
+   * faces it embeds. `block` while every embedded face has font-display block or auto (default
+   * 98304), `swap` once one has swap, fallback or optional (default 16384). A number sets both.
+   * The stylesheet blocks rendering: with swap, pages lose the text they painted in a fallback font.
    */
-  inlineCoreMax?: number;
+  inlineCoreMax?: number | { block?: number; swap?: number };
   /** `verify` (§10.3): engines, page cap (default 200), viewports, device pixel ratios, masks and the load timeout. */
   verify?: {
     browsers?: ('chromium' | 'firefox' | 'webkit' | 'linux-chromium' | 'linux-firefox' | 'linux-webkit')[];
@@ -108,7 +110,7 @@ const SCHEMA: Record<string, Kind | Record<string, Kind>> = {
   check: { allowChars: 'string', mode: { enum: ['warn', 'error'] }, strict: 'boolean' },
   auto: 'custom',
   autoRules: { enum: ['inline', 'linked'] },
-  inlineCoreMax: 'number',
+  inlineCoreMax: 'custom',
   verify: {
     browsers: { enum: ENGINES, array: true },
     hinting: 'boolean',
@@ -198,6 +200,21 @@ function validate(name: string, c: unknown): void {
   const t = c.coreThreshold;
   if (t !== undefined && t !== 'auto' && !(isNum(t) && (t as number) >= 0 && (t as number) <= 1))
     bad('coreThreshold', "'auto' or a number between 0 and 1");
+  const m = c.inlineCoreMax;
+  const bytes = (x: unknown) => x === undefined || (isNum(x) && (x as number) >= 0);
+  if (
+    m !== undefined &&
+    !(isNum(m) && (m as number) >= 0) &&
+    !(
+      typeof m === 'object' &&
+      m !== null &&
+      !Array.isArray(m) &&
+      Object.keys(m).every((k) => k === 'block' || k === 'swap') &&
+      bytes((m as Record<string, unknown>).block) &&
+      bytes((m as Record<string, unknown>).swap)
+    )
+  )
+    bad('inlineCoreMax', 'a number of bytes, or { block, swap } with numbers of bytes');
   if (c.auto !== undefined && typeof c.auto !== 'boolean' && c.auto !== 'static' && c.auto !== 'crawl')
     bad('auto', "true, false, 'static' or 'crawl'");
 }

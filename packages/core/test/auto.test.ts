@@ -494,8 +494,45 @@ describe('auto, crawl (an audit’s usage)', () => {
     });
     expect(r.embedded).toBeUndefined();
     expect(read(dir, r.stylesheet!.file)).not.toContain('data:font');
+    // The fixture's faces have font-display: swap, so the small allowance applies.
     expect(r.notes.join('\n')).toMatch(
-      /inline-core: inter-100-900-normal stays a file \(its core file is [\d.]+ KB, above the 16\.0 KB limit \(`inlineCoreMax`\)/,
+      /inline-core: inter-100-900-normal stays a file \(with it the stylesheet would hold [\d.]+ KB of fonts, above the 16\.0 KB allowed once a face has font-display swap, fallback or optional \(`inlineCoreMax`\)/,
+    );
+  }, 300_000);
+
+  it('inline-core allows more with font-display: block, counted over every face it embeds', async () => {
+    const { dir, usage } = crawled('crawl-embed-block');
+    writeFileSync(join(dir, 'index.html'), read(dir, 'index.html').replace(/<link rel="preload"[^>]*>\n?/g, ''));
+    writeFileSync(
+      join(dir, 'styles.css'),
+      read(dir, 'styles.css').replaceAll('font-display: swap', 'font-display: block'),
+    );
+    // DejaVu drawn on every page too, so that two faces compete for the allowance.
+    for (const p of Object.values(usage.pages)) p.faces['deja-400-normal'] ??= 'U+20, U+41';
+    usage.faces['deja-400-normal']!.pages = Object.keys(usage.pages);
+    const run = async (name: string, inlineCoreMax?: { block: number }) => {
+      const d = join(tmp, name);
+      cpSync(dir, d, { recursive: true });
+      return autoSubset({
+        root: d,
+        outDir: d,
+        usage,
+        version,
+        rules: 'linked',
+        inlineCoreMax,
+        config: { allow: ['inline-core'] },
+      });
+    };
+    // The default block allowance (96 KB) holds both cores; nothing is noted about swap.
+    const both = await run('crawl-embed-block-default');
+    expect(both.embedded!.map((e) => e.id).toSorted()).toEqual(['deja-400-normal', 'inter-100-900-normal']);
+    expect(both.notes.join('\n')).not.toMatch(/font-display: swap/);
+    // A smaller one takes the smaller core first, and says why the other stays a file.
+    const deja = both.embedded!.find((e) => e.id === 'deja-400-normal')!.bytes;
+    const one = await run('crawl-embed-block-small', { block: deja + 1000 });
+    expect(one.embedded!.map((e) => e.id)).toEqual(['deja-400-normal']);
+    expect(one.notes.join('\n')).toMatch(
+      /inline-core: inter-100-900-normal stays a file \(with it the stylesheet would hold [\d.]+ KB of fonts, above the [\d.]+ KB allowed for font-display block/,
     );
   }, 300_000);
 

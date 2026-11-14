@@ -125,18 +125,18 @@ fontphobia finds where each face comes from and edits it there.
 
 Pass with `--allow <name>` (repeatable) or `allow: [...]` in the config. Each is listed in the plan with its measured saving.
 
-| Opt-in              | What it does                                                                                                   | Why it isn't the default                                              |
-| ------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `self-host`         | Serves Google Fonts from your site, split                                                                      | Changes where fonts load from                                         |
-| `eject`             | Serves `next/font/google`, Astro Fonts API and `@nuxt/fonts` families from your site, split                    | Replaces the framework's font loading in your code                    |
-| `tighten`           | Drops families and weights nothing asks for from Google URLs and from `next/font`, Astro and Nuxt font options | A page the audit never saw, or CMS text, could ask for one            |
-| `limit-axes`        | Limits variable axes to the ranges in use, and drops axes every use leaves at the default                      | Text widths shift up to ~0.02% (whole pixels on Linux at 1×)          |
-| `drop-hinting`      | Removes TrueType hinting                                                                                       | Changes rasterization on Windows, and layout on Linux at 1×           |
-| `split-shaping`     | Lets words that mix core and extended characters split across files                                            | Loses kerning where they meet                                         |
-| `add-preloads`      | With `auto --crawl`: preloads the core file of each face a page draws, where the page has no preload of it     | Changes what the page loads first                                     |
-| `prefetch-extended` | With `auto --crawl`: pages prefetch, when idle, the extended files other pages need and they don't             | Every visitor downloads those files once                              |
-| `inline-core`       | With `auto --rules linked`: the core file of a face every page draws goes in the stylesheet as a `data:` URL   | Every page's first paint waits for it; files above 16 KB are left out |
-| `drop-hint-refs`    | Drops the reference characters FreeType's auto-hinter needs                                                    | Extended characters hint differently on Linux and ChromeOS            |
+| Opt-in              | What it does                                                                                                   | Why it isn't the default                                                                       |
+| ------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `self-host`         | Serves Google Fonts from your site, split                                                                      | Changes where fonts load from                                                                  |
+| `eject`             | Serves `next/font/google`, Astro Fonts API and `@nuxt/fonts` families from your site, split                    | Replaces the framework's font loading in your code                                             |
+| `tighten`           | Drops families and weights nothing asks for from Google URLs and from `next/font`, Astro and Nuxt font options | A page the audit never saw, or CMS text, could ask for one                                     |
+| `limit-axes`        | Limits variable axes to the ranges in use, and drops axes every use leaves at the default                      | Text widths shift up to ~0.02% (whole pixels on Linux at 1×)                                   |
+| `drop-hinting`      | Removes TrueType hinting                                                                                       | Changes rasterization on Windows, and layout on Linux at 1×                                    |
+| `split-shaping`     | Lets words that mix core and extended characters split across files                                            | Loses kerning where they meet                                                                  |
+| `add-preloads`      | With `auto --crawl`: preloads the core file of each face a page draws, where the page has no preload of it     | Changes what the page loads first                                                              |
+| `prefetch-extended` | With `auto --crawl`: pages prefetch, when idle, the extended files other pages need and they don't             | Every visitor downloads those files once                                                       |
+| `inline-core`       | With `auto --rules linked`: the core file of a face every page draws goes in the stylesheet as a `data:` URL   | Every page's first paint waits for it; capped at 96 KB in all, 16 KB with `font-display: swap` |
+| `drop-hint-refs`    | Drops the reference characters FreeType's auto-hinter needs                                                    | Extended characters hint differently on Linux and ChromeOS                                     |
 
 Italic styles are never dropped, because browsers italicize `em`, `i`, `cite` and others on their own.
 
@@ -234,7 +234,11 @@ A page that has no preload gets none by default, because a preload changes what 
 Two more opt-ins trade bytes for requests:
 
 - **`--allow prefetch-extended`** (with `--crawl`) adds a `<link rel="prefetch">` of an extended file to the pages that don't need it, when some other page does. The browser fetches it when idle, so a visitor who goes on to a page that needs it finds it cached. Every visitor then downloads the file once. `verify`'s bytes per page don't count a prefetch; the `auto` report gives its size. Safari ignores `rel="prefetch"`.
-- **`--allow inline-core`** (with `--rules linked`) puts the core file of a face every page draws into the linked stylesheet as a `data:` URL, which saves its request. The stylesheet blocks rendering, so the first paint waits for it: on a 1.6 Mbit/s link, 91 KB of core files there made it 0.95 s later ([spike 13](spikes/13-other-tools/RESULTS.md)). A core file above 16 KB therefore stays a file; `inlineCoreMax` (bytes) changes the limit. A face whose source font a page preloads stays a file too, and the report notes a face with `font-display: swap` or `fallback`, whose pages painted text in a fallback font before. `verify` counts the embedded bytes in each page's total. A `Content-Security-Policy` with `font-src` has to allow `data:`.
+- **`--allow inline-core`** (with `--rules linked`) puts the core file of a face every page draws into the linked stylesheet as a `data:` URL, which saves its request. The stylesheet blocks rendering, so nothing paints until it arrives. What that costs depends on the face's `font-display` ([spike 13](spikes/13-other-tools/RESULTS.md), 91 KB of core files, 1.6 Mbit/s):
+  - `block` (and `auto`, the default): text was hidden until the font arrived anyway. Embedded, it showed as soon or sooner, with less layout shift; only the rest of the page painted later.
+  - `swap`, `fallback` or `optional`: pages painted text in a fallback font at 0.4 s. Embedded, they painted nothing until 1.3 s.
+
+  So the stylesheet holds at most 96 KB of core files, counted over every face, smallest first, and at most 16 KB once one of them has `swap`, `fallback` or `optional`. A core that doesn't fit stays a file, and the report says why. `inlineCoreMax: { block, swap }` (bytes) changes the two; a number sets both. A face whose source font a page preloads stays a file too, and the report notes a `swap` face it embeds. `verify` counts the embedded bytes in each page's total. A `Content-Security-Policy` with `font-src` has to allow `data:`.
 
 The split rules go in the HTML for two reasons. A hashed stylesheet keeps its file name when only the site's text changes, so writing the rules into it would let a browser holding the old copy ask for font files the new deploy no longer has. HTML is fetched fresh, so a page and its font rules always come from the same build. And a separate linked stylesheet can arrive after the page's own: in that gap the original rules are the last ones declared, and a style calculation there starts downloading the original fonts. In Chrome with slowed stylesheets that happened in 23 of 480 loads with a linked stylesheet and in none of 576 with the rules inline.
 
@@ -317,7 +321,7 @@ export default defineConfig({
   check: { mode: 'error', strict: false, allowChars: '' },
   auto: false, // integrations subset the build output instead of running check: true, 'static' or 'crawl'
   autoRules: 'inline', // where auto puts the split rules: 'inline' (each page) or 'linked' (one cached stylesheet)
-  inlineCoreMax: 16384, // auto --allow inline-core: the largest core file put in the stylesheet, in bytes
+  inlineCoreMax: { block: 98304, swap: 16384 }, // auto --allow inline-core: bytes of core files the stylesheet may hold
   verify: { browsers: ['chromium'], hinting: false, viewports: [360, 1280], dprs: [1, 2] },
 });
 ```

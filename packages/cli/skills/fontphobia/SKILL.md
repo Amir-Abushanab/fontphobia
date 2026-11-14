@@ -185,7 +185,7 @@ measured saving even when it is off.
 | `split-shaping`     | Lets words mixing core and extended characters split across files                                         | Kerning is lost where they meet                            |
 | `add-preloads`      | With `auto --crawl`: preloads the core file of each face a page draws, where it has no preload            | Changes what the page loads first                          |
 | `prefetch-extended` | With `auto --crawl`: pages prefetch the extended files other pages need                                   | Every visitor downloads those files once                   |
-| `inline-core`       | With `auto --rules linked`: the core of a face every page draws goes in the stylesheet as a `data:` URL   | The stylesheet grows by the core file                      |
+| `inline-core`       | With `auto --rules linked`: the core of a face every page draws goes in the stylesheet as a `data:` URL   | First paint waits for it; 96 KB cap, 16 KB with swap       |
 | `drop-hint-refs`    | Drops the reference characters FreeType's auto-hinter needs                                               | Extended characters hint differently on Linux and ChromeOS |
 
 Only pass an opt-in the user chose. Italic styles are never dropped. `--no-remainder` (config
@@ -237,7 +237,7 @@ export default defineConfig({
   check: { mode: 'error', strict: false, allowChars: '' },
   auto: false, // integrations subset the build output instead of running check: true, 'static' or 'crawl'
   autoRules: 'inline', // where auto puts the split rules: 'inline' (each page) or 'linked' (one cached stylesheet)
-  inlineCoreMax: 16384, // largest core file inline-core embeds, in bytes
+  inlineCoreMax: { block: 98304, swap: 16384 }, // bytes of cores inline-core may embed
   verify: {
     browsers: ['chromium'],
     hinting: false,
@@ -355,8 +355,9 @@ pnpm build && pnpm dlx fontphobia auto --crawl    # measures each face in Chrome
   - `prefetch-extended` (`--crawl`): pages prefetch, when idle, an extended file another page
     needs. Its bytes are in the `auto` report, not in `verify`'s per-page totals. Safari ignores it.
   - `inline-core` (`--rules linked`): the core of a face every page draws goes in the stylesheet as
-    a `data:` URL (`font-src` must allow `data:`), unless a page preloads its source font or the
-    core is above `inlineCoreMax` (16384 bytes): the stylesheet blocks the first paint.
+    a `data:` URL (`font-src` must allow `data:`), unless a page preloads its source font. The
+    stylesheet blocks the first paint, so it holds 96 KB of cores in all, 16 KB once a face has
+    font-display swap, fallback or optional (`inlineCoreMax: { block, swap }`).
 - **Every run checks, without a browser,** that each file decodes and matches its source, that the
   rules keep the original descriptors and that every word shapes identically. A failure puts the
   output back as it was and exits 1.
