@@ -614,6 +614,29 @@ async function settle(page: Page, inflight: () => number, scroll: boolean): Prom
     .evaluate(
       () =>
         new Promise<'text' | 'image' | undefined>((resolve) => {
+          // When Chrome reports no entry (seen on macOS CI runners), the largest visible element by
+          // layout: an image, a video or a CSS background image, against a block of text.
+          const largestByLayout = (): 'text' | 'image' | undefined => {
+            const vw = innerWidth;
+            const vh = innerHeight;
+            const area = (r: DOMRect) =>
+              Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0)) *
+              Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
+            let image = 0;
+            let text = 0;
+            for (const el of document.body?.querySelectorAll('*') ?? []) {
+              const st = getComputedStyle(el);
+              if (st.visibility === 'hidden' || st.display === 'none') continue;
+              if (el instanceof HTMLImageElement || el instanceof HTMLVideoElement || /url\(/.test(st.backgroundImage))
+                image = Math.max(image, area(el.getBoundingClientRect()));
+              else if ([...el.childNodes].some((n) => n.nodeType === 3 && n.textContent?.trim())) {
+                const r = document.createRange();
+                r.selectNodeContents(el);
+                text = Math.max(text, area(r.getBoundingClientRect()));
+              }
+            }
+            return image || text ? (image > text ? 'image' : 'text') : undefined;
+          };
           let last: 'text' | 'image' | undefined;
           const take = (es: PerformanceEntryList) => {
             for (const e of es as (PerformanceEntry & { url: string })[]) last = e.url ? 'image' : 'text';
@@ -624,10 +647,10 @@ async function settle(page: Page, inflight: () => number, scroll: boolean): Prom
             setTimeout(() => {
               take(o.takeRecords());
               o.disconnect();
-              resolve(last);
+              resolve(last ?? largestByLayout());
             }, 100);
           } catch {
-            resolve(undefined);
+            resolve(largestByLayout());
           }
         }),
     )

@@ -50,4 +50,24 @@ describe.skipIf(!browser)('largest contentful paint', () => {
       await ctx.close();
     }
   }, 60_000);
+
+  it('falls back to the layout when Chrome reports no entry', async () => {
+    const ctx = await browser!.newContext({ viewport: { width: 390, height: 844 } });
+    // As on the macOS CI runners: no largest-contentful-paint entry at all.
+    await ctx.addInitScript(() => {
+      const observe = PerformanceObserver.prototype.observe;
+      PerformanceObserver.prototype.observe = function (o?: PerformanceObserverInit) {
+        if (o?.type === 'largest-contentful-paint') throw new TypeError('not supported');
+        return observe.call(this, o);
+      };
+    });
+    try {
+      const at = async (name: string) =>
+        (await visitPage(ctx, `${server.url}${name}`, { viewport: 390, fontSize: 16, locales: [] })).visit?.lcp;
+      expect(await at('text.html')).toBe('text');
+      expect(await at('image.html')).toBe('image');
+    } finally {
+      await ctx.close();
+    }
+  }, 60_000);
 });
