@@ -106,14 +106,16 @@ export function shape(font, text, { features = [], variations } = {}) {
   buf.guessSegmentProperties();
   hb.shape(font, buf, features);
   const pos = buf.getGlyphPositions();
-  return buf.getGlyphInfos().map((g, i) => ({
-    g: g.codepoint,
-    cl: g.cluster,
-    ax: pos[i].xAdvance,
-    ay: pos[i].yAdvance,
-    dx: pos[i].xOffset,
-    dy: pos[i].yOffset,
-  }));
+  return buf
+    .getGlyphInfos()
+    .map((g, i) => ({
+      g: g.codepoint,
+      cl: g.cluster,
+      ax: pos[i].xAdvance,
+      ay: pos[i].yAdvance,
+      dx: pos[i].xOffset,
+      dy: pos[i].yOffset,
+    }));
 }
 
 /** Flat list of outline points for a glyph (font units). */
