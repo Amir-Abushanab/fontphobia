@@ -120,6 +120,7 @@ export function usageToJson(
             ),
             system: u.system.size ? charsToRanges(u.system) : undefined,
             disagreements: [...u.disagreements].toSorted(str),
+            lcp: u.lcp.size ? [...u.lcp].toSorted(str) : undefined,
             notes: [...u.notes].toSorted(str),
           },
         ]),

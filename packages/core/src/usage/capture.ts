@@ -134,6 +134,8 @@ export interface Visit {
   lang?: string;
   emMediaQueries?: boolean;
   textScaleMeta?: boolean;
+  /** What the largest contentful paint was, before the visit scrolled. */
+  lcp?: 'text' | 'image';
   notes: string[];
 }
 

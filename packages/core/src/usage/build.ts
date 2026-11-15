@@ -96,6 +96,8 @@ export interface PageUsage {
   system: Set<number>;
   /** Families Chrome reported drawing that the attribution didn't predict. */
   disagreements: Set<string>;
+  /** What the largest contentful paint was, over the visits at the default font size. */
+  lcp: Set<'text' | 'image'>;
   notes: Set<string>;
 }
 
@@ -210,10 +212,12 @@ export function buildUsage(visits: Visit[], facts: Map<string, FontFacts>, opts:
       fallback: new Map(),
       system: new Set(),
       disagreements: new Set(),
+      lcp: new Set(),
       notes: new Set(),
     };
     pages.set(v.page, page);
     page.visits.add(vl);
+    if (v.lcp && v.fontSize === 16 && !v.textScale) page.lcp.add(v.lcp);
     for (const n of v.notes) page.notes.add(n);
 
     const fv: FeatureValues = new Map();

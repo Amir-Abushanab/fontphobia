@@ -70,9 +70,41 @@ The same four builds were loaded with a cold cache through Chrome's network thro
 - Preloading the core files brought the fonts in sooner and delayed the first paint by about 0.13 s, because they share the link with the stylesheet.
 - subfont's higher layout shift on the menu page was not investigated.
 
+## E. `data:` URLs with `font-display: block`
+
+The same comparison with the bakery's two faces changed to `font-display: block`, so a page hides text until its font arrives (up to 3 s). The largest contentful paint on both pages is text.
+
+| 1.6 Mbit/s, 150 ms round trip                  | First paint | Text in its font (LCP) | Layout shift, menu |
+| ---------------------------------------------- | ----------- | ---------------------- | ------------------ |
+| Files                                          | 0.40 s      | 1.28–1.45 s            | 0.061              |
+| `data:` in a linked stylesheet (`inline-core`) | 1.31–1.32 s | 1.31–1.34 s            | 0.039              |
+
+| 700 kbit/s, 300 ms round trip                  | First paint | Text in its font (LCP) |
+| ---------------------------------------------- | ----------- | ---------------------- |
+| Files                                          | 0.75–0.77 s | 2.81–3.66 s            |
+| `data:` in a linked stylesheet (`inline-core`) | 2.87–2.93 s | 2.87–2.94 s            |
+
+With `block`, embedding showed text as soon or sooner and shifted the layout less; only the rest of the page painted later. With `swap` (part D), it took away text that had painted in a fallback font at 0.4 s.
+
+## F. A page led by a photo, with `font-display: block`
+
+Part E's pages are led by text. Here the hero photo is timed with the Element Timing API, on the home page at 1280 px (an 80 KB photo beside the heading) and on a phone page with the photo moved above the heading.
+
+| Page, link                       | Photo shown, files | Photo shown, embedded |
+| -------------------------------- | ------------------ | --------------------- |
+| Desktop, 80 KB photo, 1.6 Mbit/s | 1.62 s             | 1.26 s                |
+| Desktop, 80 KB photo, 700 kbit/s | 3.60 s             | 2.76 s                |
+| Phone, 334 KB photo, 1.6 Mbit/s  | 2.50 s             | 2.50 s                |
+| Phone, 334 KB photo, 700 kbit/s  | 9.00 s             | 9.02 s                |
+| Phone, 29 KB photo, 1.6 Mbit/s   | 0.50 s             | 1.00 s                |
+| Phone, 29 KB photo, 700 kbit/s   | 1.04 s             | 2.16 s                |
+
+A photo that arrives after the stylesheet anyway is not delayed; the desktop one showed sooner, because embedded fonts don't compete with it as separate files do. A photo that would arrive first waits for the stylesheet: the 29 KB one took twice as long.
+
 ## What came of it
 
-- `auto --allow inline-core` leaves a core file above 16 KB as a file (`inlineCoreMax` changes the limit), and notes a face with `font-display: swap` or `fallback` whose core it embeds.
+- The crawl records each page's largest contentful paint, text or image, in `usage.json`.
+- `auto --allow inline-core` holds at most 96 KB of core files in the stylesheet, counted over every face, smallest first, when every page is led by text, and at most 16 KB when a page is led by an image, without a crawl, or once a face with `font-display` swap, fallback or optional is among them. This is cautious: the bakery's pages are led by their photos at some width, so nothing is embedded there, although the desktop photo showed sooner embedded. `inlineCoreMax: { block, swap }` changes the two. It notes a swap face whose core it embeds. (0.6.0 had a 16 KB limit per file.)
 - Not done:
   - estimating opt-in savings with the Brotli estimate instead of WOFF2;
   - compressing WOFF2 in worker threads;
