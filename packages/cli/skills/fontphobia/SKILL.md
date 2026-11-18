@@ -88,8 +88,9 @@ The default command (no subcommand) audits, prints the plan and the diff, then a
 - It builds the site in a throwaway copy of the project when there is no build output, so the build
   cannot touch the user's files. The output is kept in `.fontphobia/output` and reused while it is
   newer than every source file.
-- It crawls every page it finds at 4 viewport widths (360, 768, 1280, 1920) plus a browser
-  default-font-size sweep, and writes `.fontphobia/usage.json` and `.fontphobia/report.md`.
+- It loads every page it finds once, and 2 pages per section (parent path) at 4 widths and a
+  default-font-size sweep; other pages get a width or size only where a sample drew new text
+  (`--full-sweep`: all). It writes `.fontphobia/usage.json` and `.fontphobia/report.md`.
 - It prints each face's size now and after, the saving per page, the opt-ins with their measured
   savings, and the exact edits as a line diff.
 - In a terminal it offers the opt-ins as a checklist. With `--ci`, `--write`, `--allow`, `CI` or
@@ -155,18 +156,18 @@ Run `revert` before deleting subset files: the CSS still points at them.
 
 Most commands take `--json`. `inspect` and `subset` take a file path and no `--cwd`.
 
-| Command          | What it does                                                  | Key options                                                                                                                                                                  |
-| ---------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fontphobia`     | Audit, plan, ask, write, verify                               | `--write`/`-u`, `--allow`, `--ci`, plus the `audit`, `build` and `verify` options                                                                                            |
-| `audit`          | Crawl; write `.fontphobia/usage.json` and `report.md`         | `--dist`, `--build-cmd`, `--start-cmd`, `--url`, `--pages`, `--ignore`, `--viewports`, `--locales`, `--max-pages`, `--rebuild`, `--no-cache`, `--no-font-size-sweep`, `--ci` |
-| `build`          | Plan from `usage.json` (no browser); `--write` applies        | `--write`/`-u`, `--allow`, `--core-threshold`, `--no-remainder`, `--usage`                                                                                                   |
-| `verify`         | Check files and shaping, then compare pages before and after  | `--browsers`, `--dpr`, `--viewports`, `--mask`, `--ignore`, `--pages`, `--timeout`, `--baseline`, `--hinting`, `--runtime`, `--no-browser`                                   |
-| `check`          | Are the subsets still up to date? Static by default           | `--dist`, `--url`, `--mode`, `--strict`, `--allow-chars`                                                                                                                     |
-| `auto`           | Subset the built output in place; nothing to commit           | `--dist`, `--crawl`, `--rules`, `--verify`, `--dry-run`, `--allow`, `--core-threshold`, `--no-remainder`                                                                     |
-| `revert`         | Restore the originals from the manifest                       | `--dry-run`, `--keep-kits`                                                                                                                                                   |
-| `apply-kit`      | Adobe Fonts: remove unused kit styles through the Typekit API | `--yes`, `--check`                                                                                                                                                           |
-| `inspect <font>` | A font's tables, axes, features, hinting and sizes            | `--json`                                                                                                                                                                     |
-| `subset <font>`  | Subset one font to WOFF2; no crawl, no CSS edits              | `-o` (required, `.woff2`), `--unicodes`, `--text`, `--features`, `--axis`, `--name-ids`, `--no-hinting`                                                                      |
+| Command          | What it does                                                  | Key options                                                                                                                                                                                  |
+| ---------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fontphobia`     | Audit, plan, ask, write, verify                               | `--write`/`-u`, `--allow`, `--ci`, plus the `audit`, `build` and `verify` options                                                                                                            |
+| `audit`          | Crawl; write `.fontphobia/usage.json` and `report.md`         | `--dist`, `--build-cmd`, `--start-cmd`, `--url`, `--pages`, `--ignore`, `--viewports`, `--locales`, `--max-pages`, `--rebuild`, `--no-cache`, `--no-font-size-sweep`, `--full-sweep`, `--ci` |
+| `build`          | Plan from `usage.json` (no browser); `--write` applies        | `--write`/`-u`, `--allow`, `--core-threshold`, `--no-remainder`, `--usage`                                                                                                                   |
+| `verify`         | Check files and shaping, then compare pages before and after  | `--browsers`, `--dpr`, `--viewports`, `--mask`, `--ignore`, `--pages`, `--timeout`, `--baseline`, `--hinting`, `--runtime`, `--no-browser`                                                   |
+| `check`          | Are the subsets still up to date? Static by default           | `--dist`, `--url`, `--mode`, `--strict`, `--allow-chars`                                                                                                                                     |
+| `auto`           | Subset the built output in place; nothing to commit           | `--dist`, `--crawl`, `--rules`, `--verify`, `--dry-run`, `--allow`, `--core-threshold`, `--no-remainder`                                                                                     |
+| `revert`         | Restore the originals from the manifest                       | `--dry-run`, `--keep-kits`                                                                                                                                                                   |
+| `apply-kit`      | Adobe Fonts: remove unused kit styles through the Typekit API | `--yes`, `--check`                                                                                                                                                                           |
+| `inspect <font>` | A font's tables, axes, features, hinting and sizes            | `--json`                                                                                                                                                                                     |
+| `subset <font>`  | Subset one font to WOFF2; no crawl, no CSS edits              | `-o` (required, `.woff2`), `--unicodes`, `--text`, `--features`, `--axis`, `--name-ids`, `--no-hinting`                                                                                      |
 
 Pages: `--pages` adds paths, or restricts to globs; `--ignore` skips globs. Both repeat. Both also
 come from the config's `pages` and `ignore`. `audit` revisits only pages whose HTML, CSS or fonts

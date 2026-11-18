@@ -1,0 +1,10 @@
+---
+'fontphobia': minor
+---
+
+`audit` loads fewer pages and waits less; `verify` writes smaller diff images. On principlestash.com (59 pages), an audit took 208 page loads and 87 s instead of 885 loads and 354–427 s, with the same plan: every file, unicode-range and size.
+
+- **Sampled sweep.** Every page is loaded once. The other viewport widths and the default-font-size sweep run on 2 pages of each section (pages under one parent path, with the same em-based media queries and text-scale meta). On the section's other pages, a width or size runs only when it drew something on a sample page that the page's first load didn't: a character, weight, axis value or feature in some face, a fallback, or a font file. `--full-sweep` loads every page every way, as before. The audit summary says how many loads were skipped.
+- **Images from other sites are fetched once per run.** Each page load is a fresh browser context with an empty cache, so a page showing 70 favicons from other sites downloaded all 70 again on every load, and its load event waited for the slowest: 5–6 s per load on principlestash.com's articles. They are now kept in memory (up to 256 MB) and served with the same status, headers and bytes; pages still load every image, so layout and alt text don't change. `verify` does the same for its before and after loads.
+- **The page-load cache keeps one file per page** (`.fontphobia/cache/visits/`): 59 files instead of 884 on that site. Earlier cache files are removed on the next audit.
+- **Diff images keep only the rows near a difference,** with a blue line where unchanged rows were cut, and the report gives their position on the page. On images from a real run this is 3 to 6 times less disk (604 MB to about 193 MB).

@@ -167,6 +167,7 @@ interface AuditFlags {
   maxPages?: number;
   concurrency?: number;
   fontSizeSweep: boolean;
+  fullSweep?: boolean;
   cache: boolean;
   rebuild?: boolean;
   ci?: boolean;
@@ -246,6 +247,7 @@ async function runAudit(
     maxPages: o.maxPages ?? config.maxPages,
     concurrency: o.concurrency,
     fontSizeSweep: o.fontSizeSweep,
+    fullSweep: o.fullSweep,
     cache: o.cache,
     storageState: config.auth?.storageState ? resolve(root, config.auth.storageState) : undefined,
     privatePages: config.auth?.pages,
@@ -272,10 +274,16 @@ async function runAudit(
   const nFailed = Object.keys(c.failed).length;
   ui.ok(`${plural(c.pages.length, 'page')} found${nFailed ? `; ${nFailed} load(s) failed (listed in report.md)` : ''}`);
   const sizes = c.fontSizes.filter((x) => x !== 16);
-  const per = c.pages.length && c.visits % c.pages.length === 0 ? ` (${c.visits / c.pages.length} per page)` : '';
-  ui.ok(
-    `${plural(c.visits, 'page load')}${per}: ${plural(c.viewports.length, 'viewport width')} (${c.viewports.join(', ')} px)${sizes.length ? `, then the browser's default font size set to ${sizes.join(' and ')} px` : ''}${c.cache?.reused ? `; ${c.cache.reused} reused from the cache, since nothing they load changed` : ''}`,
-  );
+  const settings = `${plural(c.viewports.length, 'viewport width')} (${c.viewports.join(', ')} px)${sizes.length ? `, then the browser's default font size set to ${sizes.join(' and ')} px` : ''}`;
+  const reused = c.cache?.reused ? `; ${c.cache.reused} reused from the cache, since nothing they load changed` : '';
+  if (c.sweep)
+    ui.ok(
+      `${plural(c.visits, 'page load')}: every page at ${c.viewports.includes(1280) ? 1280 : c.viewports.at(-1)} px; ${settings} on ${c.sweep.sampled} sample page(s), up to ${c.sweep.perSection} per section (${c.sweep.sections} sections), and on the other pages only where a sample page drew text its first load didn't (${c.sweep.skipped} loads skipped; --full-sweep runs them)${reused}`,
+    );
+  else {
+    const per = c.pages.length && c.visits % c.pages.length === 0 ? ` (${c.visits / c.pages.length} per page)` : '';
+    ui.ok(`${plural(c.visits, 'page load')}${per}: ${settings}${reused}`);
+  }
   const families = [...new Set(Object.values(result.usage.faces).map((f) => f.family))];
   ui.ok(
     families.length
@@ -307,6 +315,10 @@ const auditCommand = (c: ReturnType<typeof cli.command>) =>
     .option('--max-pages <n>', 'Stop discovering pages after n (default 500)')
     .option('--concurrency <n>', 'Parallel page visits')
     .option('--no-font-size-sweep', 'Skip the browser default-font-size sweep')
+    .option(
+      '--full-sweep',
+      'Every width and font size on every page (default: on 2 sample pages per section, and on the others where a sample drew something new)',
+    )
     .option(
       '--no-cache',
       'Visit every page again, ignoring .fontphobia/cache/visits (by default a page is revisited only when something it loads changed)',

@@ -53,7 +53,7 @@ Run everything from the project root (or pass `--cwd`). (If pnpm refuses a relea
    pnpm dlx fontphobia@0.8.0
    ```
 
-   fontphobia detects the framework, builds the site if there's no build (or asks if it's stale) in a throwaway copy of the project, so the build can't touch your files, and crawls every page it can find at 4 viewport widths, plus a browser font-size sweep. It then prints each face's size now and after, the saving per page, and the exact edits as a diff. In a terminal it shows a progress bar for each stage and lists the opt-ins as a checklist with their measured savings, so you can pick any before confirming; in CI, with `--ci`, `--write` or `--allow`, or without a terminal, it prints them instead. Colors follow the terminal, `NO_COLOR`, `FORCE_COLOR` and `--no-color`. In a terminal outside CI it also asks the npm registry for the latest version and prints a one-line notice when the running one is older (for a release under a week old, with the `--cwd` workaround below for `minimumReleaseAge`); `FONTPHOBIA_NO_UPDATE_CHECK=1` (or `NO_UPDATE_NOTIFIER=1`) turns that off.
+   fontphobia detects the framework, builds the site if there's no build (or asks if it's stale) in a throwaway copy of the project, so the build can't touch your files, and loads every page it can find in Chrome. Two pages of each section (pages under one parent path) are also loaded at 4 viewport widths and with the browser's default font size changed; the other pages get those loads only where a sample page drew text its first load didn't (`--full-sweep` loads every page every way). It then prints each face's size now and after, the saving per page, and the exact edits as a diff. In a terminal it shows a progress bar for each stage and lists the opt-ins as a checklist with their measured savings, so you can pick any before confirming; in CI, with `--ci`, `--write` or `--allow`, or without a terminal, it prints them instead. Colors follow the terminal, `NO_COLOR`, `FORCE_COLOR` and `--no-color`. In a terminal outside CI it also asks the npm registry for the latest version and prints a one-line notice when the running one is older (for a release under a week old, with the `--cwd` workaround below for `minimumReleaseAge`); `FONTPHOBIA_NO_UPDATE_CHECK=1` (or `NO_UPDATE_NOTIFIER=1`) turns that off.
 
 2. **Confirm.** fontphobia then:
    - writes the subset files next to the original fonts;
@@ -84,7 +84,7 @@ Run everything from the project root (or pass `--cwd`). (If pnpm refuses a relea
    - the OpenType features and axis values in use;
    - the words, for shaping.
 
-   The result goes to `.fontphobia/usage.json`. Reruns revisit only pages whose HTML, CSS or fonts changed.
+   The result goes to `.fontphobia/usage.json`. Reruns revisit only pages whose HTML, CSS or fonts changed; the cache keeps one file per page in `.fontphobia/cache/visits/`. Images from other sites are downloaded once per run and served to every later load, since each load starts with an empty browser cache.
 
 2. **Plan.** This step is deterministic and needs no browser. Each face is split into three files:
    - **core:** printable ASCII and common punctuation, plus the characters your pages use that cost less here than in the extended file; it loads like the original did;
@@ -101,7 +101,7 @@ Run everything from the project root (or pass `--cwd`). (If pnpm refuses a relea
    - every recorded word is shaped with HarfBuzz from the original and from the split files, and the results must be identical;
    - every page is loaded before and after in the browser, and the layout and pixels are compared.
 
-   Each difference is classified, and a real one fails the run, naming the element where it happened. A pixel difference at unchanged layout counts when loading both sides again repeats it. Chrome rasterizes on the CPU during `verify`, because its GPU rasterizer does not draw every load alike. Diff images go to `.fontphobia/verify/`. Content that changes on its own between loads (script-driven animations, canvases, embeds) can't be compared: hide it with `--mask <selector>`, or skip a page with `--ignore <glob>`.
+   Each difference is classified, and a real one fails the run, naming the element where it happened. A pixel difference at unchanged layout counts when loading both sides again repeats it. Chrome rasterizes on the CPU during `verify`, because its GPU rasterizer does not draw every load alike. Diff images go to `.fontphobia/verify/`; each keeps only the rows near a difference, with a blue line where unchanged rows were cut, and the report gives their position on the page. Content that changes on its own between loads (script-driven animations, canvases, embeds) can't be compared: hide it with `--mask <selector>`, or skip a page with `--ignore <glob>`.
 
 ## Font sources
 

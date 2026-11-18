@@ -77,8 +77,16 @@ function lines(r: VerifyResult, root: string, md: boolean): string[] {
           const w = e.where ? (md ? ` (\`${e.where}\`)` : ` (${e.where})`) : '';
           L.push(md ? `  - ${e.text}${w}: ${e.cause}` : `      ${e.text}${w}: ${e.cause}`);
         }
-      if (c.diffImage)
-        L.push(md ? `  - diff: \`${relative(root, c.diffImage)}\`` : `      diff: ${relative(root, c.diffImage)}`);
+      if (c.diffImage) {
+        // The image keeps only the rows near a difference: say where they are, in CSS pixels.
+        const rows = c.diffRows;
+        const at = rows
+          ? ` (page y ${Math.round(rows[0]![0] / c.dpr)}–${Math.round(rows.at(-1)![1] / c.dpr)} px${rows.length > 1 ? `, in ${rows.length} parts; unchanged rows cut` : ''})`
+          : '';
+        L.push(
+          md ? `  - diff: \`${relative(root, c.diffImage)}\`${at}` : `      diff: ${relative(root, c.diffImage)}${at}`,
+        );
+      }
     }
     for (const c of b.comparisons.filter((x) => x.class === 'unrelated').slice(0, 5))
       item(`unrelated: ${where(c)}: ${c.causes.join('; ')}`);

@@ -1,14 +1,21 @@
 // The incremental audit (M3.5): each visit is cached under its page and settings, with the sha256 of
 // everything the page loaded. Before reusing a visit, every resource is fetched again over plain HTTP
 // (no browser) and must hash the same; then the stored visit stands in for a new one. A content edit
-// re-visits only the pages that load the edited file. Cached in .fontphobia/cache/visits/ (gitignored).
+// re-visits only the pages that load the edited file. Cached in .fontphobia/cache/visits/ (gitignored),
+// one file per page.
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { VisitOptions, VisitResult } from './visit.ts';
 
 /** Bump when the shape of a cached visit, or what a visit records, changes. */
-export const VISIT_CACHE_VERSION = 2;
+export const VISIT_CACHE_VERSION = 3;
+
+/** One file per page: every setting it was loaded with (885 loads of 59 pages were 885 files). */
+interface PageFile {
+  v: number;
+  entries: Record<string, Entry>;
+}
 
 interface Entry {
   v: number;
@@ -20,6 +27,8 @@ interface Entry {
 }
 
 const sha = (b: Uint8Array | string) => createHash('sha256').update(b).digest('hex');
+/** The page file of a "<page>.<settings>" key. */
+const fileOf = (key: string) => `${key.split('.')[0]}.json`;
 
 export interface CacheStats {
   hits: number;
@@ -31,6 +40,8 @@ export class VisitCache {
   readonly stats: CacheStats = { hits: 0, misses: 0, stored: 0 };
   private dir: string;
   private seen = new Set<string>();
+  /** Page files read or written this run, by file name. */
+  private files = new Map<string, PageFile>();
   /** One fetch per URL per run: pages share CSS, scripts and fonts. */
   private fetched = new Map<string, Promise<{ sha256: string; bytes?: Uint8Array }>>();
 
@@ -42,19 +53,24 @@ export class VisitCache {
 
   keyOf(url: string, vo: Omit<VisitOptions, 'locales' | 'bodyCache'>): string {
     const u = new URL(url);
-    return sha(
-      JSON.stringify({
-        v: VISIT_CACHE_VERSION,
-        path: u.pathname + u.search,
-        viewport: vo.viewport,
-        height: vo.height,
-        fontSize: vo.fontSize,
-        textScale: vo.textScale,
-        maxPlatformNodes: vo.maxPlatformNodes,
-        chrome: this.meta.chrome,
-        fontphobia: this.meta.fontphobia,
-        locales: this.meta.locales,
-      }),
+    // "<page>.<settings>": the page part names the file the entry is kept in.
+    return (
+      sha(u.pathname + u.search) +
+      '.' +
+      sha(
+        JSON.stringify({
+          v: VISIT_CACHE_VERSION,
+          path: u.pathname + u.search,
+          viewport: vo.viewport,
+          height: vo.height,
+          fontSize: vo.fontSize,
+          textScale: vo.textScale,
+          maxPlatformNodes: vo.maxPlatformNodes,
+          chrome: this.meta.chrome,
+          fontphobia: this.meta.fontphobia,
+          locales: this.meta.locales,
+        }),
+      )
     );
   }
 
@@ -81,15 +97,8 @@ export class VisitCache {
 
   /** The stored visit if every resource it loaded is unchanged, with font bodies refetched. */
   async get(key: string, origin: string): Promise<VisitResult | undefined> {
-    const file = join(this.dir, `${key}.json`);
-    let e: Entry;
-    try {
-      e = JSON.parse(readFileSync(file, 'utf8')) as Entry;
-    } catch {
-      this.stats.misses++;
-      return undefined;
-    }
-    if (e.v !== VISIT_CACHE_VERSION || e.key !== key) {
+    const e = this.page(key).entries[key];
+    if (!e || e.v !== VISIT_CACHE_VERSION || e.key !== key) {
       this.stats.misses++;
       return undefined;
     }
@@ -118,22 +127,54 @@ export class VisitCache {
     if (!r.visit || !r.resources || r.error) return;
     mkdirSync(this.dir, { recursive: true });
     const { visit, status, finalUrl, links } = r;
-    const e: Entry = {
+    const pf = this.page(key);
+    pf.entries[key] = {
       v: VISIT_CACHE_VERSION,
       key,
       origin,
       resources: r.resources,
       result: { visit, status, finalUrl, links },
     };
-    writeFileSync(join(this.dir, `${key}.json`), JSON.stringify(e));
+    writeFileSync(join(this.dir, fileOf(key)), JSON.stringify(pf));
     this.stats.stored++;
   }
 
-  /** Drop entries this run didn't use (pages that are gone, settings that changed). */
+  /** The page file an entry belongs in, read once per run. */
+  private page(key: string): PageFile {
+    const name = fileOf(key);
+    let pf = this.files.get(name);
+    if (!pf) {
+      try {
+        pf = JSON.parse(readFileSync(join(this.dir, name), 'utf8')) as PageFile;
+        if (pf.v !== VISIT_CACHE_VERSION || typeof pf.entries !== 'object') throw new Error('old');
+      } catch {
+        pf = { v: VISIT_CACHE_VERSION, entries: {} };
+      }
+      this.files.set(name, pf);
+    }
+    return pf;
+  }
+
+  /** Drop entries this run didn't use (pages that are gone, settings that changed), and old files. */
   prune(): void {
     if (!existsSync(this.dir)) return;
-    for (const f of readdirSync(this.dir))
-      if (f.endsWith('.json') && !this.seen.has(f.slice(0, -5))) rmSync(join(this.dir, f), { force: true });
+    const keep = new Map<string, string[]>();
+    for (const k of this.seen) keep.set(fileOf(k), [...(keep.get(fileOf(k)) ?? []), k]);
+    for (const f of readdirSync(this.dir)) {
+      if (!f.endsWith('.json')) continue;
+      const keys = keep.get(f);
+      if (!keys) {
+        rmSync(join(this.dir, f), { force: true });
+        continue;
+      }
+      const pf = this.page(keys[0]!);
+      const entries = Object.fromEntries(keys.filter((k) => pf.entries[k]).map((k) => [k, pf.entries[k]!]));
+      if (Object.keys(entries).length !== Object.keys(pf.entries).length) {
+        pf.entries = entries;
+        if (Object.keys(entries).length) writeFileSync(join(this.dir, f), JSON.stringify(pf));
+        else rmSync(join(this.dir, f), { force: true });
+      }
+    }
   }
 }
 

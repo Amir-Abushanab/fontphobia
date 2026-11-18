@@ -5,7 +5,15 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
 import { join, resolve } from 'node:path';
-import { firefox, webkit, type Browser, type BrowserContext, type CDPSession, type Page } from 'playwright-core';
+import {
+  firefox,
+  webkit,
+  type Browser,
+  type BrowserContext,
+  type CDPSession,
+  type Page,
+  type Route,
+} from 'playwright-core';
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 import {
@@ -24,7 +32,7 @@ import {
 import { launchChrome } from './audit.ts';
 import { playwrightVersion, startLinuxBrowsers, stopOnExit, type LinuxBrowsers, type Runtime } from './linux.ts';
 import { openSite, type OpenSite, type SiteOptions } from './site.ts';
-import { matchesPage, pageKey, pageUrl, sitePath } from './visit.ts';
+import { ImageCache, matchesPage, pageKey, pageUrl, sitePath } from './visit.ts';
 import { worktreeBaseline, type Baseline } from './baseline.ts';
 
 /** Host browsers, and the same engines in the pinned Playwright Linux image (`linux-*`, via a container runtime). */
@@ -110,6 +118,8 @@ export interface Comparison {
   pixels: number;
   examples: NodeDiff[];
   diffImage?: string;
+  /** The rows of the page the diff image keeps, in image pixels (unchanged rows are cut). */
+  diffRows?: [start: number, end: number][];
   /**
    * The page as it loaded against a fresh paint of itself (the fresh paint is what is compared):
    * pixels an earlier paint left behind when a font file arrived after the page had drawn, and the
@@ -292,6 +302,7 @@ async function context(
   hits: Set<string>,
   local: Set<string>,
   snapshots: Snapshots,
+  images: ImageCache,
 ): Promise<BrowserContext> {
   const before = mode === 'before';
   const ctx = await browser.newContext({
@@ -325,7 +336,9 @@ async function context(
   );
   // Adobe's font server counts page views (§6.6).
   await ctx.route(/^https?:\/\/p\.typekit\.net\//, (r) => r.abort());
-  await ctx.route(/.*/, async (route) => {
+  // A page can close while its requests are still in this handler (a comparison is done with it):
+  // whatever fails then must not end the run.
+  const handle = async (route: Route) => {
     const req = route.request();
     let url: URL;
     try {
@@ -348,6 +361,9 @@ async function context(
       });
     }
     const type = req.resourceType();
+    // Images from other sites: fetched once per run and served to every load, before and after
+    // alike (each load is a fresh context with an empty cache; see ImageCache in visit.ts).
+    if (type === 'image' && !local.has(url.origin) && (await images.serve(route).catch(() => false))) return;
     const thirdParty = !local.has(url.origin) && (type === 'font' || type === 'stylesheet');
     if (type !== 'document' && type !== 'stylesheet' && !thirdParty) return route.continue();
     let snap: { status: number; headers: Record<string, string>; body: Buffer } | undefined;
@@ -401,7 +417,8 @@ async function context(
     delete headers['content-length'];
     delete headers['content-encoding'];
     return route.fulfill({ status: snap ? snap.status : resp!.status(), headers, body: out ?? body });
-  });
+  };
+  await ctx.route(/.*/, (route) => handle(route).catch(() => route.continue().catch(() => {})));
   return ctx;
 }
 
@@ -778,6 +795,7 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
 
     const local = new Set([new URL(site.base).origin, ...(baseline ? [new URL(baseline.site.base).origin] : [])]);
     const snapshots: Snapshots = new Map();
+    const images = new ImageCache();
     type Task = { page: string; viewport: number; dpr: number; engine: Engine; browser: Browser };
     const tasks: Task[] = [];
     for (const b of browsers)
@@ -816,8 +834,9 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
           hitsB,
           local,
           snapshots,
+          images,
         ),
-        context(t.browser, { ...t, mask: o.mask }, overlay, 'plain', root, hitsA, local, snapshots),
+        context(t.browser, { ...t, mask: o.mask }, overlay, 'plain', root, hitsA, local, snapshots, images),
       ]);
       try {
         const [b, a] = await Promise.all([
@@ -848,8 +867,9 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
                   new Set(),
                   local,
                   snapshots,
+                  images,
                 ),
-                context(br, { ...t, mask: o.mask }, overlay, 'plain', root, new Set(), local, snapshots),
+                context(br, { ...t, mask: o.mask }, overlay, 'plain', root, new Set(), local, snapshots, images),
               ]);
               try {
                 const [b2, a2] = await Promise.all([
@@ -1119,6 +1139,44 @@ function only({ before, after }: Shots, pixels: Uint32Array): PNG {
   return out;
 }
 
+/**
+ * The diff image cut down to the rows within `pad` of a differing pixel (pixelmatch's red): a
+ * full-page PNG of a long article at 1920 px is 1920×32,064 pixels, 2 to 3 MB, when a few lines
+ * changed (one run kept 358 of them, 849 MB). Where unchanged rows were cut, a 2-pixel blue line
+ * marks the seam. `bands` are the kept rows of the page, in image pixels; undefined when nothing is
+ * cut.
+ */
+export function cutToDiff(png: PNG, pad: number): { png: PNG; bands?: [start: number, end: number][] } {
+  const { width: w, height: h, data } = png;
+  const bands: [number, number][] = [];
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const k = (y * w + x) * 4;
+      if (data[k] === 255 && data[k + 1] === 0 && data[k + 2] === 0) {
+        const start = Math.max(0, y - pad),
+          end = Math.min(h, y + pad + 1);
+        const last = bands.at(-1);
+        if (last && start <= last[1] + SEAM) last[1] = Math.max(last[1], end);
+        else bands.push([start, end]);
+        break;
+      }
+    }
+  const rows = bands.reduce((n, [a, z]) => n + z - a, 0) + (bands.length - 1) * SEAM;
+  if (!bands.length || rows >= h) return { png };
+  const out = new PNG({ width: w, height: rows });
+  let at = 0;
+  bands.forEach(([a, z], i) => {
+    if (i) {
+      for (let k = at * w * 4; k < (at + SEAM) * w * 4; k += 4) out.data.set([60, 120, 230, 255], k);
+      at += SEAM;
+    }
+    data.copy(out.data, at * w * 4, a * w * 4, z * w * 4);
+    at += z - a;
+  });
+  return { png: out, bands };
+}
+const SEAM = 2;
+
 async function compare(
   t: { page: string; viewport: number; dpr: number; engine: Engine },
   base: Comparison,
@@ -1296,7 +1354,9 @@ async function compare(
         : 'regression';
   mkdirSync(outDir, { recursive: true });
   const name = `${slug(t.page)}@${t.viewport}x${t.dpr}.${t.engine}.png`;
-  writeFileSync(join(outDir, name), PNG.sync.write(diff));
+  const cut = cutToDiff(diff, 48 * t.dpr);
+  writeFileSync(join(outDir, name), PNG.sync.write(cut.png));
   r.diffImage = join(outDir, name);
+  if (cut.bands) r.diffRows = cut.bands;
   return r;
 }
