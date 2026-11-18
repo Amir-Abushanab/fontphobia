@@ -66,7 +66,7 @@ function lines(r: VerifyResult, root: string, md: boolean): string[] {
     );
     const count = (k: string) => b.comparisons.filter((c) => c.class === k).length;
     item(
-      `${b.browsers.map((x) => `${x.engine} ${x.version}`).join(', ')} · ${b.pages.length} page(s)${b.skipped ? ` (set cover; ${b.skipped} more not visited)` : ''} · ${b.comparisons.length} comparison(s): ${count('identical')} identical, ${count('sub-pixel rounding')} sub-pixel rounding, ${count('regression')} regression(s)${count('unrelated') ? `, ${count('unrelated')} with pixel noise in text fontphobia didn't touch` : ''}${count('flaky') ? `, ${count('flaky')} flaky (a pixel difference that didn't reproduce)` : ''}${count('content changed') ? `, ${count('content changed')} content changed (left out)` : ''}${count('failed') ? `, ${count('failed')} failed to load` : ''}`,
+      `${b.browsers.map((x) => `${x.engine} ${x.version}`).join(', ')} · ${b.pages.length} page(s)${b.skipped ? ` (a sample per section and every face's files and character classes; ${b.skipped} more not compared, --all-pages compares them)` : ''} · ${b.comparisons.length} comparison(s): ${count('identical')} identical, ${count('sub-pixel rounding')} sub-pixel rounding, ${count('regression')} regression(s)${count('unrelated') ? `, ${count('unrelated')} with pixel noise in text fontphobia didn't touch` : ''}${count('flaky') ? `, ${count('flaky')} flaky (a pixel difference that didn't reproduce)` : ''}${count('content changed') ? `, ${count('content changed')} content changed (left out)` : ''}${count('failed') ? `, ${count('failed')} failed to load` : ''}`,
     );
     for (const c of b.comparisons.filter((x) => x.class === 'regression' || x.class === 'failed')) {
       item(

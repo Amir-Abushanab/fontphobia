@@ -68,15 +68,17 @@ export class ImageCache {
       return false;
     let p = this.entries.get(url.href);
     if (!p) {
-      p = route.fetch().then(
-        async (r) => {
+      // A visit can close its page before an image below the fold has arrived: the fetch then
+      // fails and isn't kept.
+      p = route
+        .fetch()
+        .then(async (r) => {
           const headers = { ...r.headers() };
           delete headers['content-length'];
           delete headers['content-encoding'];
           return { status: r.status(), headers, body: await r.body() };
-        },
-        () => undefined,
-      );
+        })
+        .catch(() => undefined);
       this.entries.set(url.href, p);
       void p.then((x) => {
         if (!x) this.entries.delete(url.href);
@@ -211,9 +213,47 @@ async function run(
   await page.route(/^https?:\/\/p\.typekit\.net\//, (r) => r.abort());
   const images = o.images;
   if (images)
-    await page.route(/.*/, async (r) => ((await images.serve(r).catch(() => false)) ? undefined : r.fallback()));
+    await page.route(/.*/, async (r) => {
+      if (!(await images.serve(r).catch(() => false))) await r.fallback().catch(() => {});
+    });
 
-  const resp = await page.goto(url, { waitUntil: 'load', timeout });
+  // The load event waits for every image, other sites' too: seconds each the first time one is
+  // fetched. Text and styles don't depend on them, so the visit goes on once nothing but
+  // cross-origin images below the fold is still loading (or at the load event, whichever is first).
+  const loaded = page.waitForEvent('load', { timeout }).then(
+    () => true,
+    () => false,
+  );
+  const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout });
+  if (resp && resp.status() < 400) {
+    const here = new URL(page.url()).origin;
+    const waiting = () =>
+      [...reqs.values()].some(
+        (r) => !r.done && !(r.type === 'Image' && URL.canParse(r.url) && new URL(r.url).origin !== here),
+      );
+    const deadline = Date.now() + timeout;
+    const fired = { load: false };
+    void loaded.then(() => (fired.load = true));
+    while (!fired.load && Date.now() < deadline) {
+      if (
+        !waiting() &&
+        (await page
+          .evaluate(
+            // An image on screen still loading could be the largest contentful paint: wait for it.
+            () =>
+              document.readyState !== 'loading' &&
+              ![...document.images].some((i) => {
+                if (i.complete) return false;
+                const r = i.getBoundingClientRect();
+                return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+              }),
+          )
+          .catch(() => true))
+      )
+        break;
+      await new Promise((r) => setTimeout(r, 25));
+    }
+  }
   const status = resp?.status() ?? 0;
   const finalUrl = page.url();
   if (status >= 400 || !resp) return { status, finalUrl, links: [], bodies };
@@ -673,51 +713,58 @@ async function settle(page: Page, inflight: () => number, scroll: boolean): Prom
   // The largest contentful paint: text, or an image (an <img>, a video poster, a CSS background).
   // `auto --allow inline-core` reads it: a stylesheet full of fonts delays an image that would
   // otherwise paint before it arrives (spike 13). Buffered entries arrive in a task of their own.
-  const lcp = await page
-    .evaluate(
-      () =>
-        new Promise<'text' | 'image' | undefined>((resolve) => {
-          // When Chrome reports no entry (seen on macOS CI runners), the largest visible element by
-          // layout: an image, a video or a CSS background image, against a block of text.
-          const largestByLayout = (): 'text' | 'image' | undefined => {
-            const vw = innerWidth;
-            const vh = innerHeight;
-            const area = (r: DOMRect) =>
-              Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0)) *
-              Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
-            let image = 0;
-            let text = 0;
-            for (const el of document.body?.querySelectorAll('*') ?? []) {
-              const st = getComputedStyle(el);
-              if (st.visibility === 'hidden' || st.display === 'none') continue;
-              if (el instanceof HTMLImageElement || el instanceof HTMLVideoElement || /url\(/.test(st.backgroundImage))
-                image = Math.max(image, area(el.getBoundingClientRect()));
-              else if ([...el.childNodes].some((n) => n.nodeType === 3 && n.textContent?.trim())) {
-                const r = document.createRange();
-                r.selectNodeContents(el);
-                text = Math.max(text, area(r.getBoundingClientRect()));
+  // Read only for default-size loads: usage keeps no other (build.ts), and the check waits 100 ms.
+  const lcp = !scroll
+    ? undefined
+    : await page
+        .evaluate(
+          () =>
+            new Promise<'text' | 'image' | undefined>((resolve) => {
+              // When Chrome reports no entry (seen on macOS CI runners), the largest visible element by
+              // layout: an image, a video or a CSS background image, against a block of text.
+              const largestByLayout = (): 'text' | 'image' | undefined => {
+                const vw = innerWidth;
+                const vh = innerHeight;
+                const area = (r: DOMRect) =>
+                  Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0)) *
+                  Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
+                let image = 0;
+                let text = 0;
+                for (const el of document.body?.querySelectorAll('*') ?? []) {
+                  const st = getComputedStyle(el);
+                  if (st.visibility === 'hidden' || st.display === 'none') continue;
+                  if (
+                    el instanceof HTMLImageElement ||
+                    el instanceof HTMLVideoElement ||
+                    /url\(/.test(st.backgroundImage)
+                  )
+                    image = Math.max(image, area(el.getBoundingClientRect()));
+                  else if ([...el.childNodes].some((n) => n.nodeType === 3 && n.textContent?.trim())) {
+                    const r = document.createRange();
+                    r.selectNodeContents(el);
+                    text = Math.max(text, area(r.getBoundingClientRect()));
+                  }
+                }
+                return image || text ? (image > text ? 'image' : 'text') : undefined;
+              };
+              let last: 'text' | 'image' | undefined;
+              const take = (es: PerformanceEntryList) => {
+                for (const e of es as (PerformanceEntry & { url: string })[]) last = e.url ? 'image' : 'text';
+              };
+              try {
+                const o = new PerformanceObserver((l) => take(l.getEntries()));
+                o.observe({ type: 'largest-contentful-paint', buffered: true });
+                setTimeout(() => {
+                  take(o.takeRecords());
+                  o.disconnect();
+                  resolve(last ?? largestByLayout());
+                }, 100);
+              } catch {
+                resolve(largestByLayout());
               }
-            }
-            return image || text ? (image > text ? 'image' : 'text') : undefined;
-          };
-          let last: 'text' | 'image' | undefined;
-          const take = (es: PerformanceEntryList) => {
-            for (const e of es as (PerformanceEntry & { url: string })[]) last = e.url ? 'image' : 'text';
-          };
-          try {
-            const o = new PerformanceObserver((l) => take(l.getEntries()));
-            o.observe({ type: 'largest-contentful-paint', buffered: true });
-            setTimeout(() => {
-              take(o.takeRecords());
-              o.disconnect();
-              resolve(last ?? largestByLayout());
-            }, 100);
-          } catch {
-            resolve(largestByLayout());
-          }
-        }),
-    )
-    .catch(() => undefined);
+            }),
+        )
+        .catch(() => undefined);
   if (scroll)
     await page
       .evaluate(async () => {

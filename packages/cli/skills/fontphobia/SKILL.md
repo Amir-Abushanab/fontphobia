@@ -43,8 +43,8 @@ files with `unicode-range`: **core** (printable ASCII, common punctuation and th
 pages use), **extended** (the Latin and locale characters no page uses yet) and **rest** (everything
 else in the original, loaded only if a page needs it). A used character goes in core or extended
 by measurement: whichever makes the face's pages download less in total. Glyph names, hinting,
-kerning, features and full variable axes are kept, and `verify` compares every page before and
-after, pixel for pixel.
+kerning, features and full variable axes are kept, and `verify` compares pages before and after,
+pixel for pixel.
 
 ## When to use
 
@@ -126,7 +126,7 @@ The same steps, one at a time:
 pnpm dlx fontphobia@latest audit           # crawl; writes .fontphobia/usage.json and report.md
 pnpm dlx fontphobia@latest build           # plan from usage.json, no browser; shows plan and diff only
 pnpm dlx fontphobia@latest build --write   # apply
-pnpm dlx fontphobia@latest verify          # rebuild and compare every page before and after
+pnpm dlx fontphobia@latest verify          # rebuild and compare pages before and after
 ```
 
 `build` and `verify` fail with "run `fontphobia audit` first" when `usage.json` is missing.
@@ -427,10 +427,9 @@ A pixel difference at unchanged layout is loaded again, each time in a new brows
 regression when the same pixels differ every time. Chrome rasterizes on the CPU during `verify`:
 its GPU rasterizer does not draw large text the same way on every load.
 
-`verify` compares each page after painting all of it again. A line starting `note: in N
-comparison(s) the page as it loaded was not what a fresh paint of it gives` lists edge pixels Chrome
-kept from an earlier paint when a font file arrived late, with their count and size. It is not a
-difference between the two sides and does not fail the run; tell the user when the numbers are large.
+`verify` compares each page after painting all of it again. With `--as-loaded`, a line starting
+`note: in N comparison(s) the page as it loaded was not what a fresh paint of it gives` lists edge
+pixels Chrome kept from an earlier paint when a font file arrived late. It does not fail the run.
 
 `verify` exits 1 on a regression or a failed page. Diff images go to `.fontphobia/verify/` and the
 summary to `.fontphobia/report.md`. For content that changes between loads (script-driven
@@ -438,7 +437,8 @@ animations, canvases, embeds), hide it with `--mask <selector>` or skip the page
 `--ignore <glob>`; raise `--timeout` (seconds, default 30) for slow pages. `--browsers` adds
 `firefox`, `webkit` (Playwright builds on the host; when one is not installed, fontphobia prints
 the install command with the matching Playwright version) and `linux-chromium`, `linux-firefox`,
-`linux-webkit` (the pinned Playwright Linux image in a container). Above `--max-pages` (default 200) a set cover picks representative pages.
+`linux-webkit` (the pinned Playwright Linux image in a container). It compares 2 pages per section plus the pages each face's files and character classes need;
+`--all-pages` compares all (up to `--max-pages`, default 200).
 
 ## Licenses
 

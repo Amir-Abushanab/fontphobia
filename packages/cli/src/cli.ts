@@ -600,6 +600,8 @@ interface VerifyFlags {
   rebuild?: boolean;
   pages?: string | string[];
   maxPages?: number;
+  allPages?: boolean;
+  asLoaded?: boolean;
   viewports?: string;
   dpr?: string;
   browsers?: string;
@@ -671,6 +673,8 @@ async function runVerify(o: VerifyFlags, how: { ui?: Ui; step?: [number, number]
     rebuild: o.rebuild,
     pages: [...(config.pages ?? []), ...(list(o.pages) ?? [])],
     maxPages: o.maxPages ?? config.verify?.maxPages,
+    allPages: o.allPages,
+    asLoaded: o.asLoaded,
     ignore: [...(config.ignore ?? []), ...(list(o.ignore) ?? [])],
     mask: [...(config.verify?.mask ?? []), ...[o.mask].flat().filter((x): x is string => typeof x === 'string')],
     timeout: o.timeout !== undefined ? Number(o.timeout) : config.verify?.timeout,
@@ -703,7 +707,15 @@ async function runVerify(o: VerifyFlags, how: { ui?: Ui; step?: [number, number]
 
 const verifyOptions = (c: ReturnType<typeof cli.command>) =>
   c
-    .option('--max-pages <n>', 'Pages to compare before a set cover picks a representative subset (default 200)')
+    .option('--max-pages <n>', 'Most pages to compare (default 200)')
+    .option(
+      '--as-loaded',
+      'Also screenshot each page as it loaded, before a fresh paint, and report what the repaint changed (one more full-page screenshot per load)',
+    )
+    .option(
+      '--all-pages',
+      'Compare every page (default: 2 per section, plus pages so every face is compared with each of its files and character classes)',
+    )
     .option('--dpr <list>', 'Device pixel ratios (default 1,2)')
     .option(
       '--browsers <list>',

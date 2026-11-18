@@ -32,6 +32,7 @@ import {
 import { launchChrome } from './audit.ts';
 import { playwrightVersion, startLinuxBrowsers, stopOnExit, type LinuxBrowsers, type Runtime } from './linux.ts';
 import { openSite, type OpenSite, type SiteOptions } from './site.ts';
+import { sectionOf, SWEEP_SAMPLE } from './sweep.ts';
 import { ImageCache, matchesPage, pageKey, pageUrl, sitePath } from './visit.ts';
 import { worktreeBaseline, type Baseline } from './baseline.ts';
 
@@ -73,8 +74,10 @@ export interface VerifyOptions extends SiteOptions {
    * still download one (`originals`): a preload or a script asked for it.
    */
   sourcesInOutput?: boolean;
-  /** Cap before the set cover kicks in (default 200). */
+  /** Most pages compared (default 200). */
   maxPages?: number;
+  /** Every page up to maxPages, instead of a sample per section and a cover (selectPages). */
+  allPages?: boolean;
   viewports?: number[];
   dprs?: number[];
   browsers?: Engine[];
@@ -91,6 +94,11 @@ export interface VerifyOptions extends SiteOptions {
   /** Container runtime for `linux-*` engines (default: the first that answers: Apple container, Docker, Podman). */
   runtime?: Runtime;
   concurrency?: number;
+  /**
+   * Also screenshot each page as it loaded, before painting it again, and report the pixels the fresh
+   * paint changed (`leftover`). One more full-page screenshot per load.
+   */
+  asLoaded?: boolean;
   /** Where diff images go (default <root>/.fontphobia/verify). */
   outDir?: string;
   log?: (m: string) => void;
@@ -141,7 +149,7 @@ export interface BrowserVerify {
   baseline: 'overlay' | 'worktree';
   browsers: { engine: Engine; version: string }[];
   pages: string[];
-  /** Pages left out by the set cover (above maxPages). */
+  /** Pages not compared (the sample and cover of selectPages, or above maxPages). */
   skipped: number;
   comparisons: Comparison[];
   bytes: PageFonts[];
@@ -171,19 +179,26 @@ async function pool<T>(items: T[], n: number, fn: (x: T) => Promise<void>) {
   );
 }
 
-/** §10.3 page selection: everything up to the cap, else a greedy set cover of face × character class, plus config pages. */
+/**
+ * §10.3 page selection. With `all`, every page up to `max`; above it, or by default, a sample: up to
+ * SWEEP_SAMPLE pages of each section (pages under one parent path share their templates, as in the
+ * audit's sweep), then a greedy cover so that every face is compared drawing each class of
+ * character (ASCII, accented Latin, CJK, other) and each of its files (core, extended, rest), plus
+ * config pages.
+ */
 export function selectPages(
   usage: UsageFileJson,
   entries: Set<string>,
   max: number,
   always: string[] = [],
+  o: { all?: boolean; manifest?: Manifest } = {},
 ): { pages: string[]; skipped: number } {
   const all = Object.entries(usage.pages)
     .filter(([, p]) => !p.private && Object.keys(p.faces).some((id) => entries.has(id)))
     .map(([k]) => k)
     .toSorted();
   const forced = always.filter((p) => usage.pages[p]);
-  if (all.length <= max) return { pages: [...new Set([...all, ...forced])].toSorted(), skipped: 0 };
+  if (o.all && all.length <= max) return { pages: [...new Set([...all, ...forced])].toSorted(), skipped: 0 };
   const cls = (cp: number) => {
     const ch = String.fromCodePoint(cp);
     if (cp < 0x80) return 'ascii';
@@ -191,14 +206,33 @@ export function selectPages(
     if (/\p{Script=Latin}|\p{M}/u.test(ch)) return 'accented';
     return 'other';
   };
+  const files = new Map<string, { role: string; set: Set<number> }[]>();
+  for (const [id, e] of Object.entries(o.manifest?.entries ?? {}))
+    files.set(
+      id,
+      e.outputs.map((x) => ({ role: x.role, set: new Set(codePointsOf(parseUnicodeRange(x.unicodeRange))) })),
+    );
   const items = new Map<string, Set<string>>();
   for (const p of all) {
     const s = new Set<string>();
-    for (const [id, r] of Object.entries(usage.pages[p]!.faces))
-      if (entries.has(id)) for (const c of codePointsOf(parseUnicodeRange(r))) s.add(`${id}|${cls(c)}`);
+    for (const [id, r] of Object.entries(usage.pages[p]!.faces)) {
+      if (!entries.has(id)) continue;
+      for (const c of codePointsOf(parseUnicodeRange(r))) {
+        s.add(`${id}|${cls(c)}`);
+        for (const f of files.get(id) ?? []) if (f.set.has(c)) s.add(`${id}|file ${f.role}`);
+      }
+    }
     items.set(p, s);
   }
   const chosen = new Set(forced);
+  if (!o.all) {
+    const sections = new Map<string, string[]>();
+    for (const p of all) {
+      const k = sectionOf(p, { emMq: false, textScale: false, private: false });
+      sections.set(k, [...(sections.get(k) ?? []), p]);
+    }
+    for (const ps of sections.values()) for (const p of ps.slice(0, SWEEP_SAMPLE)) chosen.add(p);
+  }
   const covered = new Set<string>();
   for (const p of chosen) for (const x of items.get(p) ?? []) covered.add(x);
   for (;;) {
@@ -216,7 +250,10 @@ export function selectPages(
     chosen.add(best);
     for (const x of items.get(best)!) covered.add(x);
   }
-  return { pages: [...chosen].toSorted(), skipped: all.length - [...chosen].filter((p) => all.includes(p)).length };
+  // Config pages always; the cap trims the rest.
+  const rest = [...chosen].filter((p) => !forced.includes(p));
+  const pages = [...forced, ...rest.slice(0, Math.max(0, max - forced.length))].toSorted();
+  return { pages, skipped: all.length - pages.filter((p) => all.includes(p)).length };
 }
 
 interface Box {
@@ -428,6 +465,7 @@ async function capture(
   url: string,
   engine: Engine,
   timeout = 30,
+  asLoaded = false,
 ): Promise<{ page: Page; cdp?: CDPSession; snap: Snapshot }> {
   const page = await ctx.newPage();
   const fonts: Snapshot['fonts'] = [];
@@ -470,7 +508,6 @@ async function capture(
   for (let i = 0; i < 5 && (await fontsSettled()); i++);
   await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {});
   await Promise.all(pending);
-
   let nodes: Snapshot['nodes'];
   let cdp: CDPSession | undefined;
   if (engine.endsWith('chromium')) {
@@ -554,7 +591,8 @@ async function capture(
   // Changing the root's background invalidates the whole page without touching layout, focus or
   // scroll; a change that repaints the text alone did not help. Content in a layer of its own (a
   // scroller, `will-change`) is not repainted by it.
-  const asLoaded = await take();
+  // A full-page screenshot of a long page at 2x is seconds of rasterizing: only on request.
+  const loadedShot = asLoaded ? await take() : undefined;
   await page
     .evaluate(async () => {
       const root = document.documentElement;
@@ -571,8 +609,8 @@ async function capture(
   const shot = await take();
   const png = PNG.sync.read(shot);
   let leftover: Snapshot['leftover'];
-  if (!asLoaded.equals(shot)) {
-    const was = PNG.sync.read(asLoaded);
+  if (loadedShot && !loadedShot.equals(shot)) {
+    const was = PNG.sync.read(loadedShot);
     if (was.width === png.width && was.height === png.height) {
       let pixels = 0;
       let levels = 0;
@@ -724,7 +762,10 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
     : o.usage;
   const listed = new Set((o.pages ?? []).map((p) => sitePath(pageKey(pageUrl(p, site.base)), site.base)));
   const always = Object.keys(usable.pages).filter((k) => listed.has(sitePath(k, site.base)));
-  const { pages, skipped } = selectPages(usable, entryIds, o.maxPages ?? 200, always);
+  const { pages, skipped } = selectPages(usable, entryIds, o.maxPages ?? 200, always, {
+    all: o.allPages,
+    manifest: o.manifest,
+  });
   if (skipped)
     log(
       `verifying ${pages.length} pages chosen to cover every face × character class (${skipped} more not visited; raise --max-pages to include them)`,
@@ -840,8 +881,8 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
       ]);
       try {
         const [b, a] = await Promise.all([
-          capture(cb, beforeUrl, t.engine, o.timeout),
-          capture(ca, url, t.engine, o.timeout),
+          capture(cb, beforeUrl, t.engine, o.timeout, o.asLoaded),
+          capture(ca, url, t.engine, o.timeout, o.asLoaded),
         ]);
         for (const id of hitsA) usedInAfter.add(id);
         const drawn = Object.keys(o.usage.pages[t.page]?.faces ?? {}).filter((id) => entryIds.has(id));
@@ -873,8 +914,8 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
               ]);
               try {
                 const [b2, a2] = await Promise.all([
-                  capture(cb2, beforeUrl, t.engine, o.timeout),
-                  capture(ca2, url, t.engine, o.timeout),
+                  capture(cb2, beforeUrl, t.engine, o.timeout, o.asLoaded),
+                  capture(ca2, url, t.engine, o.timeout, o.asLoaded),
                 ]);
                 return { before: b2.snap.png, after: a2.snap.png };
               } finally {

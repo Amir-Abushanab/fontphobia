@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
 import { afterAll, describe, expect, it } from 'vitest';
 import { codePointsOf, parseUnicodeRange } from '@fontphobia/core';
-import { audit, cutToDiff, ImageCache, launchChrome, sectionOf, VisitCache } from '../src/index.ts';
+import { audit, cutToDiff, ImageCache, launchChrome, sectionOf, selectPages, VisitCache } from '../src/index.ts';
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const tmp = mkdtempSync(join(tmpdir(), 'fontphobia-efficiency-'));
@@ -22,7 +22,7 @@ try {
 }
 
 /** A stand-in for Playwright's Route: records fetches and fulfilments. */
-function route(url: string, o: { type?: string; method?: string; fail?: boolean } = {}) {
+function route(url: string, o: { type?: string; method?: string; fail?: boolean; disposed?: boolean } = {}) {
   const r = {
     fetched: 0,
     fulfilled: undefined as undefined | { status: number; body: Buffer },
@@ -33,7 +33,10 @@ function route(url: string, o: { type?: string; method?: string; fail?: boolean 
       return {
         status: () => 200,
         headers: () => ({ 'content-type': 'image/png', 'content-length': '3' }),
-        body: async () => Buffer.from('png'),
+        body: async () => {
+          if (o.disposed) throw new Error('apiResponse.body: Response has been disposed');
+          return Buffer.from('png');
+        },
       };
     },
     fulfill: async (x: { status: number; body: Buffer }) => {
@@ -75,6 +78,23 @@ describe('ImageCache', () => {
     const again = route('https://example.com/x.png');
     expect(await cache.serve(again as never)).toBe(true);
     expect(again.fetched).toBe(1);
+  });
+
+  it('drops an image whose page closed before its body arrived, without an unhandled rejection', async () => {
+    const cache = new ImageCache();
+    const unhandled: unknown[] = [];
+    const on = (e: unknown) => unhandled.push(e);
+    process.on('unhandledRejection', on);
+    try {
+      expect(await cache.serve(route('https://example.com/late.png', { disposed: true }) as never)).toBe(false);
+      await new Promise((r) => setTimeout(r, 10));
+      expect(unhandled).toEqual([]);
+      const again = route('https://example.com/late.png');
+      expect(await cache.serve(again as never)).toBe(true);
+      expect(again.fetched).toBe(1);
+    } finally {
+      process.off('unhandledRejection', on);
+    }
   });
 
   it('stops keeping responses past its byte limit', async () => {
@@ -140,6 +160,33 @@ describe('cutToDiff', () => {
   it('leaves an image whole when nothing differs, or keeping the rows saves nothing', () => {
     expect(cutToDiff(png(100, []), 10).bands).toBeUndefined();
     expect(cutToDiff(png(100, [10, 30, 50, 70, 90]), 10).bands).toBeUndefined();
+  });
+});
+
+describe('selectPages', () => {
+  // Ten posts in ASCII; one of them also uses é, which only the extended file has.
+  const pages: Record<string, { faces: Record<string, string> }> = { '/': { faces: { f: 'U+41' } } };
+  for (let i = 0; i < 10; i++) pages[`/posts/${i}/`] = { faces: { f: i === 7 ? 'U+41, U+E9' : 'U+41' } };
+  const usage = { pages } as never;
+  const manifest = {
+    entries: {
+      f: {
+        outputs: [
+          { role: 'core', unicodeRange: 'U+20-7E' },
+          { role: 'ext', unicodeRange: 'U+A0-FF' },
+        ],
+      },
+    },
+  } as never;
+  const ids = new Set(['f']);
+  it('compares 2 pages per section, and the pages that exercise each file of each face', () => {
+    const r = selectPages(usage, ids, 200, [], { manifest });
+    expect(r.pages).toEqual(['/', '/posts/0/', '/posts/1/', '/posts/7/']);
+    expect(r.skipped).toBe(7);
+  });
+  it('compares every page with all, and always the config pages', () => {
+    expect(selectPages(usage, ids, 200, [], { all: true, manifest }).pages).toHaveLength(11);
+    expect(selectPages(usage, ids, 2, ['/posts/9/'], { manifest }).pages).toContain('/posts/9/');
   });
 });
 
