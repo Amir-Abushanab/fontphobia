@@ -4,6 +4,7 @@
 
 The CLI shows its progress and explains each step.
 
+- The default command starts with the fontphobia wordmark and the version in a terminal (the version line alone in CI logs and pipes), so a run of an old version is easy to spot.
 - The default command runs in three headed steps (Audit, Plan, Verify), each with a line on what it does. In a terminal a status line shows a spinner while the site builds and a progress bar while pages are found, loaded and compared.
 - After the audit it says what the page loads were: for example `36 page loads (9 per page): 4 viewport widths (360, 768, 1280, 1920 px), then the browser's default font size set to 9 and 72 px`, and how many came from the cache. The report says "page loads" where it said "visits".
 - The plan table has a `Saved` column with each face's percentage. The final line gives the median font bytes per page before and after.

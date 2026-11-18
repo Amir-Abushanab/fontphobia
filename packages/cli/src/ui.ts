@@ -93,6 +93,15 @@ const showCursor = () => {
 
 const SPIN = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
+/** The wordmark: heavy "font" thinning to "bia", an eye in each o. 63 columns. */
+const LOGO = [
+  ' ▄█▀▀▀                  ▄▄          ██            █     ▀',
+  '▀██▀▀▀ ▄█▀▀▀█▄ ██▄▀▀█▄ ▀██▀▀ ██▄▀▀▄ ██▄▀▀▄ ▄▀▀▀▀▄ █▄▀▀▄ █  ▀▀▀▄',
+  ' ██    ██ █ ██ ██   ██  ██   ██   █ ██   █ █  █ █ █   █ █ ▄▀▀▀█',
+  ' ██    ▀█▄▄▄█▀ ██   ██  ▀█▄▄ ██▀▄▄▀ ██   █ ▀▄▄▄▄▀ █▀▄▄▀ █ ▀▄▄▄█',
+  '                             ██',
+];
+
 export interface UiOptions {
   /** --json: nothing on stderr but errors. */
   quiet?: boolean;
@@ -127,6 +136,18 @@ export class Ui {
     this.err = ansiStyle(colorEnabled(process.stderr, o.color));
     this.live = !this.quiet && !!process.stderr.isTTY && !env.CI && env.TERM !== 'dumb';
     this.interactive = !this.quiet && canPrompt(o.ci);
+  }
+
+  /**
+   * The wordmark and version at the start of a run in a terminal; elsewhere (CI logs, pipes, a
+   * narrow terminal) the version line alone.
+   */
+  banner(version: string, detail: string) {
+    if (this.quiet) return;
+    const s = this.err;
+    const line = `${s.bold('fontphobia')} ${s.cyan(version)} ${s.dim(`· ${detail}`)}`;
+    const wide = (process.stderr.columns || 80) > Math.max(...LOGO.map((l) => l.length)) + 2;
+    this.write(this.live && wide ? `\n${LOGO.map((l) => `  ${l}`).join('\n')}\n  ${line}\n` : `${line}\n`);
   }
 
   /** A heading: `[1/4] Audit`, then what the step does, dimmed. */

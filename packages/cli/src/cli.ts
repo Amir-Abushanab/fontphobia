@@ -974,7 +974,7 @@ verifyOptions(
 ).action(async (o: AuditFlags & BuildFlags & VerifyFlags) => {
   const t0 = Date.now();
   const ui = new Ui({ color: o.color, ci: o.ci });
-  ui.note(`${ui.err.bold('fontphobia')} ${pkg.version} ${ui.err.dim(`· HarfBuzz ${harfbuzzVersion()}`)}`, '');
+  ui.banner(pkg.version, `HarfBuzz ${harfbuzzVersion()}`);
   await runAudit({ ...o, json: false }, { summary: false, ui, step: [1, 3] });
   const b = await runBuild(
     {
