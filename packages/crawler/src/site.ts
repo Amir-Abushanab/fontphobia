@@ -28,6 +28,21 @@ export interface SiteOptions {
   inPlace?: boolean;
   /** Called when source files changed after the existing build. Resolve true to rebuild first. */
   onStale?: (age: BuildAge) => boolean | Promise<boolean>;
+  /** Progress of the long stages, for a progress bar. */
+  progress?: (p: Progress) => void;
+}
+
+/**
+ * Progress of a long stage. `build`: the build command (`item`) started (done 0) or ended (done 1).
+ * `discover`: pages are loaded at one width to find links (`total` grows as links are found).
+ * `load`: each page is loaded again at the other widths and default font sizes. `compare`: verify's
+ * before/after screenshots.
+ */
+export interface Progress {
+  stage: 'build' | 'discover' | 'load' | 'compare';
+  done: number;
+  total: number;
+  item?: string;
 }
 
 export interface OpenSite {
@@ -132,7 +147,9 @@ export async function openSite(o: SiteOptions, project: Project, log: (m: string
       copy = o.inPlace ? undefined : await isolatedCopy(root, log);
       const where = copy ? detectProject(copy.root) : project;
       log(`building: ${cmd}`);
+      o.progress?.({ stage: 'build', done: 0, total: 0, item: cmd });
       const r = await runCommand(cmd, where.root);
+      o.progress?.({ stage: 'build', done: 1, total: 1, item: cmd });
       if (r.code !== 0) {
         await copy?.remove();
         throw new Error(`\`${cmd}\` failed (exit ${r.code}):\n${r.output.trim().slice(-3000)}`);
@@ -153,7 +170,10 @@ export async function openSite(o: SiteOptions, project: Project, log: (m: string
   const outputs = dist !== undefined ? [dist] : project.profile.output;
   if (site.mode === 'static') {
     const s = await serveStatic(site.dir!, { spaFallback: site.spaFallback });
-    log(`serving ${site.dir} (${site.reason})`);
+    const shown = relative(root, site.dir!);
+    log(
+      `serving ${!shown ? '.' : /^\.\.(\/|\\|$)/.test(shown) || isAbsolute(shown) ? site.dir : shown} (${site.reason})`,
+    );
     return {
       mode: 'static',
       base: s.url,

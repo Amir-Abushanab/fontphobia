@@ -3,6 +3,7 @@
 import { codePointsOf, parseUnicodeRange } from '../css/unicode-range.ts';
 import type { FacePlan, Plan, UsageFileJson } from '../plan/planner.ts';
 import { kb } from './audit.ts';
+import { plainStyle, savedPct, type Style } from './style.ts';
 
 const label = (f: FacePlan, u: UsageFileJson) => {
   const d = u.faces[f.id]?.descriptors ?? {};
@@ -82,19 +83,51 @@ const median = (xs: number[]) => {
   const s = [...xs].toSorted((a, b) => a - b);
   return s.length ? s[Math.floor((s.length - 1) / 2)]! : 0;
 };
-const pct = (a: number, b: number) => (a ? `${Math.round((1 - b / a) * 100)}%` : '0%');
-
-function table(rows: string[][], align: ('l' | 'r')[]): string[] {
+/** Columns padded to their widest cell; `paint` styles a padded cell (row 0 is the header). */
+function table(
+  rows: string[][],
+  align: ('l' | 'r')[],
+  paint: (cell: string, col: number, row: number) => string = (c) => c,
+): string[] {
   const w = rows[0]!.map((_, i) => Math.max(...rows.map((r) => r[i]!.length)));
-  return rows.map((r) =>
-    r
-      .map((c, i) => (align[i] === 'r' ? c.padStart(w[i]!) : c.padEnd(w[i]!)))
-      .join('  ')
-      .trimEnd(),
-  );
+  return rows.map((r, y) => {
+    const last = r.length - 1;
+    return r
+      .map((c, i) => paint(align[i] === 'r' ? c.padStart(w[i]!) : i === last ? c : c.padEnd(w[i]!), i, y))
+      .join('  ');
+  });
 }
 
-export function formatPlan(plan: Plan, usage: UsageFileJson): string {
+/** An opt-in the plan measured but didn't apply: what it saves and what it changes. */
+export interface OfferedOptIn {
+  id: string;
+  saving: number;
+  faces: number;
+  change: string;
+}
+
+/** The opt-ins that would save bytes, largest saving first (`--allow <id>` applies one). */
+export function offeredOptIns(plan: Plan): OfferedOptIn[] {
+  const planned = plan.faces.filter((f) => f.status === 'planned');
+  return plan.optIns
+    .filter((o) => !o.applied && o.saving > 0)
+    .map((o) => ({
+      id: o.id,
+      saving: o.saving,
+      faces: o.faces,
+      change: planned.flatMap((f) => f.optIns?.filter((x) => x.id === o.id) ?? [])[0]?.change ?? '',
+    }))
+    .toSorted((a, b) => b.saving - a.saving);
+}
+
+export interface FormatPlanOptions {
+  style?: Style;
+  /** List the opt-ins that weren't applied (default true; the CLI offers them as a choice instead). */
+  optIns?: boolean;
+}
+
+export function formatPlan(plan: Plan, usage: UsageFileJson, o: FormatPlanOptions = {}): string {
+  const s = o.style ?? plainStyle;
   const L: string[] = [];
   const planned = plan.faces.filter((f) => f.status === 'planned');
   const pages = pageBytes(plan, usage);
@@ -105,24 +138,27 @@ export function formatPlan(plan: Plan, usage: UsageFileJson): string {
     };
     const perFace = (f: FacePlan) => {
       const ps = pages.map((p) => p.faces[f.id]).filter((x): x is { now: number; after: number } => !!x);
-      const now = median(ps.map((p) => p.now)),
-        after = median(ps.map((p) => p.after));
-      return `${kb(now)} → ${kb(after)}`;
+      return { now: median(ps.map((p) => p.now)), after: median(ps.map((p) => p.after)) };
     };
     L.push(
       ...table(
         [
-          ['Face', 'Now', 'Core', 'Ext', 'Rest', 'Median page'],
-          ...planned.map((f) => [
-            label(f, usage),
-            kb(f.bytes!.now),
-            fileBytes(f, 'core'),
-            fileBytes(f, 'ext'),
-            fileBytes(f, 'rest'),
-            perFace(f),
-          ]),
+          ['Face', 'Now', 'Core', 'Ext', 'Rest', 'Median page', 'Saved'],
+          ...planned.map((f) => {
+            const m = perFace(f);
+            return [
+              label(f, usage),
+              kb(f.bytes!.now),
+              fileBytes(f, 'core'),
+              fileBytes(f, 'ext'),
+              fileBytes(f, 'rest'),
+              `${kb(m.now)} → ${kb(m.after)}`,
+              savedPct(m.now, m.after),
+            ];
+          }),
         ],
-        ['l', 'r', 'r', 'r', 'r', 'r'],
+        ['l', 'r', 'r', 'r', 'r', 'r', 'r'],
+        (c, col, row) => (row === 0 ? s.dim(c) : col === 0 ? s.bold(c) : col === 6 ? s.green(c) : c),
       ),
     );
   } else L.push('Nothing to subset.');
@@ -132,12 +168,12 @@ export function formatPlan(plan: Plan, usage: UsageFileJson): string {
     const max = pages.reduce((m, p) => (p.now - p.after > m.now - m.after ? p : m), pages[0]!);
     L.push(
       '',
-      `Font bytes per page: median ${kb(now)} → ${kb(after)} (${pct(now, after)} less); biggest drop ${max.page} ${kb(max.now)} → ${kb(max.after)}`,
+      `Font bytes per page: median ${kb(now)} → ${s.bold(kb(after))} (${s.bold(s.green(`${savedPct(now, after)} less`))}); biggest drop ${max.page} ${kb(max.now)} → ${kb(max.after)}`,
     );
   }
   const chosen = planned.filter((f) => f.coreChoice);
   if (chosen.length) {
-    L.push('', 'Core choice: used characters put in core so the pages download less in total');
+    L.push('', s.bold('Core choice: used characters put in core so the pages download less in total'));
     for (const f of chosen) {
       const c = f.coreChoice!;
       // The characters themselves, when they print: marks and controls would not read as a list.
@@ -152,9 +188,9 @@ export function formatPlan(plan: Plan, usage: UsageFileJson): string {
   }
   const repaired = planned.filter((f) => f.repair);
   if (repaired.length) {
-    L.push('', 'Shaping repair: characters moved into core so words shape exactly as they did unsplit');
+    L.push('', s.bold('Shaping repair: characters moved into core so words shape exactly as they did unsplit'));
     for (const f of repaired) {
-      const cost = f.optIns?.find((o) => o.id === 'split-shaping')?.saving ?? 0;
+      const cost = f.optIns?.find((x) => x.id === 'split-shaping')?.saving ?? 0;
       const w = f.repair!.words;
       L.push(
         `  ${label(f, usage)}: ${f.repair!.count} character(s), +${kb(cost)} core; e.g. ${w
@@ -166,27 +202,25 @@ export function formatPlan(plan: Plan, usage: UsageFileJson): string {
   }
   const skipped = plan.faces.filter((f) => f.status !== 'planned');
   if (skipped.length) {
-    L.push('', 'Left as they are');
+    L.push('', s.bold('Left as they are'));
     for (const f of skipped) L.push(`  ${label(f, usage)}: ${f.status === 'refused' ? 'refused, ' : ''}${f.reason}`);
   }
   const renames = planned.filter((f) => f.license?.rename);
   if (renames.length) {
-    L.push('', 'Renamed inside the font (the license reserves the name; CSS font-family unchanged)');
+    L.push('', s.bold('Renamed inside the font (the license reserves the name; CSS font-family unchanged)'));
     for (const f of renames) L.push(`  ${f.license!.rename!.from} → ${f.license!.rename!.to}`);
   }
-  const offered = plan.optIns.filter((o) => !o.applied && o.saving > 0);
-  if (offered.length) {
-    L.push('', 'Opt-ins (would change rendering, not applied):');
-    for (const o of offered) {
-      const ex = planned.flatMap((f) => f.optIns?.filter((x) => x.id === o.id) ?? [])[0]!;
+  const offered = offeredOptIns(plan);
+  if (offered.length && o.optIns !== false) {
+    L.push('', s.bold('Opt-ins (would change rendering, not applied; `--allow <name>` applies one):'));
+    for (const x of offered)
       L.push(
-        `  ${o.id.padEnd(14)} saves ${kb(o.saving).padStart(8)}  ${ex.change}${o.faces > 1 ? ` (${o.faces} faces)` : ''}`,
+        `  ${s.cyan(x.id.padEnd(14))} saves ${s.green(kb(x.saving).padStart(8))}  ${s.dim(`${x.change}${x.faces > 1 ? ` (${x.faces} faces)` : ''}`)}`,
       );
-    }
   }
-  const applied = plan.optIns.filter((o) => o.applied);
+  const applied = plan.optIns.filter((x) => x.applied);
   if (applied.length)
-    L.push('', `Applied opt-ins: ${applied.map((o) => `${o.id} (saves ${kb(o.saving)})`).join(', ')}`);
+    L.push('', `Applied opt-ins: ${applied.map((x) => `${s.cyan(x.id)} (saves ${kb(x.saving)})`).join(', ')}`);
   const notes = [
     ...new Set(
       planned.flatMap((f) =>
@@ -195,7 +229,7 @@ export function formatPlan(plan: Plan, usage: UsageFileJson): string {
     ),
   ];
   if (notes.length) {
-    L.push('', 'Notes');
+    L.push('', s.bold('Notes'));
     for (const n of notes) L.push(`  ${n}`);
   }
   return L.join('\n');

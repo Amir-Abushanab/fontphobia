@@ -53,7 +53,7 @@ Run everything from the project root (or pass `--cwd`). (If pnpm refuses a relea
    pnpm dlx fontphobia@0.7.0
    ```
 
-   fontphobia detects the framework, builds the site if there's no build (or asks if it's stale) in a throwaway copy of the project, so the build can't touch your files, and crawls every page it can find at 4 viewport widths, plus a browser font-size sweep. It then prints each face's size now and after, the saving per page, the opt-ins with their savings, and the exact edits.
+   fontphobia detects the framework, builds the site if there's no build (or asks if it's stale) in a throwaway copy of the project, so the build can't touch your files, and crawls every page it can find at 4 viewport widths, plus a browser font-size sweep. It then prints each face's size now and after, the saving per page, and the exact edits as a diff. In a terminal it shows a progress bar for each stage and lists the opt-ins as a checklist with their measured savings, so you can pick any before confirming; in CI, with `--ci`, `--write` or `--allow`, or without a terminal, it prints them instead. Colors follow the terminal, `NO_COLOR`, `FORCE_COLOR` and `--no-color`. In a terminal outside CI it also asks the npm registry for the latest version and prints a one-line notice when the running one is older (for a release under a week old, with the `--cwd` workaround below for `minimumReleaseAge`); `FONTPHOBIA_NO_UPDATE_CHECK=1` (or `NO_UPDATE_NOTIFIER=1`) turns that off.
 
 2. **Confirm.** fontphobia then:
    - writes the subset files next to the original fonts;
@@ -400,7 +400,7 @@ pnpm plans:update   # re-crawl the fixtures and rewrite fixtures/plans/*
 
 **Changes and releases** go through [Changesets](https://github.com/changesets/changesets). A change to the published package comes with a changeset: run `pnpm changeset`, or `pnpm changeset --patch fontphobia -m "..."` without the prompts, and commit the file it writes under `.changeset/`. Every changeset names `fontphobia`, because `packages/core` and `packages/crawler` are bundled into it.
 
-- On a push to `main`, `.github/workflows/version.yml` collects the pending changesets into a "chore: version packages" pull request. It bumps the version, writes [`packages/cli/CHANGELOG.md`](packages/cli/CHANGELOG.md) and updates the `fontphobia@<version>` pins in `README.md` and `docs/ci.md`. It never publishes.
+- On a push to `main`, `.github/workflows/version.yml` collects the pending changesets into a "chore: version packages" pull request. It bumps the version, writes [`packages/cli/CHANGELOG.md`](packages/cli/CHANGELOG.md) and updates the `fontphobia@<version>` pins in `README.md`, `docs/ci.md` and the site's commands (`site/index.html`). It never publishes.
 - Merging that pull request runs `.github/workflows/release.yml`. It typechecks, tests, checks the packed package, publishes to npm with provenance over trusted publishing, tags `fontphobia@<version>` and creates the GitHub release from the changelog entry. It never versions.
 
 The version pull request needs the repository setting "Allow GitHub Actions to create and approve pull requests". GitHub does not run CI on a pull request that Actions opened. To run it, start it on the pull request's branch with `gh workflow run ci.yml --ref changeset-release/main`. The release workflow also runs the typecheck and the tests before it publishes.

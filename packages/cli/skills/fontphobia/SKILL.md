@@ -68,10 +68,11 @@ after, pixel for pixel.
 ## Run it
 
 Run from the project root, or pass `--cwd <dir>`. A `--cwd` that is not a directory is an error.
+These run the current release; CI below names the version that wrote the manifest instead.
 
 ```sh
-pnpm dlx fontphobia            # audit, plan, ask, write, verify
-pnpm add -D fontphobia         # needed only for the framework integrations
+pnpm dlx fontphobia@latest   # audit, plan, ask, write, verify
+pnpm add -D fontphobia       # needed only for the framework integrations
 ```
 
 `import { defineConfig } from 'fontphobia'` resolves while a config loads even when the package is
@@ -90,7 +91,9 @@ The default command (no subcommand) audits, prints the plan and the diff, then a
 - It crawls every page it finds at 4 viewport widths (360, 768, 1280, 1920) plus a browser
   default-font-size sweep, and writes `.fontphobia/usage.json` and `.fontphobia/report.md`.
 - It prints each face's size now and after, the saving per page, the opt-ins with their measured
-  savings, and the exact edits.
+  savings, and the exact edits as a line diff.
+- In a terminal it offers the opt-ins as a checklist. With `--ci`, `--write`, `--allow`, `CI` or
+  no terminal it never prompts: pass `--allow <name>` for an opt-in and `--write` to write.
 - `usage.json` lists each face's words for the shaping check, and a symbol-only word also with
   its neighbours (`1 ± 2`): entries an audit with 0.5.0 or later adds.
 
@@ -119,10 +122,10 @@ skipped; the other faces are still built. After writing, the default command run
 The same steps, one at a time:
 
 ```sh
-pnpm dlx fontphobia audit            # crawl; writes .fontphobia/usage.json and report.md
-pnpm dlx fontphobia build            # plan from usage.json, no browser; shows plan and diff only
-pnpm dlx fontphobia build --write    # apply
-pnpm dlx fontphobia verify           # rebuild and compare every page before and after
+pnpm dlx fontphobia@latest audit           # crawl; writes .fontphobia/usage.json and report.md
+pnpm dlx fontphobia@latest build           # plan from usage.json, no browser; shows plan and diff only
+pnpm dlx fontphobia@latest build --write   # apply
+pnpm dlx fontphobia@latest verify          # rebuild and compare every page before and after
 ```
 
 `build` and `verify` fail with "run `fontphobia audit` first" when `usage.json` is missing.
@@ -138,8 +141,8 @@ Commit the subset `.woff2` files, the edited CSS and code, `.fontphobia/manifest
 ### 4. Undo
 
 ```sh
-pnpm dlx fontphobia revert --dry-run   # show what would change
-pnpm dlx fontphobia revert
+pnpm dlx fontphobia@latest revert --dry-run   # show what would change
+pnpm dlx fontphobia@latest revert
 ```
 
 `revert` puts the original `@font-face` declarations, preloads, imports and `document.fonts` calls
@@ -331,8 +334,8 @@ flow when the site renders pages on a server, when a provider (Google, Adobe) se
 when a reviewed diff and a one-time `verify` are wanted.
 
 ```sh
-pnpm build && pnpm dlx fontphobia auto            # static: reads the built text, no browser
-pnpm build && pnpm dlx fontphobia auto --crawl    # measures each face in Chrome
+pnpm build && pnpm dlx fontphobia@latest auto           # static: reads the built text, no browser
+pnpm build && pnpm dlx fontphobia@latest auto --crawl   # measures each face in Chrome
 ```
 
 - **Static** gives every face the page characters it can draw (its own glyphs, within its
@@ -382,12 +385,12 @@ pnpm build && pnpm dlx fontphobia auto --crawl    # measures each face in Chrome
 Pin CI to the fontphobia version that wrote the manifest (`pnpm dlx fontphobia@<version>`); the
 manifest records it. Full workflow files are in `docs/ci.md` in the fontphobia repository.
 
-- **Every pull request:** install, build the site, then `pnpm dlx fontphobia check`. Skip this if a
-  framework integration already runs the check in the build.
-- **Production on a schedule:** `pnpm dlx fontphobia check --url https://example.com`. GitHub's
-  runner images have Chrome.
+- **Every pull request:** install, build the site, then `pnpm dlx fontphobia@<version> check`.
+  Skip this if a framework integration already runs the check in the build.
+- **Production on a schedule:** `pnpm dlx fontphobia@<version> check --url https://example.com`.
+  GitHub's runner images have Chrome.
 - **Verify on Windows and Linux** when fonts change (for example on pull requests that touch
-  `.fontphobia/manifest.json`): `pnpm dlx fontphobia verify` on `windows-latest`, and add
+  `.fontphobia/manifest.json`): `pnpm dlx fontphobia@<version> verify` on `windows-latest`, and add
   `--hinting` on `ubuntu-latest`. Upload `.fontphobia/verify` as an artifact on failure.
 
 `verify` builds and serves the site itself. For an SSR site, set `start` in the config.

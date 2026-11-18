@@ -244,11 +244,13 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     let frontier = [...seeds].filter(allowed).toSorted();
     for (const p of frontier) queued.add(p);
     const byPage = new Map<string, { emMq: boolean; textScale: boolean; url: string }>();
+    let discovered = 0;
     while (frontier.length) {
       const next: string[] = [];
       const missed: string[] = [];
       await pool(frontier, concurrency, async (p) => {
         const r = await doVisit(toUrl(p), { viewport: first, fontSize: 16, private: isPrivate(p) });
+        o.progress?.({ stage: 'discover', done: ++discovered, total: queued.size, item: p });
         if (!r.visit) {
           failed[p] = r.error ?? `HTTP ${r.status}`;
           missed.push(p);
@@ -270,16 +272,18 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
         }
       });
       missed.sort();
-      log(
-        `pages: ${pages.size} (${next.length} more found${
-          missed.length
-            ? `, ${missed.length} failed: ${missed
-                .slice(0, 3)
-                .map((p) => `${p} ${failed[p]}`)
-                .join('; ')}${missed.length > 3 ? '; …' : ''}`
-            : ''
-        })`,
-      );
+      // With a progress bar, a round is worth a line only when pages failed.
+      if (!o.progress || missed.length)
+        log(
+          `pages: ${pages.size} (${next.length} more found${
+            missed.length
+              ? `, ${missed.length} failed: ${missed
+                  .slice(0, 3)
+                  .map((p) => `${p} ${failed[p]}`)
+                  .join('; ')}${missed.length > 3 ? '; …' : ''}`
+              : ''
+          })`,
+        );
       frontier = next.toSorted();
     }
     if (!pages.size)
@@ -314,6 +318,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       }
     }
     let done = 0;
+    o.progress?.({ stage: 'load', done: 0, total: tasks.length });
     await pool(tasks, concurrency, async (t) => {
       const r = await doVisit(t.url, t);
       if (r.visit) {
@@ -322,12 +327,17 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       } else
         failed[`${t.page} @${t.viewport}${t.fontSize !== 16 ? `/fs${t.fontSize}` : ''}`] =
           r.error ?? `HTTP ${r.status}`;
-      if (++done % 25 === 0) log(`visits: ${done}/${tasks.length}`);
+      ++done;
+      if (o.progress) o.progress({ stage: 'load', done, total: tasks.length, item: t.page });
+      else if (done % 25 === 0) log(`page loads: ${done}/${tasks.length}`);
     });
 
     // Entries for pages and settings this run didn't touch are stale; keep them when pages were filtered.
     if (cache && !include.length && !(o.pages ?? []).length) cache.prune();
-    if (cache) log(`visits: ${cache.stats.hits} reused from the cache, ${visitsOut.length - cache.stats.hits} made`);
+    if (cache && !o.progress)
+      log(
+        `page loads: ${visitsOut.length - cache.stats.hits} in Chrome, ${cache.stats.hits} reused from the cache (nothing they load changed since the last audit)`,
+      );
 
     // 5. Font facts, usage, sources.
     const facts = new Map<string, FontFacts>();
