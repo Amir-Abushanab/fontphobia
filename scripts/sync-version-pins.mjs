@@ -1,9 +1,10 @@
 // Run by `pnpm run version`, after `changeset version`, so the Version Packages PR carries every
 // place that states the version in packages/cli/package.json:
-// - the `fontphobia@<semver>` pins in README.md and docs/ci.md;
+// - the `fontphobia@<semver>` pins in README.md, docs/ci.md and the site's commands (site/index.html);
 // - `metadata.library_version` in the agent skill, packages/cli/skills/fontphobia/SKILL.md
 //   (`intent stale` reports a skill that has fallen behind its package).
-// Generated files (site/**) record the version that built them and are left alone.
+// Generated files (site/bakery/**, the walkthrough's transcript) record the version that built them
+// and are left alone; the transcript has no `fontphobia@` pins, only the commands on the page do.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -12,7 +13,7 @@ const SEMVER =
 const path = (p) => fileURLToPath(new URL(`../${p}`, import.meta.url));
 const { version } = JSON.parse(readFileSync(path('packages/cli/package.json'), 'utf8'));
 
-for (const f of ['README.md', 'docs/ci.md']) {
+for (const f of ['README.md', 'docs/ci.md', 'site/index.html']) {
   let pins = 0;
   let updated = 0;
   const before = readFileSync(path(f), 'utf8');
