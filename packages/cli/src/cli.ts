@@ -39,6 +39,7 @@ import { loadConfig, selfUrl as selfUrlOf } from './config.ts';
 import { applyKit, readUsage, revertKits } from './apply-kit.ts';
 import { runAuto } from './auto-run.ts';
 import { ansiStyle, colorEnabled, highlight, seconds, Ui } from './ui.ts';
+import { latestVersion, updateCheckEnabled, updateNotice } from './update.ts';
 import type { Progress } from '@fontphobia/crawler';
 import pkg from '../package.json' with { type: 'json' };
 
@@ -180,6 +181,17 @@ const EXPLAIN = {
     'Checks that the new files decode and shape every recorded word exactly like the originals, then loads each page before and after in Chrome and compares layout and pixels.',
 };
 
+let updateChecked = false;
+/** Ask the registry for the latest version in the background; say so when this one is older. */
+function notifyUpdate(ui: Ui) {
+  if (updateChecked || !updateCheckEnabled(process.env, ui.live)) return;
+  updateChecked = true;
+  void latestVersion().then((latest) => {
+    const n = updateNotice(pkg.version, latest, process.env.npm_config_user_agent);
+    if (n) ui.warn(n);
+  });
+}
+
 /** Progress events from the crawler, as the status line. */
 const progressTo = (ui: Ui) =>
   ui.live
@@ -198,6 +210,7 @@ async function runAudit(
   strs(o, 'cwd', 'dist', 'buildCmd', 'startCmd', 'url', 'pages', 'ignore', 'viewports', 'locales', 'outDir');
   const root = rootOf(o.cwd);
   const ui = how.ui ?? new Ui({ quiet: o.json, color: o.color, ci: o.ci });
+  notifyUpdate(ui);
   const { config, file } = await loadConfig(root, selfUrl());
   ui.step(...(how.step ?? [0, 0]), 'Audit', EXPLAIN.audit);
   if (file) ui.log(`config: ${file}`);
@@ -605,6 +618,7 @@ async function runVerify(o: VerifyFlags, how: { ui?: Ui; step?: [number, number]
   if (!existsSync(usageFile)) throw new Error(`${usageFile} doesn't exist; run \`fontphobia audit\` first`);
   const usage = JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson;
   const ui = how.ui ?? new Ui({ quiet: o.json, color: o.color });
+  notifyUpdate(ui);
   ui.step(
     ...(how.step ?? [0, 0]),
     'Verify',
@@ -860,6 +874,7 @@ cli
     }) => {
       strs(o, 'cwd', 'dist', 'allow', 'rules');
       const ui = new Ui({ quiet: o.json, color: o.color });
+      notifyUpdate(ui);
       if (o.rules !== undefined && o.rules !== 'inline' && o.rules !== 'linked')
         throw new Error('--rules takes inline or linked');
       const root = rootOf(o.cwd);
@@ -975,6 +990,7 @@ verifyOptions(
   const t0 = Date.now();
   const ui = new Ui({ color: o.color, ci: o.ci });
   ui.banner(pkg.version, `HarfBuzz ${harfbuzzVersion()}`);
+  notifyUpdate(ui);
   await runAudit({ ...o, json: false }, { summary: false, ui, step: [1, 3] });
   const b = await runBuild(
     {
