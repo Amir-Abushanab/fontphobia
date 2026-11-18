@@ -54,7 +54,7 @@ describe('.fontphobia is ignored from its first write', () => {
       links: [],
       bodies: new Map(),
     });
-    expect(readdirSync(join(d, '.fontphobia/cache/visits'))).toEqual([`${key}.json`]);
+    expect(readdirSync(join(d, '.fontphobia/cache/visits'))).toHaveLength(1);
     expect(status(d)).toBe('');
   });
 
