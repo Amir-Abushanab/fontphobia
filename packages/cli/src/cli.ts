@@ -2,7 +2,6 @@
 // fontphobia CLI: audit (M2), build and revert (M3–M4), verify (M5), check (M6).
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { extname, join, relative, resolve } from 'node:path';
-import { createInterface } from 'node:readline/promises';
 import { cac } from 'cac';
 import {
   AUTO_OPT_INS,
@@ -32,10 +31,15 @@ import {
   codePointsOf,
   type AxisSetting,
   type SubsetOptions,
+  offeredOptIns,
+  pageBytes,
+  savedPct,
 } from '@fontphobia/core';
 import { loadConfig, selfUrl as selfUrlOf } from './config.ts';
 import { applyKit, readUsage, revertKits } from './apply-kit.ts';
 import { runAuto } from './auto-run.ts';
+import { ansiStyle, colorEnabled, highlight, seconds, Ui } from './ui.ts';
+import type { Progress } from '@fontphobia/crawler';
 import pkg from '../package.json' with { type: 'json' };
 
 const cli = cac('fontphobia');
@@ -160,25 +164,52 @@ interface AuditFlags {
   ci?: boolean;
   json?: boolean;
   outDir?: string;
+  color?: boolean;
 }
 
-async function runAudit(o: AuditFlags, how: { summary: boolean } = { summary: true }) {
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/** What each step does, shown under its heading. */
+const EXPLAIN = {
+  audit:
+    'Loads every page in headless Chrome and records which characters, weights, features and axis values each web font draws. Each page is loaded at several viewport widths and browser default font sizes, because media queries and rem/em sizes can change which text shows.',
+  plan: 'Splits each font into a core file (the characters the pages use), an extended file (more Latin and locale characters, loaded only by a page that uses one) and a rest file (everything else, so later content still renders). A unicode-range on each @font-face rule lets the browser pick the files. No browser is needed for this step.',
+  write:
+    'Subsets the fonts to WOFF2 with HarfBuzz and replaces the @font-face rules. The original rules are kept in .fontphobia/manifest.json, so `fontphobia revert` can put them back.',
+  verify:
+    'Checks that the new files decode and shape every recorded word exactly like the originals, then loads each page before and after in Chrome and compares layout and pixels.',
+};
+
+/** Progress events from the crawler, as the status line. */
+const progressTo = (ui: Ui) =>
+  ui.live
+    ? (p: Progress) => {
+        if (p.stage === 'build') ui.spin(p.done ? 'Starting Chrome' : `Building the site: ${p.item}`);
+        else if (p.stage === 'discover') ui.progress('Finding pages', p.done, p.total, p.item);
+        else if (p.stage === 'load') ui.progress('Loading pages', p.done, p.total, p.item);
+        else ui.progress('Comparing pages', p.done, p.total, p.item);
+      }
+    : undefined;
+
+async function runAudit(
+  o: AuditFlags,
+  how: { summary: boolean; ui?: Ui; step?: [number, number] } = { summary: true },
+) {
   strs(o, 'cwd', 'dist', 'buildCmd', 'startCmd', 'url', 'pages', 'ignore', 'viewports', 'locales', 'outDir');
   const root = rootOf(o.cwd);
+  const ui = how.ui ?? new Ui({ quiet: o.json, color: o.color, ci: o.ci });
   const { config, file } = await loadConfig(root, selfUrl());
-  const quiet = !!o.json;
-  const log = (m: string) => {
-    if (!quiet) process.stderr.write(`  ${m}\n`);
-  };
-  if (file) log(`config: ${file}`);
+  ui.step(...(how.step ?? [0, 0]), 'Audit', EXPLAIN.audit);
+  if (file) ui.log(`config: ${file}`);
   // Loaded on demand: inspect and subset don't need a browser.
+  ui.spin('Starting Chrome');
   const { audit, since } = await import('@fontphobia/crawler');
   // Ask before crawling a stale build only when someone can answer; CI and --json just get the warning.
-  const interactive = !quiet && !o.ci && !process.env.CI && process.stdin.isTTY && process.stderr.isTTY;
   const result = await audit({
     root,
     fontphobiaVersion: pkg.version,
-    log,
+    log: ui.log,
+    progress: progressTo(ui),
     dist: o.dist ?? config.dist,
     url: o.url ?? config.url,
     buildCmd: o.buildCmd ?? config.build,
@@ -194,41 +225,45 @@ async function runAudit(o: AuditFlags, how: { summary: boolean } = { summary: tr
     cache: o.cache,
     storageState: config.auth?.storageState ? resolve(root, config.auth.storageState) : undefined,
     privatePages: config.auth?.pages,
-    onStale: interactive
-      ? async (age) => {
+    onStale: ui.interactive
+      ? (age) => {
           const n = age.newer!;
-          const rl = createInterface({ input: process.stdin, output: process.stderr });
-          rl.on('SIGINT', () => {
-            process.stderr.write('\n');
-            process.exit(130);
-          });
-          try {
-            // Ctrl+D (end of input) takes the default.
-            const a = await rl.question(
-              `  ${age.output} was built ${since(age.builtAt)}; ${n.file}${n.count > 1 ? ` and ${n.count - 1} other file(s)` : ''} changed ${since(n.mtime)}. Rebuild first? (Y/n) `,
-            );
-            return !/^n/i.test(a.trim());
-          } catch {
-            process.stderr.write('\n');
-            return true;
-          } finally {
-            rl.close();
-          }
+          return ui.confirm(
+            `${age.output} was built ${since(age.builtAt)}; ${n.file}${n.count > 1 ? ` and ${n.count - 1} other file(s)` : ''} changed ${since(n.mtime)}. Rebuild first?`,
+            true,
+          );
         }
       : undefined,
   });
+  ui.stop();
   const out = resolve(root, o.outDir ?? '.fontphobia');
   ensureOutDir(out, root);
   writeFileSync(join(out, 'usage.json'), canonicalJson(result.usage));
   writeFileSync(join(out, 'report.md'), auditMarkdown(result.usage as never, result.crawl));
-  if (o.json) process.stdout.write(JSON.stringify({ crawl: result.crawl, usage: result.usage }, null, 2) + '\n');
-  else if (how.summary)
-    process.stdout.write(
-      '\n' +
-        formatAudit(result.usage as never, result.crawl) +
-        `\n\nWrote ${join(o.outDir ?? '.fontphobia', 'usage.json')} and report.md\n`,
+  if (o.json) {
+    process.stdout.write(JSON.stringify({ crawl: result.crawl, usage: result.usage }, null, 2) + '\n');
+    return;
+  }
+  const c = result.crawl;
+  const nFailed = Object.keys(c.failed).length;
+  ui.ok(`${plural(c.pages.length, 'page')} found${nFailed ? `; ${nFailed} load(s) failed (listed in report.md)` : ''}`);
+  const sizes = c.fontSizes.filter((x) => x !== 16);
+  const per = c.pages.length && c.visits % c.pages.length === 0 ? ` (${c.visits / c.pages.length} per page)` : '';
+  ui.ok(
+    `${plural(c.visits, 'page load')}${per}: ${plural(c.viewports.length, 'viewport width')} (${c.viewports.join(', ')} px)${sizes.length ? `, then the browser's default font size set to ${sizes.join(' and ')} px` : ''}${c.cache?.reused ? `; ${c.cache.reused} reused from the cache, since nothing they load changed` : ''}`,
+  );
+  const families = [...new Set(Object.values(result.usage.faces).map((f) => f.family))];
+  ui.ok(
+    families.length
+      ? `${plural(Object.keys(result.usage.faces).length, 'font face')} drawn (${families.join(', ')})`
+      : 'No web fonts are drawn',
+  );
+  const where = join(o.outDir ?? '.fontphobia', 'usage.json');
+  if (how.summary)
+    ui.print(
+      '\n' + highlight(formatAudit(result.usage as never, result.crawl), ui.out) + `\n\nWrote ${where} and report.md\n`,
     );
-  else log(`wrote ${join(o.outDir ?? '.fontphobia', 'usage.json')} and report.md`);
+  else ui.ok(`Wrote ${where} and report.md ${ui.err.dim(`(${seconds(c.durationMs)})`)}`);
 }
 
 const auditCommand = (c: ReturnType<typeof cli.command>) =>
@@ -271,24 +306,10 @@ interface BuildFlags {
   u?: boolean;
   json?: boolean;
   ci?: boolean;
+  color?: boolean;
 }
 
 const selfUrl = () => selfUrlOf(import.meta.url);
-
-async function ask(q: string): Promise<boolean> {
-  const rl = createInterface({ input: process.stdin, output: process.stderr });
-  rl.on('SIGINT', () => {
-    process.stderr.write('\n');
-    process.exit(130);
-  });
-  try {
-    return /^y/i.test((await rl.question(q)).trim());
-  } catch {
-    return false;
-  } finally {
-    rl.close();
-  }
-}
 
 /** --core-threshold: 'auto', or the share of a face's pages (0 to 1) a character needs to be in core. */
 function coreThresholdOf(v: unknown): number | 'auto' | undefined {
@@ -299,18 +320,42 @@ function coreThresholdOf(v: unknown): number | 'auto' | undefined {
   return v;
 }
 
-async function runBuild(o: BuildFlags & { prompt?: boolean }) {
+/** Median font bytes per page, now and with the plan applied. */
+function medianPage(r: Awaited<ReturnType<typeof buildProject>>, usage: UsageFileJson) {
+  const ps = pageBytes(r.plan, usage);
+  const med = (xs: number[]) => xs.toSorted((x, y) => x - y)[Math.floor((xs.length - 1) / 2)] ?? 0;
+  return { now: med(ps.map((p) => p.now)), after: med(ps.map((p) => p.after)) };
+}
+
+/** "styles.css" or "styles.css, index.html and 3 more". */
+const fileList = (files: string[]) =>
+  files.length <= 3
+    ? files.join(files.length === 2 ? ' and ' : ', ')
+    : `${files.slice(0, 2).join(', ')} and ${files.length - 2} more`;
+
+/** What runBuild did, for the default command's summary. */
+interface BuildOutcome {
+  written: boolean;
+  unchanged: boolean;
+  now: number;
+  after: number;
+  /** Opt-ins picked in the prompt. */
+  applied: string[];
+}
+
+async function runBuild(
+  o: BuildFlags & { prompt?: boolean },
+  how: { ui?: Ui; step?: [number, number] } = {},
+): Promise<BuildOutcome | undefined> {
   strs(o, 'cwd', 'usage', 'allow');
   const root = rootOf(o.cwd);
+  const ui = how.ui ?? new Ui({ quiet: o.json, color: o.color, ci: o.ci });
   const { config, file } = await loadConfig(root, selfUrl());
   const usageFile = resolve(root, o.usage ?? '.fontphobia/usage.json');
   if (!existsSync(usageFile)) throw new Error(`${usageFile} doesn't exist; run \`fontphobia audit\` first`);
   const usage = JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson;
-  const log = (m: string) => {
-    if (!o.json) process.stderr.write(`  ${m}\n`);
-  };
-  if (file) log(`config: ${file}`);
-  log(`planning ${Object.keys(usage.faces).length} face(s)…`);
+  ui.step(...(how.step ?? [0, 0]), 'Plan', EXPLAIN.plan);
+  if (file && !how.ui) ui.log(`config: ${file}`);
   const cfg = {
     coreThreshold: coreThresholdOf(o.coreThreshold) ?? config.coreThreshold,
     remainder: o.remainder === false ? false : config.remainder,
@@ -320,9 +365,11 @@ async function runBuild(o: BuildFlags & { prompt?: boolean }) {
     licenses: config.licenses,
   };
   const autoOnly = cfg.allow.filter((a) => (AUTO_OPT_INS as readonly string[]).includes(a));
-  if (autoOnly.length) log(`${autoOnly.join(', ')}: not applied by \`build\`; \`fontphobia auto\` applies them`);
+  if (autoOnly.length) ui.log(`${autoOnly.join(', ')}: not applied by \`build\`; \`fontphobia auto\` applies them`);
   let write = !!(o.write || o.u);
-  const r = await buildProject(root, usage, cfg, { version: pkg.version, write });
+  ui.spin(`Planning ${plural(Object.keys(usage.faces).length, 'face')} and subsetting with HarfBuzz`);
+  let r = await buildProject(root, usage, cfg, { version: pkg.version, write });
+  ui.stop();
   if (o.json) {
     process.stdout.write(
       canonicalJson({
@@ -338,20 +385,81 @@ async function runBuild(o: BuildFlags & { prompt?: boolean }) {
     );
     return;
   }
-  const out: string[] = [formatPlan(r.plan, usage), ''];
-  const newFonts = r.fonts.filter((f) => !f.exists);
-  if (r.unchanged) out.push('Nothing to change: the files on disk already match this plan.');
-  else {
-    const nEdit = new Set(r.edits.map((e) => e.file)).size;
-    out.push(
-      write
-        ? `Wrote ${newFonts.length} font file(s), edited ${nEdit} file(s)${r.stale.length ? `, deleted ${r.stale.length} outdated output(s)` : ''} and wrote ${MANIFEST_FILE}:`
-        : `Would write ${newFonts.length} font file(s), edit ${nEdit} file(s)${r.stale.length ? `, delete ${r.stale.length} outdated output(s)` : ''} and write ${MANIFEST_FILE}:`,
+  const s = ui.out;
+  const applied: string[] = [];
+  // Offer the opt-ins as a choice when someone can answer and didn't already choose with --allow.
+  const offered = offeredOptIns(r.plan);
+  const pick =
+    !!o.prompt &&
+    ui.interactive &&
+    !write &&
+    !r.unchanged &&
+    !list(o.allow)?.length &&
+    (offered.length > 0 || r.suggestions.length > 0);
+  ui.print(formatPlan(r.plan, usage, { style: s, optIns: !pick }) + '\n');
+  if (pick) {
+    const w = Math.max(...offered.map((x) => x.id.length), r.suggestions.length ? 'tighten'.length : 0);
+    const choices = [
+      ...offered.map((x) => ({
+        value: x.id,
+        label: x.id.padEnd(w),
+        hint: `saves ${kb(x.saving).padStart(8)}${x.faces > 1 ? ` across ${x.faces} faces` : ''}`,
+        detail: `${x.id}: ${x.change}.`,
+      })),
+      ...(r.suggestions.length && !cfg.allow.includes('tighten')
+        ? [
+            {
+              value: 'tighten',
+              label: 'tighten'.padEnd(w),
+              hint: `drops ${r.suggestions.length === 1 ? 'a weight or family' : 'weights or families'} nothing asks for`,
+              detail:
+                "tighten: drops weights and families that nothing on the crawled pages or in the code asks for. A page the audit didn't see (or CMS text) could ask for one and would then render a nearby weight or a synthesized style.",
+            },
+          ]
+        : []),
+    ];
+    process.stderr.write('\n');
+    ui.note(
+      'Opt-ins save more bytes but change how text renders, so none is applied by default. The line under the cursor says what it changes. `verify` reports those changes as differences and exits 1, so a CI job that runs `verify` fails.',
+      '',
     );
-    for (const f of newFonts) out.push(`  ${f.file}  ${kb(f.bytes)}`);
-    for (const g of r.generated.filter((x) => !x.exists)) out.push(`  ${g.file}  (generated stylesheet)`);
-    for (const f of r.stale) out.push(`  - ${f}`);
-    if (r.edits.length) out.push('', formatEdits(root, r.edits, 12, r.before));
+    const picks = await ui.multiselect('Apply any opt-ins?', choices);
+    if (picks.length) {
+      const was = medianPage(r, usage);
+      cfg.allow = [...cfg.allow, ...picks];
+      ui.spin('Planning again with the opt-ins');
+      r = await buildProject(root, usage, cfg, { version: pkg.version, write: false });
+      ui.stop();
+      const m = medianPage(r, usage);
+      ui.ok(
+        `With ${picks.join(', ')}: median font bytes per page ${kb(m.now)} → ${ui.err.bold(kb(m.after))} (${ui.err.green(`${savedPct(m.now, m.after)} less`)}), ${kb(Math.max(0, was.after - m.after))} less than without`,
+      );
+      applied.push(...picks);
+      ui.note(`Next time: \`--allow ${picks.join(',')}\`, or \`allow\` in the config.`, '    ');
+    }
+  }
+  const out: string[] = [];
+  const newFonts = r.fonts.filter((f) => !f.exists);
+  const edited = [...new Set(r.edits.map((e) => e.file))];
+  if (r.unchanged) out.push('', s.green('Nothing to change: the files on disk already match this plan.'));
+  else {
+    out.push(
+      '',
+      s.bold(
+        write
+          ? `Wrote ${plural(newFonts.length, 'font file')}, edited ${plural(edited.length, 'file')}${r.stale.length ? `, deleted ${r.stale.length} outdated output(s)` : ''} and wrote ${MANIFEST_FILE}:`
+          : `Would write ${plural(newFonts.length, 'font file')}, edit ${plural(edited.length, 'file')}${r.stale.length ? `, delete ${r.stale.length} outdated output(s)` : ''} and write ${MANIFEST_FILE}:`,
+      ),
+    );
+    const width = Math.max(0, ...newFonts.map((f) => f.file.length));
+    for (const f of newFonts) out.push(`  ${s.green('+')} ${f.file.padEnd(width)}  ${kb(f.bytes).padStart(9)}`);
+    for (const g of r.generated.filter((x) => !x.exists))
+      out.push(`  ${s.green('+')} ${g.file}  ${s.dim('(generated stylesheet)')}`);
+    for (const f of r.stale) out.push(`  ${s.red('-')} ${f}  ${s.dim('(outdated output)')}`);
+    if (r.edits.length) {
+      const cols = (process.stdout.isTTY && process.stdout.columns) || 120;
+      out.push('', formatEdits(root, r.edits, 40, r.before, { style: s, width: Math.max(60, cols - 4) }));
+    }
     for (const g of r.manifest.google ?? []) {
       if (!r.edits.some((e) => e.why === `tighten ${g.to}` || e.text.replace(/&amp;/g, '&') === g.to)) continue;
       const d = [
@@ -390,7 +498,7 @@ async function runBuild(o: BuildFlags & { prompt?: boolean }) {
       );
     }
   }
-  if (r.suggestions.length) {
+  if (r.suggestions.length && !pick) {
     out.push(
       '',
       'Not applied: `--allow tighten` would also drop these. Nothing the crawled pages or the code asks for uses them, but a page the audit never saw (or CMS text) could, and would then render a nearby weight or a synthesized style:',
@@ -420,24 +528,30 @@ async function runBuild(o: BuildFlags & { prompt?: boolean }) {
     out.push('', 'Planned but not written');
     for (const n of r.notWritten) out.push(`  ${n.id}: ${n.reason}`);
   }
-  process.stdout.write(out.join('\n') + '\n');
+  ui.print(out.join('\n') + '\n');
+  const m = medianPage(r, usage);
   if (r.unchanged || write) {
     if (write && !o.prompt)
-      process.stdout.write(
+      ui.print(
         `\nRun \`fontphobia verify\` to compare the site before and after. \`fontphobia revert\` puts the original declarations back.\n`,
       );
-    return { written: write, unchanged: r.unchanged };
+    return { written: write, unchanged: r.unchanged, ...m, applied };
   }
-  const interactive = o.prompt && !o.ci && !process.env.CI && process.stdin.isTTY && process.stderr.isTTY;
-  if (
-    interactive &&
-    (await ask(`\nWrite ${newFonts.length} files and edit ${new Set(r.edits.map((e) => e.file)).size}? (y/N) `))
-  ) {
-    write = true;
-    await buildProject(root, usage, cfg, { version: pkg.version, write: true });
-    process.stdout.write('Written. `fontphobia revert` undoes the edits.\n');
-  } else if (!interactive) process.stdout.write('\nRun with --write to apply.\n');
-  return { written: write, unchanged: false };
+  if (o.prompt && ui.interactive) {
+    process.stderr.write('\n');
+    ui.note(EXPLAIN.write, '');
+    if (await ui.confirm(`Write ${plural(newFonts.length, 'font file')} and edit ${fileList(edited)}?`)) {
+      write = true;
+      ui.spin('Writing');
+      await buildProject(root, usage, cfg, { version: pkg.version, write: true });
+      ui.stop();
+      ui.ok(
+        `Wrote ${plural(newFonts.length, 'font file')} (${kb(newFonts.reduce((n, f) => n + f.bytes, 0))}), edited ${fileList(edited)} and wrote ${MANIFEST_FILE}`,
+      );
+      ui.note('`fontphobia revert` puts the original rules back.', '    ');
+    } else ui.note('Nothing written. `fontphobia --write` applies this plan without asking.', '  ');
+  } else ui.print(`\nRun with --write to apply${offered.length ? ', and --allow <name> to add an opt-in' : ''}.\n`);
+  return { written: write, unchanged: false, ...m, applied };
 }
 
 interface VerifyFlags {
@@ -463,9 +577,10 @@ interface VerifyFlags {
   browser: boolean;
   json?: boolean;
   outDir?: string;
+  color?: boolean;
 }
 
-async function runVerify(o: VerifyFlags) {
+async function runVerify(o: VerifyFlags, how: { ui?: Ui; step?: [number, number] } = {}) {
   strs(
     o,
     'cwd',
@@ -489,9 +604,13 @@ async function runVerify(o: VerifyFlags) {
   const usageFile = resolve(root, o.usage ?? join(o.outDir ?? '.fontphobia', 'usage.json'));
   if (!existsSync(usageFile)) throw new Error(`${usageFile} doesn't exist; run \`fontphobia audit\` first`);
   const usage = JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson;
-  const log = (m: string) => {
-    if (!o.json) process.stderr.write(`  ${m}\n`);
-  };
+  const ui = how.ui ?? new Ui({ quiet: o.json, color: o.color });
+  ui.step(
+    ...(how.step ?? [0, 0]),
+    'Verify',
+    o.browser === false ? EXPLAIN.verify.replace(/, then loads.*$/, '.') : EXPLAIN.verify,
+  );
+  const log = ui.log;
   const { verify, formatVerify, verifyMarkdown, ENGINES } = await import('@fontphobia/crawler');
   const browsers = (list(o.browsers) ?? config.verify?.browsers ?? ['chromium']) as (typeof ENGINES)[number][];
   const bad = browsers.filter((b) => !ENGINES.includes(b));
@@ -501,10 +620,12 @@ async function runVerify(o: VerifyFlags) {
   if (o.runtime && !['container', 'docker', 'podman'].includes(o.runtime))
     throw new Error(`Unknown --runtime ${o.runtime}; use container, docker or podman`);
   const out = resolve(root, o.outDir ?? '.fontphobia');
+  ui.spin('Verifying');
   const r = await verify({
     root,
     usage,
     log,
+    progress: progressTo(ui),
     browser: o.browser,
     dist: o.dist ?? config.dist,
     url: o.url ?? config.url,
@@ -525,6 +646,7 @@ async function runVerify(o: VerifyFlags) {
     concurrency: o.concurrency,
     outDir: join(out, 'verify'),
   });
+  ui.stop();
   ensureOutDir(out, root);
   const reportFile = join(out, 'report.md');
   writeFileSync(
@@ -533,10 +655,13 @@ async function runVerify(o: VerifyFlags) {
   );
   if (o.json) process.stdout.write(JSON.stringify(r, null, 2) + '\n');
   else
-    process.stdout.write(
-      '\n' + formatVerify(r, root) + `\nWrote the verify section of ${join(o.outDir ?? '.fontphobia', 'report.md')}\n`,
+    ui.print(
+      '\n' +
+        highlight(formatVerify(r, root), ui.out) +
+        `\nWrote the verify section of ${join(o.outDir ?? '.fontphobia', 'report.md')}\n`,
     );
   if (!r.ok) process.exitCode = 1;
+  return r;
 }
 
 const verifyOptions = (c: ReturnType<typeof cli.command>) =>
@@ -618,6 +743,7 @@ interface CheckFlags {
   outDir?: string;
   viewports?: string;
   maxPages?: number;
+  color?: boolean;
 }
 
 async function runCheck(o: CheckFlags) {
@@ -628,19 +754,18 @@ async function runCheck(o: CheckFlags) {
   if (mode !== 'warn' && mode !== 'error') throw new Error(`Unknown --mode ${mode}; use warn or error`);
   const usageFile = resolve(root, o.usage ?? join(o.outDir ?? '.fontphobia', 'usage.json'));
   const usage = existsSync(usageFile) ? (JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson) : undefined;
+  const ui = new Ui({ quiet: o.json, color: o.color });
   let r;
   let failed: Record<string, string> = {};
   if (o.url) {
     // Exact mode: crawl production in Chrome and compare what it draws with the written files.
     const { audit } = await import('@fontphobia/crawler');
-    const log = (m: string) => {
-      if (!o.json) process.stderr.write(`  ${m}\n`);
-    };
     const a = await audit({
       root,
       url: o.url,
       fontphobiaVersion: pkg.version,
-      log,
+      log: ui.log,
+      progress: progressTo(ui),
       cache: false,
       viewports: list(o.viewports)?.map(Number) ?? config.viewports,
       maxPages: o.maxPages ?? config.maxPages,
@@ -650,6 +775,7 @@ async function runCheck(o: CheckFlags) {
       storageState: config.auth?.storageState ? resolve(root, config.auth.storageState) : undefined,
       privatePages: config.auth?.pages,
     });
+    ui.stop();
     failed = a.crawl.failed;
     r = await checkUsage(root, a.usage as unknown as UsageFileJson, { strict: o.strict ?? config.check?.strict });
   } else {
@@ -664,7 +790,7 @@ async function runCheck(o: CheckFlags) {
   const nFailed = Object.keys(failed).length;
   if (o.json) process.stdout.write(JSON.stringify(nFailed ? { ...r, failed } : r, null, 2) + '\n');
   else {
-    process.stdout.write(formatCheck(r) + '\n');
+    ui.print(highlight(formatCheck(r), ui.out) + '\n');
     if (nFailed)
       process.stdout.write(
         `${nFailed} page(s) could not be loaded:\n${Object.entries(failed)
@@ -730,8 +856,10 @@ cli
       remainder: boolean;
       dryRun?: boolean;
       json?: boolean;
+      color?: boolean;
     }) => {
       strs(o, 'cwd', 'dist', 'allow', 'rules');
+      const ui = new Ui({ quiet: o.json, color: o.color });
       if (o.rules !== undefined && o.rules !== 'inline' && o.rules !== 'linked')
         throw new Error('--rules takes inline or linked');
       const root = rootOf(o.cwd);
@@ -745,10 +873,10 @@ cli
         allow: list(o.allow),
         coreThreshold: coreThresholdOf(o.coreThreshold),
         remainder: o.remainder,
-        log: (m) => {
-          if (!o.json) process.stderr.write(`  ${m}\n`);
-        },
+        log: ui.log,
+        progress: progressTo(ui),
       });
+      ui.stop();
       const nFailed = Object.keys(failed).length;
       if (verify && !verify.ok) process.exitCode = 1;
       if (o.json) {
@@ -759,14 +887,17 @@ cli
         );
         return;
       }
-      process.stdout.write(formatAuto(result, relative(root, outDir) || '.') + '\n');
+      ui.print(highlight(formatAuto(result, relative(root, outDir) || '.'), ui.out) + '\n');
       if (verify) {
         const { formatVerify } = await import('@fontphobia/crawler');
-        process.stdout.write(
+        ui.print(
           '\n' +
-            formatVerify(verify, root)
-              .replace('`fontphobia revert` restores the original fonts.', 'Build the site again to start over.')
-              .replace(/\n*Rerun with `fontphobia verify`\.\n*$/, '') +
+            highlight(
+              formatVerify(verify, root)
+                .replace('`fontphobia revert` restores the original fonts.', 'Build the site again to start over.')
+                .replace(/\n*Rerun with `fontphobia verify`\.\n*$/, ''),
+              ui.out,
+            ) +
             '\n',
         );
       }
@@ -785,9 +916,10 @@ cli
   .option('--cwd <dir>', 'Project root (default: current directory)')
   .option('--dry-run', 'Only show what would change')
   .option('--keep-kits', 'Leave Adobe kits changed by apply-kit as they are')
-  .action(async (o: { cwd?: string; dryRun?: boolean; keepKits?: boolean }) => {
+  .action(async (o: { cwd?: string; dryRun?: boolean; keepKits?: boolean; color?: boolean }) => {
     strs(o, 'cwd');
     const root = rootOf(o.cwd);
+    const s = new Ui({ color: o.color }).out;
     // Adobe kits first (the API, with TYPEKIT_TOKEN); the files only once they're back.
     if (!o.dryRun) {
       const kp = await revertKits(root, (m) => process.stdout.write(m + '\n'), { keep: o.keepKits });
@@ -798,9 +930,11 @@ cli
       }
     }
     const r = revertProject(root, { write: !o.dryRun });
-    const L = [`${o.dryRun ? 'Would restore' : 'Restored'} ${r.files.length} file(s): ${r.files.join(', ') || 'none'}`];
+    const L = [
+      `${o.dryRun ? 'Would restore' : s.green('✓') + ' Restored'} ${r.files.length} file(s): ${r.files.join(', ') || 'none'}`,
+    ];
     if (r.problems.length) {
-      L.push('Problems (manifest kept):');
+      L.push(s.bold(s.red('Problems (manifest kept):')));
       for (const p of r.problems) L.push(`  ${p}`);
     }
     if (r.removed.length)
@@ -816,17 +950,17 @@ cli
   .option('--usage <file>', 'usage.json (default: .fontphobia/usage.json)')
   .option('--yes', 'Apply and publish without asking')
   .option('--check', 'Only check that the live kit serves every face and character the pages use')
-  .action(async (o: { cwd?: string; usage?: string; yes?: boolean; check?: boolean }) => {
+  .action(async (o: { cwd?: string; usage?: string; yes?: boolean; check?: boolean; color?: boolean }) => {
     strs(o, 'cwd', 'usage');
     const root = rootOf(o.cwd);
     const usage = readUsage(root, o.usage);
     if (!usage) throw new Error('No usage.json: run `fontphobia audit` first');
-    const interactive = !process.env.CI && process.stdin.isTTY && process.stderr.isTTY;
+    const ui = new Ui({ color: o.color });
     process.exitCode = await applyKit(root, usage, {
       yes: o.yes,
       check: o.check,
-      ask,
-      interactive: !!interactive,
+      ask: (q) => ui.confirm(q.replace(/\s*\(y\/N\)\s*$/i, '')),
+      interactive: ui.interactive,
       version: pkg.version,
       log: (m) => process.stdout.write(m + '\n'),
     });
@@ -838,27 +972,95 @@ verifyOptions(
     auditCommand(cli.command('', 'Audit the site, plan, write after you confirm (or with --write), then verify')),
   ),
 ).action(async (o: AuditFlags & BuildFlags & VerifyFlags) => {
-  await runAudit({ ...o, json: false }, { summary: false });
-  const b = await runBuild({
-    ...o,
-    usage: o.outDir ? join(o.outDir, 'usage.json') : undefined,
-    json: false,
-    prompt: true,
-  });
+  const t0 = Date.now();
+  const ui = new Ui({ color: o.color, ci: o.ci });
+  ui.note(`${ui.err.bold('fontphobia')} ${pkg.version} ${ui.err.dim(`· HarfBuzz ${harfbuzzVersion()}`)}`, '');
+  await runAudit({ ...o, json: false }, { summary: false, ui, step: [1, 3] });
+  const b = await runBuild(
+    {
+      ...o,
+      usage: o.outDir ? join(o.outDir, 'usage.json') : undefined,
+      json: false,
+      prompt: true,
+    },
+    { ui, step: [2, 3] },
+  );
   // Verify what was just written; the site is rebuilt first, since its sources changed.
-  if (b?.written) {
-    process.stderr.write('\n  verifying…\n');
-    await runVerify({ ...o, json: false, pages: undefined });
-  }
+  const v = b?.written ? await runVerify({ ...o, json: false, pages: undefined }, { ui, step: [3, 3] }) : undefined;
+  if (!b) return;
+  const e = ui.err;
+  const saved = `${kb(b.now)} → ${e.bold(kb(b.after))} (${e.green(`${savedPct(b.now, b.after)} less`)})`;
+  process.stderr.write('\n');
+  if (b.unchanged) ui.ok(`Already subset: median font bytes per page ${saved}`);
+  else if (!b.written) ui.note(`Median font bytes per page would go ${saved}.`, '  ');
+  else if (v && !v.ok)
+    ui.warn(
+      `Written, but verify found differences (above).${b.applied.length ? ` The opt-ins picked (${b.applied.join(', ')}) change rendering by design; the diff images show by how much.` : ''} \`fontphobia revert\` puts the original rules back.`,
+    );
+  else
+    ui.ok(
+      `Done in ${seconds(Date.now() - t0)}: median font bytes per page ${saved}${v ? ', and every page renders the same' : ''}`,
+    );
 });
 
-cli.help();
+/** The closest command name, for a typo. */
+function closest(word: string, names: string[]): string | undefined {
+  const dist = (a: string, b: string) => {
+    const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array<number>(b.length).fill(0)]);
+    for (let j = 1; j <= b.length; j++) d[0]![j] = j;
+    for (let i = 1; i <= a.length; i++)
+      for (let j = 1; j <= b.length; j++)
+        d[i]![j] = Math.min(d[i - 1]![j]! + 1, d[i]![j - 1]! + 1, d[i - 1]![j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1));
+    return d[a.length]![b.length]!;
+  };
+  const best = names.map((n) => ({ n, d: dist(word, n) })).toSorted((x, y) => x.d - y.d)[0];
+  return best && best.d <= Math.max(2, Math.floor(word.length / 3)) ? best.n : undefined;
+}
+
+cli.option('--no-color', 'Plain output, without colors (also NO_COLOR=1)');
+cli.help((sections) => {
+  for (const sec of sections) {
+    if (sec.title === 'Usage') sec.body = '  $ fontphobia [command] [options]';
+    if (sec.title === 'Commands')
+      sec.body = sec.body.replace(
+        /^ {2}( +)(Audit the site)/m,
+        (_, sp: string, t: string) => `  ${'(none)'.padEnd(sp.length)}${t}`,
+      );
+    if (sec.title === 'Options') sec.body = sec.body.replace(/ \(default: true\)/g, '').replace(/ +$/gm, '');
+  }
+  const examples = {
+    title: 'Examples',
+    body: [
+      '  $ fontphobia                      Audit, plan, ask before writing, then verify',
+      '  $ fontphobia --write --ci         The same, without questions',
+      '  $ fontphobia audit --url https://example.com',
+      '  $ fontphobia build --allow limit-axes',
+      '  $ fontphobia check                In CI or postbuild: are the subsets up to date?',
+      '  $ fontphobia revert               Put the original @font-face rules back',
+    ].join('\n'),
+  };
+  const i = sections.findIndex((x) => x.title?.startsWith('For more info'));
+  return i >= 0 && !process.argv.slice(2).some((a) => !a.startsWith('-'))
+    ? [...sections.slice(0, i), examples, ...sections.slice(i)]
+    : sections;
+});
 cli.version(`${pkg.version} (HarfBuzz ${harfbuzzVersion()})`);
 
+const { red } = ansiStyle(colorEnabled(process.stderr, !process.argv.includes('--no-color')));
 try {
+  // The default command takes no arguments: a word there is a mistyped command.
+  if (process.argv[2] === 'help') process.argv.splice(2, 1, '--help');
+  const first = process.argv.slice(2).find((a) => !a.startsWith('-'));
+  const names = cli.commands.map((c) => c.name).filter(Boolean);
+  if (first !== undefined && process.argv[2] === first && !names.includes(first)) {
+    const near = closest(first, names);
+    throw new Error(
+      `unknown command \`${first}\`.${near ? ` Did you mean \`${near}\`?` : ''} Run \`fontphobia --help\` for the commands.`,
+    );
+  }
   cli.parse(process.argv, { run: false });
   await cli.runMatchedCommand();
 } catch (e) {
-  process.stderr.write(`fontphobia: ${(e as Error).message}\n`);
+  process.stderr.write(`${red('fontphobia:')} ${(e as Error).message}\n`);
   process.exitCode = 1;
 }

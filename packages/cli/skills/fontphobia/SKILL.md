@@ -90,7 +90,10 @@ The default command (no subcommand) audits, prints the plan and the diff, then a
 - It crawls every page it finds at 4 viewport widths (360, 768, 1280, 1920) plus a browser
   default-font-size sweep, and writes `.fontphobia/usage.json` and `.fontphobia/report.md`.
 - It prints each face's size now and after, the saving per page, the opt-ins with their measured
-  savings, and the exact edits.
+  savings, and the exact edits as a line diff.
+- In a terminal it offers the opt-ins as a checklist before the write question. With `--ci`,
+  `--write`, `--allow`, `CI` set or no terminal, it never prompts: an agent passes `--allow <name>`
+  to apply an opt-in and `--write` to write.
 - `usage.json` lists each face's words for the shaping check, and a symbol-only word also with
   its neighbours (`1 ± 2`): entries an audit with 0.5.0 or later adds.
 

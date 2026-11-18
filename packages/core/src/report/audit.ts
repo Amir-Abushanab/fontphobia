@@ -255,7 +255,7 @@ export function formatAudit(u: UsageJson, crawl: CrawlFacts): string {
     `fontphobia ${u.meta.fontphobia} · ${crawl.framework.name}${crawl.framework.tier === 2 ? ' (tier 2, best effort)' : ''} · ${crawl.mode} ${crawl.source}${buildNote(crawl) ? ` (${buildNote(crawl)})` : ''}`,
   );
   L.push(
-    `${crawl.pages.length} pages × ${crawl.viewports.length} viewports${sweep} · ${crawl.visits} visits${crawl.cache?.reused ? ` (${crawl.cache.reused} reused from the cache)` : ''} · Chrome ${u.meta.chrome} · ${(crawl.durationMs / 1000).toFixed(1)} s`,
+    `${crawl.pages.length} pages × ${crawl.viewports.length} viewports${sweep} · ${crawl.visits} page loads${crawl.cache?.reused ? ` (${crawl.cache.reused} reused from the cache)` : ''} · Chrome ${u.meta.chrome} · ${(crawl.durationMs / 1000).toFixed(1)} s`,
   );
   L.push('');
   const faces = Object.entries(u.faces);
@@ -319,7 +319,7 @@ export function auditMarkdown(u: UsageJson, crawl: CrawlFacts): string {
     `fontphobia ${u.meta.fontphobia} · ${crawl.framework.name} · ${crawl.mode} \`${crawl.source}\`${crawl.build ? ` (built ${crawl.build.at})` : crawl.built ? ` (built by \`${crawl.built}\`)` : ''} · Chrome ${u.meta.chrome}`,
   );
   L.push(
-    `${crawl.pages.length} pages × viewports ${crawl.viewports.join(', ')} · font sizes ${crawl.fontSizes.join(', ')} · ${crawl.visits} visits`,
+    `${crawl.pages.length} pages × viewports ${crawl.viewports.join(', ')} · font sizes ${crawl.fontSizes.join(', ')} · ${crawl.visits} page loads`,
   );
   L.push('');
   L.push('## Faces');

@@ -53,7 +53,7 @@ Run everything from the project root (or pass `--cwd`). (If pnpm refuses a relea
    pnpm dlx fontphobia@0.7.0
    ```
 
-   fontphobia detects the framework, builds the site if there's no build (or asks if it's stale) in a throwaway copy of the project, so the build can't touch your files, and crawls every page it can find at 4 viewport widths, plus a browser font-size sweep. It then prints each face's size now and after, the saving per page, the opt-ins with their savings, and the exact edits.
+   fontphobia detects the framework, builds the site if there's no build (or asks if it's stale) in a throwaway copy of the project, so the build can't touch your files, and crawls every page it can find at 4 viewport widths, plus a browser font-size sweep. It then prints each face's size now and after, the saving per page, and the exact edits as a diff. In a terminal it shows a progress bar for each stage and lists the opt-ins as a checklist with their measured savings, so you can pick any before confirming; in CI, with `--ci`, `--write` or `--allow`, or without a terminal, it prints them instead. Colors follow the terminal, `NO_COLOR`, `FORCE_COLOR` and `--no-color`.
 
 2. **Confirm.** fontphobia then:
    - writes the subset files next to the original fonts;

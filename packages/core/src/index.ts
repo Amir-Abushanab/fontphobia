@@ -28,6 +28,7 @@ export * from './plan/core.ts';
 export * from './plan/planner.ts';
 export * from './plan/sources.ts';
 export * from './report/plan.ts';
+export * from './report/style.ts';
 export * from './font/rename.ts';
 export * from './font/cff.ts';
 export * from './build/manifest.ts';

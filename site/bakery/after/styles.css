@@ -1,5 +1,5 @@
 /* Little Levain: a small static site that self-hosts two variable fonts, the way most sites do. */
-/* fontphobia:begin inter-100-900-normal 0.3.0 (generated; rerun `fontphobia build`) */
+/* fontphobia:begin inter-100-900-normal 0.7.0 (generated; rerun `fontphobia build`) */
 @font-face {
   font-family: 'Inter';
   src: url('../fonts/InterVariable.rest.332a34cd.woff2') format('woff2');
@@ -24,7 +24,7 @@
   font-display: swap;
 }
 /* fontphobia:end inter-100-900-normal */
-/* fontphobia:begin fraunces-100-900-normal 0.3.0 (generated; rerun `fontphobia build`) */
+/* fontphobia:begin fraunces-100-900-normal 0.7.0 (generated; rerun `fontphobia build`) */
 @font-face {
   font-family: 'Fraunces';
   src: url('../fonts/Fraunces.rest.f2f69b4a.woff2') format('woff2');

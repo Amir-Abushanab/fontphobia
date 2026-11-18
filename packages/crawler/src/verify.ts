@@ -787,6 +787,7 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
             tasks.push({ page, viewport, dpr, engine: b.engine, browser: b.browser });
     const concurrency = o.concurrency ?? Math.max(1, Math.min(4, availableParallelism() - 1));
     let done = 0;
+    o.progress?.({ stage: 'compare', done: 0, total: tasks.length });
     await pool(tasks, concurrency, async (t) => {
       const url = pageUrl(t.page, site.base);
       const beforeUrl = baseline ? pageUrl(t.page, baseline.site.base) : url;
@@ -893,7 +894,9 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
       } finally {
         await Promise.all([cb.close().catch(() => {}), ca.close().catch(() => {})]);
       }
-      if (++done % 10 === 0) log(`compared ${done}/${tasks.length}`);
+      ++done;
+      if (o.progress) o.progress({ stage: 'compare', done, total: tasks.length, item: t.page });
+      else if (done % 10 === 0) log(`compared ${done}/${tasks.length}`);
     });
     comparisons.sort(
       (x, y) =>

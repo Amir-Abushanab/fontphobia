@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "measuredAt": "2026-11-12T14:46:45.955Z",
-  "fontphobia": "0.3.0",
+  "measuredAt": "2026-11-18T15:19:31.576Z",
+  "fontphobia": "0.7.0",
   "chrome": "157.0.8103.39",
   "source": {
     "sha256": "522c046c33c8f32c2e3cf48d61fa6d93468d9366677bf199e577303be8531eed",
@@ -27,7 +27,7 @@
     "after/index.html": "7a05b2d7b3031f02bf024dfd53133cc9733a676287d38c6e94b16b0dfcc1e32a",
     "after/journal/levain.html": "80fcd56bbb2bc1d644eeb0ac9509061cb132eb121ce0eafad07f242a38737657",
     "after/menu.html": "91c86b905a5b56ea4f2b688c04fe0a42c0d9cb3584ee09edb984f6e0601afef9",
-    "after/styles.css": "375902efafb754adeaa87c982698641f0866590359b2e9665b5397390c52fba1",
+    "after/styles.css": "84b53e43d17d4563064188c701f35fbc975793508a662bf75dbaca1e85c773cf",
     "bakery.js": "dbda4f7560cd6fc4e8339f4f1032a3bca261d4aabc878f52a0e81458505c900f",
     "before/about.html": "f178dfdc0b6feedc07ccfce1b712746f69b37a51b7f4e80fbf7fd5c8dd3a025e",
     "before/index.html": "98638380914b078b3879abe3eba90af304bef832981e7044e37290a1f715479c",
@@ -53,7 +53,7 @@
     "images/kneading-640.jpg": "4a2b657a9c27d247dafaa38184a800ce21343624f5eb85c34f4913917b8a52d9",
     "images/loaves-1280.jpg": "60687a69e1a95d0417d0cf2c6816b90ccd74342ad7ce2563456bc54b25bc20ab",
     "images/loaves-640.jpg": "d0b01d664c8551910ad75b0e813eaafbae0959e20681abd3df57a072c8582603",
-    "report.txt": "b453f44d4a32308f9ba13380a125f4a17bfd66250e2fea0c9ccf48992a602994"
+    "report.txt": "24e16236572e73fc158d3d73e777b13176b65a6a3fdf1c62e0188cb80ff5b68f"
   },
   "methodology": {
     "cache": "fresh browser context per page and version",
@@ -113,6 +113,12 @@
             "sha256": "dbda4f7560cd6fc4e8339f4f1032a3bca261d4aabc878f52a0e81458505c900f"
           },
           {
+            "path": "images/croissants-640.jpg",
+            "type": "image",
+            "bytes": 29282,
+            "sha256": "027c5ffd05625c4f8bcfa20d952f4a4e0e890f8ace9b1b58561801e406729f38"
+          },
+          {
             "path": "fonts/Fraunces.woff2",
             "type": "font",
             "bytes": 67304,
@@ -123,12 +129,6 @@
             "type": "font",
             "bytes": 349532,
             "sha256": "d590e66989b57cc4adb0948e387c5c54a36b225657778a00862195e81f2776b1"
-          },
-          {
-            "path": "images/croissants-640.jpg",
-            "type": "image",
-            "bytes": 29282,
-            "sha256": "027c5ffd05625c4f8bcfa20d952f4a4e0e890f8ace9b1b58561801e406729f38"
           },
           {
             "path": "images/kneading-640.jpg",
@@ -148,7 +148,7 @@
             "path": "styles.css",
             "type": "stylesheet",
             "bytes": 13014,
-            "sha256": "375902efafb754adeaa87c982698641f0866590359b2e9665b5397390c52fba1"
+            "sha256": "84b53e43d17d4563064188c701f35fbc975793508a662bf75dbaca1e85c773cf"
           },
           {
             "path": "comparison.css",
@@ -220,16 +220,16 @@
             "sha256": "cc935ca47146bda51b7716282c051ae64a031977865f6d4afd9db5baaa944309"
           },
           {
-            "path": "styles.css",
-            "type": "stylesheet",
-            "bytes": 9345,
-            "sha256": "7b0bf6f68eda80c5611995181a33d9ea91036a9030dfbc31df3124a934925a9a"
-          },
-          {
             "path": "comparison.css",
             "type": "stylesheet",
             "bytes": 488,
             "sha256": "757d889a54f21faa21f4938240a859fa3fb7521635d1b6463d1a262324e770bf"
+          },
+          {
+            "path": "styles.css",
+            "type": "stylesheet",
+            "bytes": 9345,
+            "sha256": "7b0bf6f68eda80c5611995181a33d9ea91036a9030dfbc31df3124a934925a9a"
           },
           {
             "path": "images/croissants-640.jpg",
@@ -267,7 +267,7 @@
             "path": "styles.css",
             "type": "stylesheet",
             "bytes": 13014,
-            "sha256": "375902efafb754adeaa87c982698641f0866590359b2e9665b5397390c52fba1"
+            "sha256": "84b53e43d17d4563064188c701f35fbc975793508a662bf75dbaca1e85c773cf"
           },
           {
             "path": "comparison.css",
@@ -374,7 +374,7 @@
             "path": "styles.css",
             "type": "stylesheet",
             "bytes": 13014,
-            "sha256": "375902efafb754adeaa87c982698641f0866590359b2e9665b5397390c52fba1"
+            "sha256": "84b53e43d17d4563064188c701f35fbc975793508a662bf75dbaca1e85c773cf"
           },
           {
             "path": "comparison.css",
@@ -395,16 +395,16 @@
             "sha256": "dbda4f7560cd6fc4e8339f4f1032a3bca261d4aabc878f52a0e81458505c900f"
           },
           {
-            "path": "fonts/Fraunces.core.d2ca4adb.woff2",
-            "type": "font",
-            "bytes": 46076,
-            "sha256": "d2ca4adbae59009a1cd41b916581570aa8d627f091c6ed7a51b0a4531e5e9b3b"
-          },
-          {
             "path": "fonts/InterVariable.core.710f1ae1.woff2",
             "type": "font",
             "bytes": 47228,
             "sha256": "710f1ae1148eaa71f45983e5d530921c38ac46ec05585314a4eabfc7fdc9797f"
+          },
+          {
+            "path": "fonts/Fraunces.core.d2ca4adb.woff2",
+            "type": "font",
+            "bytes": 46076,
+            "sha256": "d2ca4adbae59009a1cd41b916581570aa8d627f091c6ed7a51b0a4531e5e9b3b"
           }
         ]
       }
@@ -481,7 +481,7 @@
             "path": "styles.css",
             "type": "stylesheet",
             "bytes": 13014,
-            "sha256": "375902efafb754adeaa87c982698641f0866590359b2e9665b5397390c52fba1"
+            "sha256": "84b53e43d17d4563064188c701f35fbc975793508a662bf75dbaca1e85c773cf"
           },
           {
             "path": "comparison.css",
@@ -600,7 +600,7 @@
             "path": "styles.css",
             "type": "stylesheet",
             "bytes": 13014,
-            "sha256": "375902efafb754adeaa87c982698641f0866590359b2e9665b5397390c52fba1"
+            "sha256": "84b53e43d17d4563064188c701f35fbc975793508a662bf75dbaca1e85c773cf"
           },
           {
             "path": "comparison.css",
@@ -719,7 +719,7 @@
             "path": "styles.css",
             "type": "stylesheet",
             "bytes": 13014,
-            "sha256": "375902efafb754adeaa87c982698641f0866590359b2e9665b5397390c52fba1"
+            "sha256": "84b53e43d17d4563064188c701f35fbc975793508a662bf75dbaca1e85c773cf"
           },
           {
             "path": "comparison.css",
@@ -773,6 +773,12 @@
       "resources": {
         "before": [
           {
+            "path": "about.html",
+            "type": "document",
+            "bytes": 4601,
+            "sha256": "f178dfdc0b6feedc07ccfce1b712746f69b37a51b7f4e80fbf7fd5c8dd3a025e"
+          },
+          {
             "path": "styles.css",
             "type": "stylesheet",
             "bytes": 9345,
@@ -783,12 +789,6 @@
             "type": "stylesheet",
             "bytes": 488,
             "sha256": "757d889a54f21faa21f4938240a859fa3fb7521635d1b6463d1a262324e770bf"
-          },
-          {
-            "path": "about.html",
-            "type": "document",
-            "bytes": 4601,
-            "sha256": "f178dfdc0b6feedc07ccfce1b712746f69b37a51b7f4e80fbf7fd5c8dd3a025e"
           },
           {
             "path": "images/kneading-1280.jpg",
@@ -826,7 +826,7 @@
             "path": "styles.css",
             "type": "stylesheet",
             "bytes": 13014,
-            "sha256": "375902efafb754adeaa87c982698641f0866590359b2e9665b5397390c52fba1"
+            "sha256": "84b53e43d17d4563064188c701f35fbc975793508a662bf75dbaca1e85c773cf"
           },
           {
             "path": "comparison.css",
@@ -847,16 +847,16 @@
             "sha256": "dbda4f7560cd6fc4e8339f4f1032a3bca261d4aabc878f52a0e81458505c900f"
           },
           {
-            "path": "fonts/InterVariable.core.710f1ae1.woff2",
-            "type": "font",
-            "bytes": 47228,
-            "sha256": "710f1ae1148eaa71f45983e5d530921c38ac46ec05585314a4eabfc7fdc9797f"
-          },
-          {
             "path": "fonts/Fraunces.core.d2ca4adb.woff2",
             "type": "font",
             "bytes": 46076,
             "sha256": "d2ca4adbae59009a1cd41b916581570aa8d627f091c6ed7a51b0a4531e5e9b3b"
+          },
+          {
+            "path": "fonts/InterVariable.core.710f1ae1.woff2",
+            "type": "font",
+            "bytes": 47228,
+            "sha256": "710f1ae1148eaa71f45983e5d530921c38ac46ec05585314a4eabfc7fdc9797f"
           }
         ]
       }
@@ -930,16 +930,16 @@
             "sha256": "80fcd56bbb2bc1d644eeb0ac9509061cb132eb121ce0eafad07f242a38737657"
           },
           {
-            "path": "styles.css",
-            "type": "stylesheet",
-            "bytes": 13014,
-            "sha256": "375902efafb754adeaa87c982698641f0866590359b2e9665b5397390c52fba1"
-          },
-          {
             "path": "comparison.css",
             "type": "stylesheet",
             "bytes": 488,
             "sha256": "757d889a54f21faa21f4938240a859fa3fb7521635d1b6463d1a262324e770bf"
+          },
+          {
+            "path": "styles.css",
+            "type": "stylesheet",
+            "bytes": 13014,
+            "sha256": "84b53e43d17d4563064188c701f35fbc975793508a662bf75dbaca1e85c773cf"
           },
           {
             "path": "images/kneading-1280.jpg",
@@ -1017,18 +1017,6 @@
             "sha256": "dbda4f7560cd6fc4e8339f4f1032a3bca261d4aabc878f52a0e81458505c900f"
           },
           {
-            "path": "fonts/Fraunces.woff2",
-            "type": "font",
-            "bytes": 67304,
-            "sha256": "7234ed860a9cc83045413c4faee63c960a8f2d1917adcf728119307d56e0d783"
-          },
-          {
-            "path": "fonts/InterVariable.woff2",
-            "type": "font",
-            "bytes": 349532,
-            "sha256": "d590e66989b57cc4adb0948e387c5c54a36b225657778a00862195e81f2776b1"
-          },
-          {
             "path": "images/croissants-640.jpg",
             "type": "image",
             "bytes": 29282,
@@ -1039,6 +1027,18 @@
             "type": "image",
             "bytes": 66175,
             "sha256": "4a2b657a9c27d247dafaa38184a800ce21343624f5eb85c34f4913917b8a52d9"
+          },
+          {
+            "path": "fonts/Fraunces.woff2",
+            "type": "font",
+            "bytes": 67304,
+            "sha256": "7234ed860a9cc83045413c4faee63c960a8f2d1917adcf728119307d56e0d783"
+          },
+          {
+            "path": "fonts/InterVariable.woff2",
+            "type": "font",
+            "bytes": 349532,
+            "sha256": "d590e66989b57cc4adb0948e387c5c54a36b225657778a00862195e81f2776b1"
           }
         ],
         "after": [
@@ -1052,7 +1052,7 @@
             "path": "styles.css",
             "type": "stylesheet",
             "bytes": 13014,
-            "sha256": "375902efafb754adeaa87c982698641f0866590359b2e9665b5397390c52fba1"
+            "sha256": "84b53e43d17d4563064188c701f35fbc975793508a662bf75dbaca1e85c773cf"
           },
           {
             "path": "comparison.css",
@@ -1118,16 +1118,16 @@
       "resources": {
         "before": [
           {
-            "path": "styles.css",
-            "type": "stylesheet",
-            "bytes": 9345,
-            "sha256": "7b0bf6f68eda80c5611995181a33d9ea91036a9030dfbc31df3124a934925a9a"
-          },
-          {
             "path": "menu.html",
             "type": "document",
             "bytes": 7033,
             "sha256": "cc935ca47146bda51b7716282c051ae64a031977865f6d4afd9db5baaa944309"
+          },
+          {
+            "path": "styles.css",
+            "type": "stylesheet",
+            "bytes": 9345,
+            "sha256": "7b0bf6f68eda80c5611995181a33d9ea91036a9030dfbc31df3124a934925a9a"
           },
           {
             "path": "comparison.css",
@@ -1171,7 +1171,7 @@
             "path": "styles.css",
             "type": "stylesheet",
             "bytes": 13014,
-            "sha256": "375902efafb754adeaa87c982698641f0866590359b2e9665b5397390c52fba1"
+            "sha256": "84b53e43d17d4563064188c701f35fbc975793508a662bf75dbaca1e85c773cf"
           },
           {
             "path": "comparison.css",
@@ -1278,7 +1278,7 @@
             "path": "styles.css",
             "type": "stylesheet",
             "bytes": 13014,
-            "sha256": "375902efafb754adeaa87c982698641f0866590359b2e9665b5397390c52fba1"
+            "sha256": "84b53e43d17d4563064188c701f35fbc975793508a662bf75dbaca1e85c773cf"
           },
           {
             "path": "comparison.css",
@@ -1338,16 +1338,16 @@
             "sha256": "0e8d435d7d1839ccc32a70cbf828f3043b100ba6911f40c9db495aa6592998c9"
           },
           {
-            "path": "styles.css",
-            "type": "stylesheet",
-            "bytes": 9345,
-            "sha256": "7b0bf6f68eda80c5611995181a33d9ea91036a9030dfbc31df3124a934925a9a"
-          },
-          {
             "path": "comparison.css",
             "type": "stylesheet",
             "bytes": 488,
             "sha256": "757d889a54f21faa21f4938240a859fa3fb7521635d1b6463d1a262324e770bf"
+          },
+          {
+            "path": "styles.css",
+            "type": "stylesheet",
+            "bytes": 9345,
+            "sha256": "7b0bf6f68eda80c5611995181a33d9ea91036a9030dfbc31df3124a934925a9a"
           },
           {
             "path": "images/kneading-1280.jpg",
@@ -1385,7 +1385,7 @@
             "path": "styles.css",
             "type": "stylesheet",
             "bytes": 13014,
-            "sha256": "375902efafb754adeaa87c982698641f0866590359b2e9665b5397390c52fba1"
+            "sha256": "84b53e43d17d4563064188c701f35fbc975793508a662bf75dbaca1e85c773cf"
           },
           {
             "path": "comparison.css",
@@ -1457,28 +1457,16 @@
             "sha256": "757d889a54f21faa21f4938240a859fa3fb7521635d1b6463d1a262324e770bf"
           },
           {
-            "path": "images/loaves-1280.jpg",
-            "type": "image",
-            "bytes": 334163,
-            "sha256": "60687a69e1a95d0417d0cf2c6816b90ccd74342ad7ce2563456bc54b25bc20ab"
-          },
-          {
             "path": "bakery.js",
             "type": "script",
             "bytes": 2562,
             "sha256": "dbda4f7560cd6fc4e8339f4f1032a3bca261d4aabc878f52a0e81458505c900f"
           },
           {
-            "path": "images/croissants-1280.jpg",
+            "path": "images/loaves-1280.jpg",
             "type": "image",
-            "bytes": 89392,
-            "sha256": "d166f8b1812bbc0ca684f4820ab8fead9660f9707a7349d0200f8f5ba32e6e9b"
-          },
-          {
-            "path": "images/kneading-1280.jpg",
-            "type": "image",
-            "bytes": 205903,
-            "sha256": "02bad97228847d1cb6da0832b09dfb8e007cf3ae852d2279f667d37b16069787"
+            "bytes": 334163,
+            "sha256": "60687a69e1a95d0417d0cf2c6816b90ccd74342ad7ce2563456bc54b25bc20ab"
           },
           {
             "path": "fonts/Fraunces.woff2",
@@ -1491,6 +1479,18 @@
             "type": "font",
             "bytes": 349532,
             "sha256": "d590e66989b57cc4adb0948e387c5c54a36b225657778a00862195e81f2776b1"
+          },
+          {
+            "path": "images/croissants-1280.jpg",
+            "type": "image",
+            "bytes": 89392,
+            "sha256": "d166f8b1812bbc0ca684f4820ab8fead9660f9707a7349d0200f8f5ba32e6e9b"
+          },
+          {
+            "path": "images/kneading-1280.jpg",
+            "type": "image",
+            "bytes": 205903,
+            "sha256": "02bad97228847d1cb6da0832b09dfb8e007cf3ae852d2279f667d37b16069787"
           }
         ],
         "after": [
@@ -1504,7 +1504,7 @@
             "path": "styles.css",
             "type": "stylesheet",
             "bytes": 13014,
-            "sha256": "375902efafb754adeaa87c982698641f0866590359b2e9665b5397390c52fba1"
+            "sha256": "84b53e43d17d4563064188c701f35fbc975793508a662bf75dbaca1e85c773cf"
           },
           {
             "path": "comparison.css",
@@ -1623,7 +1623,7 @@
             "path": "styles.css",
             "type": "stylesheet",
             "bytes": 13014,
-            "sha256": "375902efafb754adeaa87c982698641f0866590359b2e9665b5397390c52fba1"
+            "sha256": "84b53e43d17d4563064188c701f35fbc975793508a662bf75dbaca1e85c773cf"
           },
           {
             "path": "comparison.css",
@@ -1730,7 +1730,7 @@
             "path": "styles.css",
             "type": "stylesheet",
             "bytes": 13014,
-            "sha256": "375902efafb754adeaa87c982698641f0866590359b2e9665b5397390c52fba1"
+            "sha256": "84b53e43d17d4563064188c701f35fbc975793508a662bf75dbaca1e85c773cf"
           },
           {
             "path": "comparison.css",
@@ -1837,7 +1837,7 @@
             "path": "styles.css",
             "type": "stylesheet",
             "bytes": 13014,
-            "sha256": "375902efafb754adeaa87c982698641f0866590359b2e9665b5397390c52fba1"
+            "sha256": "84b53e43d17d4563064188c701f35fbc975793508a662bf75dbaca1e85c773cf"
           },
           {
             "path": "comparison.css",
@@ -2005,8 +2005,8 @@
         "page": "/",
         "viewport": 768,
         "dpr": 2,
-        "result": "flaky",
-        "pixels": 2
+        "result": "identical",
+        "pixels": 0
       },
       {
         "page": "/",
@@ -2019,8 +2019,8 @@
         "page": "/",
         "viewport": 1280,
         "dpr": 2,
-        "result": "flaky",
-        "pixels": 31
+        "result": "identical",
+        "pixels": 0
       },
       {
         "page": "/",
@@ -2033,8 +2033,8 @@
         "page": "/",
         "viewport": 1920,
         "dpr": 2,
-        "result": "flaky",
-        "pixels": 66
+        "result": "identical",
+        "pixels": 0
       },
       {
         "page": "/about.html",
@@ -2075,8 +2075,8 @@
         "page": "/about.html",
         "viewport": 1280,
         "dpr": 2,
-        "result": "flaky",
-        "pixels": 26
+        "result": "identical",
+        "pixels": 0
       },
       {
         "page": "/about.html",
@@ -2089,8 +2089,8 @@
         "page": "/about.html",
         "viewport": 1920,
         "dpr": 2,
-        "result": "flaky",
-        "pixels": 24
+        "result": "identical",
+        "pixels": 0
       },
       {
         "page": "/journal/levain.html",
@@ -2214,7 +2214,7 @@
         "strictPixels": 0,
         "maxChannelDelta": 0,
         "channelTolerance": 1,
-        "unmaskedPixels": 124910,
+        "unmaskedPixels": 0,
         "mask": "photographs only",
         "imageBodiesIdentical": true,
         "imageGeometryIdentical": true
@@ -2240,7 +2240,7 @@
         "strictPixels": 0,
         "maxChannelDelta": 0,
         "channelTolerance": 1,
-        "unmaskedPixels": 0,
+        "unmaskedPixels": 7792,
         "mask": "photographs only",
         "imageBodiesIdentical": true,
         "imageGeometryIdentical": true
@@ -2253,7 +2253,7 @@
         "strictPixels": 0,
         "maxChannelDelta": 0,
         "channelTolerance": 1,
-        "unmaskedPixels": 8629,
+        "unmaskedPixels": 0,
         "mask": "photographs only",
         "imageBodiesIdentical": true,
         "imageGeometryIdentical": true
@@ -2266,7 +2266,7 @@
         "strictPixels": 0,
         "maxChannelDelta": 0,
         "channelTolerance": 1,
-        "unmaskedPixels": 905137,
+        "unmaskedPixels": 507616,
         "mask": "photographs only",
         "imageBodiesIdentical": true,
         "imageGeometryIdentical": true
@@ -2279,7 +2279,7 @@
         "strictPixels": 0,
         "maxChannelDelta": 0,
         "channelTolerance": 1,
-        "unmaskedPixels": 0,
+        "unmaskedPixels": 159004,
         "mask": "photographs only",
         "imageBodiesIdentical": true,
         "imageGeometryIdentical": true
@@ -2292,7 +2292,7 @@
         "strictPixels": 0,
         "maxChannelDelta": 0,
         "channelTolerance": 1,
-        "unmaskedPixels": 0,
+        "unmaskedPixels": 29699,
         "mask": "photographs only",
         "imageBodiesIdentical": true,
         "imageGeometryIdentical": true
@@ -2331,7 +2331,7 @@
         "strictPixels": 0,
         "maxChannelDelta": 0,
         "channelTolerance": 1,
-        "unmaskedPixels": 0,
+        "unmaskedPixels": 205007,
         "mask": "photographs only",
         "imageBodiesIdentical": true,
         "imageGeometryIdentical": true
@@ -2357,7 +2357,7 @@
         "strictPixels": 0,
         "maxChannelDelta": 0,
         "channelTolerance": 1,
-        "unmaskedPixels": 0,
+        "unmaskedPixels": 19602,
         "mask": "photographs only",
         "imageBodiesIdentical": true,
         "imageGeometryIdentical": true
@@ -2367,10 +2367,10 @@
         "viewport": 1280,
         "dpr": 2,
         "pixels": 0,
-        "strictPixels": 44,
+        "strictPixels": 31,
         "maxChannelDelta": 1,
         "channelTolerance": 1,
-        "unmaskedPixels": 883375,
+        "unmaskedPixels": 7,
         "mask": "photographs only",
         "imageBodiesIdentical": true,
         "imageGeometryIdentical": true
@@ -2383,7 +2383,7 @@
         "strictPixels": 0,
         "maxChannelDelta": 0,
         "channelTolerance": 1,
-        "unmaskedPixels": 818530,
+        "unmaskedPixels": 0,
         "mask": "photographs only",
         "imageBodiesIdentical": true,
         "imageGeometryIdentical": true
@@ -2393,10 +2393,10 @@
         "viewport": 1280,
         "dpr": 2,
         "pixels": 0,
-        "strictPixels": 8,
+        "strictPixels": 15,
         "maxChannelDelta": 1,
         "channelTolerance": 1,
-        "unmaskedPixels": 14,
+        "unmaskedPixels": 2,
         "mask": "photographs only",
         "imageBodiesIdentical": true,
         "imageGeometryIdentical": true
@@ -2429,7 +2429,7 @@
   "limitAxes": {
     "ok": false,
     "saving": 75092,
-    "report": "Font files and CSS\n  6 output file(s): bytes match the manifest, they decode and validate, and the CSS loads them with the original descriptors\n\nShaping equivalence\n  fraunces-100-900-normal: 95 word(s), 380 case(s): 0 identical, 373 within limit-axes rounding (outlines ≤ 1.4 units, advances ≤ 1), 7 differ\n  inter-100-900-normal: 622 word(s), 2390 case(s): 1100 identical, 1260 within limit-axes rounding (outlines ≤ 0.5 units, advances ≤ 1), 30 differ\n  regression: fraunces-100-900-normal: 7 of 380 shaping case(s) differ from the source; e.g. \" Levain\" (calt=0,clig=0,dlig=0,hlig=0,liga=0 opsz=72,wght=750): glyph 3 (cluster 3): advance 1018 → 1020\n  regression: inter-100-900-normal: 30 of 2390 shaping case(s) differ from the source; e.g. \" Coffee \" (opsz=20,wght=400): glyph 4 (cluster 4): advance 667 → 669\n\nIn the browser (\"before\" is this build with the original fonts swapped back)\n  chromium 157.0.8103.39 · 4 page(s) · 4 comparison(s): 0 identical, 0 sub-pixel rounding, 4 regression(s)\n  regression: / @360px DPR 2: width changed (shaping or advance widths); pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions) (9 of 51 text boxes moved, up to 0.06 px), 24495 px differ\n      \"Little Levain\" (body > div.container > header.site-header > a.brand): width changed (shaping or advance widths)\n      \"Bread, baked\" (main#content > section.hero:nth-of-type(1) > div > h1): width changed (shaping or advance widths)\n      \"every morning.\" (main#content > section.hero:nth-of-type(1) > div > h1): width changed (shaping or advance widths)\n      diff: .fontphobia/verify/index@360x2.chromium.png\n  regression: /about.html @360px DPR 2: width changed (shaping or advance widths); pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions) (11 of 45 text boxes moved, up to 0.08 px), 22302 px differ\n      \"Little Levain\" (body > div.container > header.site-header > a.brand): width changed (shaping or advance widths)\n      \"Two bakers.\" (main#content > section.hero:nth-of-type(1) > div > h1): width changed (shaping or advance widths)\n      \"One oven.\" (main#content > section.hero:nth-of-type(1) > div > h1): width changed (shaping or advance widths)\n      diff: .fontphobia/verify/about.html@360x2.chromium.png\n  regression: /journal/levain.html @360px DPR 2: width changed (shaping or advance widths) (18 of 46 text boxes moved, up to 0.06 px), 34596 px differ\n      \"Little Levain\" (body > div.container > header.site-header > a.brand): width changed (shaping or advance widths)\n      \"Notes on levain.\" (main#content > article.prose > h1): width changed (shaping or advance widths)\n      \"What our starter does all day, and why …\" (main#content > article.prose > p.lede:nth-of-type(2)): width changed (shaping or advance widths)\n      diff: .fontphobia/verify/journal_levain.html@360x2.chromium.png\n  regression: /menu.html @360px DPR 2: width changed (shaping or advance widths) (12 of 80 text boxes moved, up to 0.06 px), 27011 px differ\n      \"Little Levain\" (body > div.container > header.site-header > a.brand): width changed (shaping or advance widths)\n      \"On the counter.\" (main#content > section.page-heading > h1): width changed (shaping or advance widths)\n      \" Everything is baked on site. This is o…\" (main#content > section.page-heading > p.lede:nth-of-type(2)): width changed (shaping or advance widths)\n      diff: .fontphobia/verify/menu.html@360x2.chromium.png\n\nFont bytes per page\n  median 407.1 KB → 74.5 KB (82% less)\n  /                               407.1 KB →   74.5 KB  (2 → 2 requests)\n  /about.html                     407.1 KB →   74.5 KB  (2 → 2 requests)\n  /journal/levain.html            407.1 KB →   74.5 KB  (2 → 2 requests)\n  /menu.html                      407.1 KB →   74.5 KB  (2 → 2 requests)\n  every extended and rest file loaded only on pages that use one of its characters\n\nVerify failed. Diff images are in .fontphobia/verify. `fontphobia revert` restores the original fonts.\n",
+    "report": "Font files and CSS\n  6 output file(s): bytes match the manifest, they decode and validate, and the CSS loads them with the original descriptors\n\nShaping equivalence\n  fraunces-100-900-normal: 95 word(s), 380 case(s): 0 identical, 373 within limit-axes rounding (outlines ≤ 1.4 units, advances ≤ 1), 7 differ\n  inter-100-900-normal: 632 word(s), 2422 case(s): 1120 identical, 1272 within limit-axes rounding (outlines ≤ 0.5 units, advances ≤ 1), 30 differ\n  regression: fraunces-100-900-normal: 7 of 380 shaping case(s) differ from the source; e.g. \" Levain\" (calt=0,clig=0,dlig=0,hlig=0,liga=0 opsz=72,wght=750): glyph 3 (cluster 3): advance 1018 → 1020\n  regression: inter-100-900-normal: 30 of 2422 shaping case(s) differ from the source; e.g. \" Coffee \" (opsz=20,wght=400): glyph 4 (cluster 4): advance 667 → 669\n\nIn the browser (\"before\" is this build with the original fonts swapped back)\n  chromium 157.0.8103.39 · 4 page(s) · 4 comparison(s): 0 identical, 0 sub-pixel rounding, 4 regression(s)\n  regression: / @360px DPR 2: width changed (shaping or advance widths); pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions) (9 of 51 text boxes moved, up to 0.06 px), 25094 px differ\n      \"Little Levain\" (body > div.container > header.site-header > a.brand): width changed (shaping or advance widths)\n      \"Bread, baked\" (main#content > section.hero:nth-of-type(1) > div > h1): width changed (shaping or advance widths)\n      \"every morning.\" (main#content > section.hero:nth-of-type(1) > div > h1): width changed (shaping or advance widths)\n      diff: .fontphobia/verify/index@360x2.chromium.png\n  regression: /about.html @360px DPR 2: width changed (shaping or advance widths); pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions) (11 of 45 text boxes moved, up to 0.08 px), 22928 px differ\n      \"Little Levain\" (body > div.container > header.site-header > a.brand): width changed (shaping or advance widths)\n      \"Two bakers.\" (main#content > section.hero:nth-of-type(1) > div > h1): width changed (shaping or advance widths)\n      \"One oven.\" (main#content > section.hero:nth-of-type(1) > div > h1): width changed (shaping or advance widths)\n      diff: .fontphobia/verify/about.html@360x2.chromium.png\n  regression: /journal/levain.html @360px DPR 2: width changed (shaping or advance widths) (18 of 46 text boxes moved, up to 0.06 px), 35825 px differ\n      \"Little Levain\" (body > div.container > header.site-header > a.brand): width changed (shaping or advance widths)\n      \"Notes on levain.\" (main#content > article.prose > h1): width changed (shaping or advance widths)\n      \"What our starter does all day, and why …\" (main#content > article.prose > p.lede:nth-of-type(2)): width changed (shaping or advance widths)\n      diff: .fontphobia/verify/journal_levain.html@360x2.chromium.png\n  regression: /menu.html @360px DPR 2: width changed (shaping or advance widths) (12 of 80 text boxes moved, up to 0.06 px), 27573 px differ\n      \"Little Levain\" (body > div.container > header.site-header > a.brand): width changed (shaping or advance widths)\n      \"On the counter.\" (main#content > section.page-heading > h1): width changed (shaping or advance widths)\n      \" Everything is baked on site. This is o…\" (main#content > section.page-heading > p.lede:nth-of-type(2)): width changed (shaping or advance widths)\n      diff: .fontphobia/verify/menu.html@360x2.chromium.png\n\nFont bytes per page\n  median 407.1 KB → 74.5 KB (82% less)\n  /                               407.1 KB →   74.5 KB  (2 → 2 requests)\n  /about.html                     407.1 KB →   74.5 KB  (2 → 2 requests)\n  /journal/levain.html            407.1 KB →   74.5 KB  (2 → 2 requests)\n  /menu.html                      407.1 KB →   74.5 KB  (2 → 2 requests)\n  every extended and rest file loaded only on pages that use one of its characters\n\nVerify failed. Diff images are in .fontphobia/verify. `fontphobia revert` restores the original fonts.\n",
     "image": {
       "width": 720,
       "height": 8070,

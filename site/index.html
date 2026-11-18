@@ -430,9 +430,9 @@ table.t td.n { text-align: right; font-variant-numeric: tabular-nums; white-spac
 <tr><th scope="row">Inter extended</th><td class="n">185.8 KB</td></tr>
 <tr><th scope="row">Inter rest</th><td class="n">192.7 KB</td></tr></tbody></table></div>
 <p>HarfBuzz checks words before splitting. Characters move into core if a split changes their shaping. Axes, hinting, font features and glyph names are kept.</p>
-<div class="term"><pre>Face                          Now     Core       Ext      Rest         Median page
-Fraunces 100 900 normal   65.7 KB  45.0 KB   41.3 KB   22.0 KB   65.7 KB → 45.0 KB
-Inter 100 900 normal     341.3 KB  46.1 KB  185.8 KB  192.7 KB  341.3 KB → 46.1 KB
+<div class="term"><pre>Face                          Now     Core       Ext      Rest         Median page  Saved
+Fraunces 100 900 normal   65.7 KB  45.0 KB   41.3 KB   22.0 KB   65.7 KB → 45.0 KB    32%
+Inter 100 900 normal     341.3 KB  46.1 KB  185.8 KB  192.7 KB  341.3 KB → 46.1 KB    86%
 
 Font bytes per page: median 407.1 KB → 91.1 KB (78% less); biggest drop / 407.1 KB → 91.1 KB
 
@@ -440,7 +440,7 @@ Core choice: used characters put in core so the pages download less in total
   Fraunces 100 900 normal: 4 character(s) (½ è é û); 4 of 4 page(s) load only the core file
   Inter 100 900 normal: 9 character(s) (° · â ç è é û € →); 4 of 4 page(s) load only the core file
 
-Opt-ins (would change rendering, not applied):
+Opt-ins (would change rendering, not applied; `--allow &lt;name&gt;` applies one):
   limit-axes     saves  73.3 KB  opsz 9–72, wght 400–900; text widths shift up to ~0.02% (whole pixels on Linux at 1×) (2 faces)
   drop-hint-refs saves  17.6 KB  characters from the extended file hint differently on Linux and ChromeOS (FreeType's auto-hinter) (2 faces)
 
@@ -449,15 +449,10 @@ Font files and CSS
 
 Shaping equivalence
   fraunces-100-900-normal: 95 word(s), 380 case(s): 380 identical
-  inter-100-900-normal: 622 word(s), 2390 case(s): 2390 identical
+  inter-100-900-normal: 632 word(s), 2422 case(s): 2422 identical
 
 In the browser (&quot;before&quot; is this build with the original fonts swapped back)
-  chromium 157.0.8103.39 · 4 page(s) · 32 comparison(s): 27 identical, 0 sub-pixel rounding, 0 regression(s), 5 flaky (a pixel difference that didn't reproduce)
-  flaky: / @768px DPR 2: pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions); identical on load 3
-  flaky: / @1280px DPR 2: pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions); a load of the original and a load of the new files are pixel-identical (3 loads each)
-  flaky: / @1920px DPR 2: pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions); the original fonts differ from themselves between loads by 32 px
-  flaky: /about.html @1280px DPR 2: pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions); the original fonts differ from themselves between loads by 25 px
-  flaky: /about.html @1920px DPR 2: pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions); the original fonts differ from themselves between loads by 53 px
+  chromium 157.0.8103.39 · 4 page(s) · 32 comparison(s): 32 identical, 0 sub-pixel rounding, 0 regression(s)
 
 Font bytes per page
   median 407.1 KB → 91.1 KB (78% less)
@@ -487,28 +482,28 @@ Verify passed: no differences.
 
 Shaping equivalence
   fraunces-100-900-normal: 95 word(s), 380 case(s): 0 identical, 373 within limit-axes rounding (outlines ≤ 1.4 units, advances ≤ 1), 7 differ
-  inter-100-900-normal: 622 word(s), 2390 case(s): 1100 identical, 1260 within limit-axes rounding (outlines ≤ 0.5 units, advances ≤ 1), 30 differ
+  inter-100-900-normal: 632 word(s), 2422 case(s): 1120 identical, 1272 within limit-axes rounding (outlines ≤ 0.5 units, advances ≤ 1), 30 differ
   regression: fraunces-100-900-normal: 7 of 380 shaping case(s) differ from the source; e.g. &quot; Levain&quot; (calt=0,clig=0,dlig=0,hlig=0,liga=0 opsz=72,wght=750): glyph 3 (cluster 3): advance 1018 → 1020
-  regression: inter-100-900-normal: 30 of 2390 shaping case(s) differ from the source; e.g. &quot; Coffee &quot; (opsz=20,wght=400): glyph 4 (cluster 4): advance 667 → 669
+  regression: inter-100-900-normal: 30 of 2422 shaping case(s) differ from the source; e.g. &quot; Coffee &quot; (opsz=20,wght=400): glyph 4 (cluster 4): advance 667 → 669
 
 In the browser (&quot;before&quot; is this build with the original fonts swapped back)
   chromium 157.0.8103.39 · 4 page(s) · 4 comparison(s): 0 identical, 0 sub-pixel rounding, 4 regression(s)
-  regression: / @360px DPR 2: width changed (shaping or advance widths); pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions) (9 of 51 text boxes moved, up to 0.06 px), 24495 px differ
+  regression: / @360px DPR 2: width changed (shaping or advance widths); pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions) (9 of 51 text boxes moved, up to 0.06 px), 25094 px differ
       &quot;Little Levain&quot; (body &gt; div.container &gt; header.site-header &gt; a.brand): width changed (shaping or advance widths)
       &quot;Bread, baked&quot; (main#content &gt; section.hero:nth-of-type(1) &gt; div &gt; h1): width changed (shaping or advance widths)
       &quot;every morning.&quot; (main#content &gt; section.hero:nth-of-type(1) &gt; div &gt; h1): width changed (shaping or advance widths)
       diff: .fontphobia/verify/index@360x2.chromium.png
-  regression: /about.html @360px DPR 2: width changed (shaping or advance widths); pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions) (11 of 45 text boxes moved, up to 0.08 px), 22302 px differ
+  regression: /about.html @360px DPR 2: width changed (shaping or advance widths); pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions) (11 of 45 text boxes moved, up to 0.08 px), 22928 px differ
       &quot;Little Levain&quot; (body &gt; div.container &gt; header.site-header &gt; a.brand): width changed (shaping or advance widths)
       &quot;Two bakers.&quot; (main#content &gt; section.hero:nth-of-type(1) &gt; div &gt; h1): width changed (shaping or advance widths)
       &quot;One oven.&quot; (main#content &gt; section.hero:nth-of-type(1) &gt; div &gt; h1): width changed (shaping or advance widths)
       diff: .fontphobia/verify/about.html@360x2.chromium.png
-  regression: /journal/levain.html @360px DPR 2: width changed (shaping or advance widths) (18 of 46 text boxes moved, up to 0.06 px), 34596 px differ
+  regression: /journal/levain.html @360px DPR 2: width changed (shaping or advance widths) (18 of 46 text boxes moved, up to 0.06 px), 35825 px differ
       &quot;Little Levain&quot; (body &gt; div.container &gt; header.site-header &gt; a.brand): width changed (shaping or advance widths)
       &quot;Notes on levain.&quot; (main#content &gt; article.prose &gt; h1): width changed (shaping or advance widths)
       &quot;What our starter does all day, and why …&quot; (main#content &gt; article.prose &gt; p.lede:nth-of-type(2)): width changed (shaping or advance widths)
       diff: .fontphobia/verify/journal_levain.html@360x2.chromium.png
-  regression: /menu.html @360px DPR 2: width changed (shaping or advance widths) (12 of 80 text boxes moved, up to 0.06 px), 27011 px differ
+  regression: /menu.html @360px DPR 2: width changed (shaping or advance widths) (12 of 80 text boxes moved, up to 0.06 px), 27573 px differ
       &quot;Little Levain&quot; (body &gt; div.container &gt; header.site-header &gt; a.brand): width changed (shaping or advance widths)
       &quot;On the counter.&quot; (main#content &gt; section.page-heading &gt; h1): width changed (shaping or advance widths)
       &quot; Everything is baked on site. This is o…&quot; (main#content &gt; section.page-heading &gt; p.lede:nth-of-type(2)): width changed (shaping or advance widths)

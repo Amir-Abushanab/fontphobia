@@ -11,7 +11,7 @@ import {
   type UsageFileJson,
   verifyStatic,
 } from '@fontphobia/core';
-import type { VerifyResult } from '@fontphobia/crawler';
+import type { Progress, VerifyResult } from '@fontphobia/crawler';
 import { loadConfig, selfUrl } from './config.ts';
 import pkg from '../package.json' with { type: 'json' };
 
@@ -31,6 +31,8 @@ export interface AutoRunOptions {
   /** Also load the pages before and after in Chrome and compare them (`verify`'s browser stage). */
   verify?: boolean;
   log?: (m: string) => void;
+  /** The crawl's and the comparison's progress, for a progress bar. */
+  progress?: (p: Progress) => void;
 }
 
 export interface AutoRun {
@@ -78,6 +80,7 @@ export async function runAuto(o: AutoRunOptions): Promise<AutoRun> {
       inPlace: true,
       fontphobiaVersion: pkg.version,
       log,
+      progress: o.progress,
       viewports: config.viewports,
       locales: config.locales,
       maxPages: config.maxPages,
@@ -123,6 +126,7 @@ export async function runAuto(o: AutoRunOptions): Promise<AutoRun> {
       ignore: config.ignore,
       outDir: join(root, '.fontphobia', 'verify'),
       log,
+      progress: o.progress,
     });
     // Static usage can't predict text that CSS or scripts generate, so an extended or rest file may
     // load where it says none is needed. That costs bytes, not pixels: reported, not a failure.
