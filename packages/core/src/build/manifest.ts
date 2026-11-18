@@ -1,7 +1,7 @@
 // .fontphobia/manifest.json (§9.9): what `build --write` changed, so it can rerun, `revert` and
 // `check` (M6). Canonical JSON, committed. No timestamps.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { canonicalJson } from '../usage/json.ts';
 import { parseStylesheet } from '../css/stylesheet.ts';
 import { syntaxOf } from './css.ts';
@@ -30,6 +30,17 @@ export function ensureFontphobiaDir(root: string): string {
   const gi = join(dir, '.gitignore');
   if (!existsSync(gi) || readFileSync(gi, 'utf8') === OLD_GITIGNORE) writeFileSync(gi, GITIGNORE);
   return dir;
+}
+
+/**
+ * Before writing anything under a project's .fontphobia/ (the page-load cache, diff images):
+ * create the folder with its .gitignore first, so files written by a run that never finishes, or
+ * by one whose reports go elsewhere (--out-dir), are ignored too.
+ */
+export function ensureIgnoredFor(path: string): void {
+  const parts = resolve(path).split(sep);
+  const i = parts.lastIndexOf(FONTPHOBIA_DIR);
+  if (i > 0) ensureFontphobiaDir(parts.slice(0, i).join(sep) || sep);
 }
 
 /** The manifest's path: .fontphobia/manifest.json, or 0.1.x's fontphobia.manifest.json while that's the one present. */

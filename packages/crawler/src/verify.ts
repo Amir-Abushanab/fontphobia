@@ -20,6 +20,7 @@ import {
   type Overlay,
   type StaticVerify,
   type UsageFileJson,
+  ensureIgnoredFor,
 } from '@fontphobia/core';
 import { launchChrome } from './audit.ts';
 import { playwrightVersion, startLinuxBrowsers, stopOnExit, type LinuxBrowsers, type Runtime } from './linux.ts';
@@ -670,6 +671,7 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
   const outDir = o.outDir ?? join(root, '.fontphobia', 'verify');
   // Diff images are this run's only: full-page PNGs add up fast (826 MB after three runs on a 55-page site).
   rmSync(outDir, { recursive: true, force: true });
+  ensureIgnoredFor(outDir);
   const limitFaces = new Set(
     Object.values(o.manifest.entries)
       .filter((e) => e.plan.optIns.includes('limit-axes'))
