@@ -39,7 +39,14 @@ import { loadConfig, selfUrl as selfUrlOf } from './config.ts';
 import { applyKit, readUsage, revertKits } from './apply-kit.ts';
 import { runAuto } from './auto-run.ts';
 import { ansiStyle, colorEnabled, highlight, seconds, Ui } from './ui.ts';
-import { latestVersion, updateCheckEnabled, updateNotice } from './update.ts';
+import {
+  compareVersions,
+  latestVersion,
+  needsReleaseDate,
+  publishedAt,
+  updateCheckEnabled,
+  updateNotice,
+} from './update.ts';
 import type { Progress } from '@fontphobia/crawler';
 import pkg from '../package.json' with { type: 'json' };
 
@@ -186,10 +193,14 @@ let updateChecked = false;
 function notifyUpdate(ui: Ui) {
   if (updateChecked || !updateCheckEnabled(process.env, ui.live)) return;
   updateChecked = true;
-  void latestVersion().then((latest) => {
-    const n = updateNotice(pkg.version, latest, process.env.npm_config_user_agent);
+  const agent = process.env.npm_config_user_agent;
+  void (async () => {
+    const latest = await latestVersion();
+    if (!latest || compareVersions(pkg.version, latest) >= 0) return;
+    const released = needsReleaseDate(agent) ? await publishedAt(latest) : undefined;
+    const n = updateNotice(pkg.version, latest, agent, released);
     if (n) ui.warn(n);
-  });
+  })();
 }
 
 /** Progress events from the crawler, as the status line. */

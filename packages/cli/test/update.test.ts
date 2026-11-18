@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { compareVersions, latestVersion, runCommand, updateCheckEnabled, updateNotice } from '../src/update.ts';
+import {
+  compareVersions,
+  latestVersion,
+  publishedAt,
+  runCommand,
+  updateCheckEnabled,
+  updateNotice,
+} from '../src/update.ts';
 
 const answer = (status: number, body: unknown) =>
   (async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
@@ -38,6 +45,21 @@ describe('update notice', () => {
         init.signal!.addEventListener('abort', () => reject(new Error('aborted'))),
       )) as unknown as typeof fetch;
     expect(await latestVersion(slow, 20)).toBeUndefined();
+  });
+
+  it('tells a pnpm run of a release under a week old what to do when the cooldown refuses it', async () => {
+    const now = Date.parse('2026-11-20T00:00:00Z');
+    const pnpm = 'pnpm/12.9.1 npm/? node/v24.0.0';
+    const hint = /younger than your `minimumReleaseAge`, run it from outside the project with `--cwd`/;
+    expect(updateNotice('0.7.0', '0.8.0', pnpm, new Date('2026-11-18T00:00:00Z'), now)).toMatch(hint);
+    expect(updateNotice('0.7.0', '0.8.0', pnpm, new Date('2026-11-10T00:00:00Z'), now)).not.toMatch(hint);
+    expect(updateNotice('0.7.0', '0.8.0', pnpm, undefined, now)).not.toMatch(hint);
+    expect(updateNotice('0.7.0', '0.8.0', 'npm/11.0.0', new Date('2026-11-18T00:00:00Z'), now)).not.toMatch(hint);
+    expect(await publishedAt('0.8.0', answer(200, { time: { '0.8.0': '2026-11-18T00:00:00.000Z' } }))).toEqual(
+      new Date('2026-11-18T00:00:00Z'),
+    );
+    expect(await publishedAt('0.8.0', answer(200, { time: {} }))).toBeUndefined();
+    expect(await publishedAt('0.8.0', answer(500, {}))).toBeUndefined();
   });
 
   it('never runs in CI, without a terminal, or when turned off', () => {
