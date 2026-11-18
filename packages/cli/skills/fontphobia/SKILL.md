@@ -68,8 +68,7 @@ after, pixel for pixel.
 ## Run it
 
 Run from the project root, or pass `--cwd <dir>`. A `--cwd` that is not a directory is an error.
-The commands run the current release (`@latest`). To run the version that wrote a project's
-manifest, name it instead (`fontphobia@<version>`), as CI does below.
+These run the current release; CI below names the version that wrote the manifest instead.
 
 ```sh
 pnpm dlx fontphobia@latest   # audit, plan, ask, write, verify
@@ -93,9 +92,8 @@ The default command (no subcommand) audits, prints the plan and the diff, then a
   default-font-size sweep, and writes `.fontphobia/usage.json` and `.fontphobia/report.md`.
 - It prints each face's size now and after, the saving per page, the opt-ins with their measured
   savings, and the exact edits as a line diff.
-- In a terminal it offers the opt-ins as a checklist before the write question. With `--ci`,
-  `--write`, `--allow`, `CI` set or no terminal, it never prompts: an agent passes `--allow <name>`
-  to apply an opt-in and `--write` to write.
+- In a terminal it offers the opt-ins as a checklist. With `--ci`, `--write`, `--allow`, `CI` or
+  no terminal it never prompts: pass `--allow <name>` for an opt-in and `--write` to write.
 - `usage.json` lists each face's words for the shaping check, and a symbol-only word also with
   its neighbours (`1 ± 2`): entries an audit with 0.5.0 or later adds.
 
