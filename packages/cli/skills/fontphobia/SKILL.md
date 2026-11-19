@@ -469,8 +469,7 @@ measured savings. `apply-kit` removes unused styles through the Typekit API and 
   another site sharing the kit can run it. It exits 1 when something is missing.
 - `revert` restores the previous styles only if nobody edited the kit since; otherwise it says which
   styles to add back. `revert --keep-kits` leaves the kit as it is.
-- The character set cannot be changed through the API; the report says which one to pick on
-  fonts.adobe.com.
+- The character set cannot be changed through the API; the report says which to pick on fonts.adobe.com.
 
 ## Limitations
 
