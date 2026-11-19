@@ -431,9 +431,8 @@ its GPU rasterizer does not draw large text the same way on every load.
 `note: in N comparison(s) the page as it loaded was not what a fresh paint of it gives` lists edge
 pixels Chrome kept from an earlier paint when a font file arrived late. It does not fail the run.
 
-`verify` exits 1 on a regression or a failed page. Diff images go to `.fontphobia/verify/`, cut to
-the rows near a difference (a blue line marks each cut; the report gives their page position), and
-the summary to `.fontphobia/report.md`. For content that changes between loads (script-driven
+`verify` exits 1 on a regression or a failed page. Diff images (`.fontphobia/verify/`) keep the rows
+near a difference, a blue line at each cut; the summary goes to `.fontphobia/report.md`. For content that changes between loads (script-driven
 animations, canvases, embeds), hide it with `--mask <selector>` or skip the page with
 `--ignore <glob>`; raise `--timeout` (seconds, default 30) for slow pages. `--browsers` adds
 `firefox`, `webkit` (Playwright builds on the host; when one is not installed, fontphobia prints
