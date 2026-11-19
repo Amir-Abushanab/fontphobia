@@ -6,6 +6,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { ensureIgnoredFor } from '@fontphobia/core';
 import type { VisitOptions, VisitResult } from './visit.ts';
 
 /** Bump when the shape of a cached visit, or what a visit records, changes. */
@@ -125,6 +126,9 @@ export class VisitCache {
   put(key: string, origin: string, r: VisitResult): void {
     this.seen.add(key);
     if (!r.visit || !r.resources || r.error) return;
+    // The first write of a run can come long before the audit's own reports (or never, when the
+    // run is interrupted): the folder gets its .gitignore now.
+    if (!this.stats.stored) ensureIgnoredFor(this.dir);
     mkdirSync(this.dir, { recursive: true });
     const { visit, status, finalUrl, links } = r;
     const pf = this.page(key);

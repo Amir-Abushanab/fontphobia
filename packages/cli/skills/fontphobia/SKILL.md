@@ -489,7 +489,8 @@ measured savings. `apply-kit` removes unused styles through the Typekit API and 
 - **Treating `check` exit 1 with no manifest as a bug.** It means nothing was checked. Run the
   write step first, or use `--mode warn` where an unconfigured project must still pass.
 - **Committing all of `.fontphobia/`, or ignoring the manifest.** Commit `manifest.json` and
-  `sources/` only; the bundled `.gitignore` already does this.
+  `sources/` only; the bundled `.gitignore` already does this. If cache or report files are already
+  tracked (an older version, an interrupted run): `git rm -r --cached .fontphobia && git add .fontphobia`.
 - **Editing inside a marked `@font-face` block by hand.** `check` reports it as an error. Rerun
   fontphobia instead, or `revert` first.
 - **Enabling opt-ins to chase the biggest number.** `limit-axes`, `drop-hinting`, `split-shaping`
