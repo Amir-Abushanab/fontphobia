@@ -53,7 +53,7 @@ Run everything from the project root (or pass `--cwd`). (If pnpm refuses a relea
    pnpm dlx fontphobia@0.8.0
    ```
 
-   fontphobia detects the framework, builds the site if there's no build (or asks if it's stale) in a throwaway copy of the project, so the build can't touch your files, and crawls every page it can find at 4 viewport widths, plus a browser font-size sweep. It then prints each face's size now and after, the saving per page, and the exact edits as a diff. In a terminal it shows a progress bar for each stage and lists the opt-ins as a checklist with their measured savings, so you can pick any before confirming; in CI, with `--ci`, `--write` or `--allow`, or without a terminal, it prints them instead. Colors follow the terminal, `NO_COLOR`, `FORCE_COLOR` and `--no-color`. In a terminal outside CI it also asks the npm registry for the latest version and prints a one-line notice when the running one is older (for a release under a week old, with the `--cwd` workaround below for `minimumReleaseAge`); `FONTPHOBIA_NO_UPDATE_CHECK=1` (or `NO_UPDATE_NOTIFIER=1`) turns that off.
+   fontphobia detects the framework, builds the site if there's no build (or asks if it's stale) in a throwaway copy of the project, so the build can't touch your files, and loads every page it can find in Chrome. Two pages of each section (pages under one parent path) are also loaded at 4 viewport widths and with the browser's default font size changed; the other pages get those loads only where a sample page drew text its first load didn't (`--full-sweep` loads every page every way). It then prints each face's size now and after, the saving per page, and the exact edits as a diff. In a terminal it shows a progress bar for each stage and lists the opt-ins as a checklist with their measured savings, so you can pick any before confirming; in CI, with `--ci`, `--write` or `--allow`, or without a terminal, it prints them instead. Colors follow the terminal, `NO_COLOR`, `FORCE_COLOR` and `--no-color`. In a terminal outside CI it also asks the npm registry for the latest version and prints a one-line notice when the running one is older (for a release under a week old, with the `--cwd` workaround below for `minimumReleaseAge`); `FONTPHOBIA_NO_UPDATE_CHECK=1` (or `NO_UPDATE_NOTIFIER=1`) turns that off.
 
 2. **Confirm.** fontphobia then:
    - writes the subset files next to the original fonts;
@@ -61,7 +61,7 @@ Run everything from the project root (or pass `--cwd`). (If pnpm refuses a relea
    - makes `document.fonts.load(font)` and `document.fonts.check(font)` calls in your code also wait for the browser's own font loads (`document.fonts.ready`, `document.fonts.status`). Code that waits for fonts then still waits for every file the page's text needs, not the core file alone, and nothing extra downloads. It reads TypeScript, JSX/TSX and JavaScript, including `<script>` blocks in `.astro`, `.vue`, `.svelte` and `.html` files, and the change type-checks under strict TypeScript;
    - records what it changed in `.fontphobia/manifest.json`.
 
-   Then it runs `verify`, which rebuilds the site and compares every page before and after. Use `--write` (or `-u`) to skip the question.
+   Then it runs `verify`, which rebuilds the site and compares pages before and after. Use `--write` (or `-u`) to skip the question.
 
 3. **Review and commit:**
    - the subset files;
@@ -84,7 +84,7 @@ Run everything from the project root (or pass `--cwd`). (If pnpm refuses a relea
    - the OpenType features and axis values in use;
    - the words, for shaping.
 
-   The result goes to `.fontphobia/usage.json`. Reruns revisit only pages whose HTML, CSS or fonts changed.
+   The result goes to `.fontphobia/usage.json`. Reruns revisit only pages whose HTML, CSS or fonts changed; the cache keeps one file per page in `.fontphobia/cache/visits/`. Images from other sites are downloaded once per run and served to every later load, since each load starts with an empty browser cache.
 
 2. **Plan.** This step is deterministic and needs no browser. Each face is split into three files:
    - **core:** printable ASCII and common punctuation, plus the characters your pages use that cost less here than in the extended file; it loads like the original did;
@@ -99,9 +99,9 @@ Run everything from the project root (or pass `--cwd`). (If pnpm refuses a relea
 4. **Verify.** This runs in three stages:
    - every output is decoded and validated, and the CSS is checked against the original descriptors;
    - every recorded word is shaped with HarfBuzz from the original and from the split files, and the results must be identical;
-   - every page is loaded before and after in the browser, and the layout and pixels are compared.
+   - pages are loaded before and after in the browser, and the layout and pixels are compared: 2 per section (pages under one parent path), plus the pages needed so every face is compared drawing each class of character and with each of its files. `--all-pages` compares every page.
 
-   Each difference is classified, and a real one fails the run, naming the element where it happened. A pixel difference at unchanged layout counts when loading both sides again repeats it. Chrome rasterizes on the CPU during `verify`, because its GPU rasterizer does not draw every load alike. Diff images go to `.fontphobia/verify/`. Content that changes on its own between loads (script-driven animations, canvases, embeds) can't be compared: hide it with `--mask <selector>`, or skip a page with `--ignore <glob>`.
+   Each difference is classified, and a real one fails the run, naming the element where it happened. A pixel difference at unchanged layout counts when loading both sides again repeats it. Chrome rasterizes on the CPU during `verify`, because its GPU rasterizer does not draw every load alike. Diff images go to `.fontphobia/verify/`; each keeps only the rows near a difference, with a blue line where unchanged rows were cut, and the report gives their position on the page. Content that changes on its own between loads (script-driven animations, canvases, embeds) can't be compared: hide it with `--mask <selector>`, or skip a page with `--ignore <glob>`.
 
 ## Font sources
 
@@ -144,18 +144,18 @@ Italic styles are never dropped, because browsers italicize `em`, `i`, `cite` an
 
 Every command except `inspect` and `subset` takes `--cwd <dir>`, and most take `--json`.
 
-| Command          | What it does                                                                                                                | Key options                                                                                                                                |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `fontphobia`     | Audit, plan, ask, write, verify                                                                                             | `--write`/`-u`, `--allow`, `--ci`                                                                                                          |
-| `audit`          | Crawl and write `.fontphobia/usage.json` and `report.md`                                                                    | `--dist`, `--build-cmd`, `--start-cmd` (SSR routes), `--url`, `--pages`, `--ignore`, `--viewports`, `--locales`, `--rebuild`, `--no-cache` |
-| `build`          | Plan from `usage.json` (no browser). Shows the plan and diff; `--write` applies                                             | `--write`, `--allow`, `--core-threshold`, `--no-remainder`                                                                                 |
-| `verify`         | Check the files and shaping, then compare every page before and after                                                       | `--browsers`, `--dpr`, `--viewports`, `--mask`, `--ignore`, `--timeout`, `--baseline overlay\|worktree`, `--hinting`, `--no-browser`       |
-| `check`          | Are the subsets still up to date? Exits 1 when the site would render differently, or when there was nothing to check        | `--url` (crawl production), `--mode warn`, `--strict`, `--allow-chars`                                                                     |
-| `auto`           | Subset the built output in place: no source edits and nothing to commit. Run it after every build ([Auto mode](#auto-mode)) | `--dist`, `--crawl`, `--rules`, `--verify`, `--dry-run`, `--allow`, `--core-threshold`, `--no-remainder`                                   |
-| `revert`         | Put everything back from the manifest                                                                                       | `--dry-run`, `--keep-kits`                                                                                                                 |
-| `apply-kit`      | Adobe Fonts: remove kit styles nothing uses, through the Typekit API (`TYPEKIT_TOKEN` from fonts.adobe.com/account/tokens)  | `--yes`, `--check`                                                                                                                         |
-| `inspect <font>` | A font's tables, axes, features, hinting and sizes                                                                          |                                                                                                                                            |
-| `subset <font>`  | Low level: subset one font to WOFF2                                                                                         | `--unicodes`, `--text`, `--features`, `--axis`, `-o`                                                                                       |
+| Command          | What it does                                                                                                                | Key options                                                                                                                                                        |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `fontphobia`     | Audit, plan, ask, write, verify                                                                                             | `--write`/`-u`, `--allow`, `--ci`                                                                                                                                  |
+| `audit`          | Crawl and write `.fontphobia/usage.json` and `report.md`                                                                    | `--dist`, `--build-cmd`, `--start-cmd` (SSR routes), `--url`, `--pages`, `--ignore`, `--viewports`, `--locales`, `--rebuild`, `--no-cache`                         |
+| `build`          | Plan from `usage.json` (no browser). Shows the plan and diff; `--write` applies                                             | `--write`, `--allow`, `--core-threshold`, `--no-remainder`                                                                                                         |
+| `verify`         | Check the files and shaping, then compare pages before and after                                                            | `--browsers`, `--dpr`, `--viewports`, `--mask`, `--ignore`, `--timeout`, `--baseline overlay\|worktree`, `--hinting`, `--all-pages`, `--as-loaded`, `--no-browser` |
+| `check`          | Are the subsets still up to date? Exits 1 when the site would render differently, or when there was nothing to check        | `--url` (crawl production), `--mode warn`, `--strict`, `--allow-chars`                                                                                             |
+| `auto`           | Subset the built output in place: no source edits and nothing to commit. Run it after every build ([Auto mode](#auto-mode)) | `--dist`, `--crawl`, `--rules`, `--verify`, `--dry-run`, `--allow`, `--core-threshold`, `--no-remainder`                                                           |
+| `revert`         | Put everything back from the manifest                                                                                       | `--dry-run`, `--keep-kits`                                                                                                                                         |
+| `apply-kit`      | Adobe Fonts: remove kit styles nothing uses, through the Typekit API (`TYPEKIT_TOKEN` from fonts.adobe.com/account/tokens)  | `--yes`, `--check`                                                                                                                                                 |
+| `inspect <font>` | A font's tables, axes, features, hinting and sizes                                                                          |                                                                                                                                                                    |
+| `subset <font>`  | Low level: subset one font to WOFF2                                                                                         | `--unicodes`, `--text`, `--features`, `--axis`, `-o`                                                                                                               |
 
 **About `verify`:**
 

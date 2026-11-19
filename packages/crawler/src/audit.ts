@@ -34,8 +34,9 @@ import {
 } from '@fontphobia/core';
 import { clearKeptOutput } from './isolate.ts';
 import { openSite, since, type SiteOptions } from './site.ts';
-import { matchesPage, pageKey, pageUrl, underBase, visitPage, type VisitOptions } from './visit.ts';
+import { ImageCache, matchesPage, pageKey, pageUrl, underBase, visitPage, type VisitOptions } from './visit.ts';
 import { VisitCache } from './visit-cache.ts';
+import { planFingerprint, sectionOf, settingKey, SWEEP_SAMPLE } from './sweep.ts';
 
 export interface AuditOptions extends SiteOptions {
   root: string;
@@ -51,6 +52,8 @@ export interface AuditOptions extends SiteOptions {
   privatePages?: string[];
   /** The default-font-size sweep (§7.2). */
   fontSizeSweep?: boolean;
+  /** Every width and font size on every page, instead of on sample pages of each section (sweep.ts). */
+  fullSweep?: boolean;
   maxWords?: number;
   /** Reuse cached visits whose resources are unchanged (M3.5, default true). */
   cache?: boolean;
@@ -71,6 +74,8 @@ export interface CrawlInfo {
   dynamicRoutes: string[];
   routeSources: string[];
   visits: number;
+  /** The sampled sweep (sweep.ts): pages that got every setting, sections, and loads it skipped. */
+  sweep?: { sampled: number; perSection: number; pages: number; sections: number; skipped: number };
   viewports: number[];
   fontSizes: number[];
   durationMs: number;
@@ -178,9 +183,11 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
   const { site, built, age, mode, base, stop } = opened;
 
   let browser: Browser | undefined;
+
   try {
     browser = await launchChrome();
     const chrome = browser.version();
+
     log(`Chrome ${chrome} · ${project.profile.name} · ${mode}`);
 
     // 2. Seeds (§7.2): output HTML, build route lists, sitemap, config pages, '/'.
@@ -211,6 +218,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       reducedMotion: 'no-preference' as const,
     };
     const bodyCache = new Map<string, { sha256: string; bytes: number }>();
+    const images = new ImageCache();
     // M3.5: reuse a page's earlier visit when nothing it loaded changed.
     let cache: VisitCache | undefined;
     if (o.cache !== false) {
@@ -229,7 +237,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       }
       const ctx = await browser!.newContext(contextOpts);
       try {
-        const r = await visitPage(ctx, url, { ...vo, locales: o.locales ?? [], bodyCache });
+        const r = await visitPage(ctx, url, { ...vo, locales: o.locales ?? [], bodyCache, images });
         for (const [k, b] of r.bodies) bodies.set(k, b);
         if (key) cache!.put(key, origin, r);
         return r;
@@ -244,6 +252,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
     let frontier = [...seeds].filter(allowed).toSorted();
     for (const p of frontier) queued.add(p);
     const byPage = new Map<string, { emMq: boolean; textScale: boolean; url: string }>();
+    const firstLoad = new Map<string, Visit>();
     let discovered = 0;
     while (frontier.length) {
       const next: string[] = [];
@@ -260,6 +269,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
         if (pages.has(key)) return; // a redirect landed on a page we already have
         pages.add(key);
         visitsOut.push(r.visit);
+        firstLoad.set(key, r.visit);
         byPage.set(key, { emMq: !!r.visit.emMediaQueries, textScale: !!r.visit.textScaleMeta, url: r.finalUrl });
         for (const l of r.links) {
           const u = new URL(l);
@@ -295,42 +305,103 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       );
     if (queued.size >= maxPages) log(`stopped discovering at ${maxPages} pages (--max-pages)`);
 
-    // 4. Every other viewport, and the default-font-size sweep (§7.2).
+    // 4. Every other viewport, and the default-font-size sweep (§7.2): in full on SWEEP_SAMPLE pages
+    // of each section, then on the others only the settings that drew something new there (sweep.ts).
     type Task = { page: string; url: string } & Omit<VisitOptions, 'locales'>;
-    const tasks: Task[] = [];
     const narrow = viewports[0]!;
     const fontSizes = new Set<number>([16]);
-    for (const [page, info] of [...byPage].toSorted(([a], [b]) => (a < b ? -1 : 1))) {
+    const settingsOf = (page: string, info: { emMq: boolean; textScale: boolean; url: string }): Task[] => {
       const priv = isPrivate(page);
+      const out: Task[] = [];
       for (const w of viewports)
-        if (w !== first) tasks.push({ page, url: info.url, viewport: w, fontSize: 16, private: priv });
+        if (w !== first) out.push({ page, url: info.url, viewport: w, fontSize: 16, private: priv });
       if (o.fontSizeSweep !== false) {
         const sizes = info.emMq ? [9, 12, 20, 24, 72] : [9, 72];
-        for (const s of sizes) {
-          fontSizes.add(s);
-          tasks.push({ page, url: info.url, viewport: narrow, fontSize: s, private: priv });
-        }
-        for (const s of [...sizes, 16]) tasks.push({ page, url: info.url, viewport: WIDE, fontSize: s, private: priv });
+        for (const s of sizes) out.push({ page, url: info.url, viewport: narrow, fontSize: s, private: priv });
+        for (const s of [...sizes, 16]) out.push({ page, url: info.url, viewport: WIDE, fontSize: s, private: priv });
         if (info.textScale)
           for (const ts of [0.85, 2])
             for (const w of [narrow, WIDE])
-              tasks.push({ page, url: info.url, viewport: w, fontSize: 16, textScale: ts, private: priv });
+              out.push({ page, url: info.url, viewport: w, fontSize: 16, textScale: ts, private: priv });
       }
+      return out;
+    };
+    const sections = new Map<string, string[]>();
+    for (const [page, info] of [...byPage].toSorted(([a], [b]) => (a < b ? -1 : 1))) {
+      const k = sectionOf(page, { ...info, private: isPrivate(page) });
+      sections.set(k, [...(sections.get(k) ?? []), page]);
     }
+    const sampled = new Set([...sections.values()].flatMap((ps) => (o.fullSweep ? ps : ps.slice(0, SWEEP_SAMPLE))));
+    // Settings that drew something new on a sample page, per section; a failed load counts too.
+    const needed = new Map<string, Set<string>>();
+    const sampleTasks = [...sampled].flatMap((p) => settingsOf(p, byPage.get(p)!));
+    let total = sampleTasks.length;
     let done = 0;
-    o.progress?.({ stage: 'load', done: 0, total: tasks.length });
-    await pool(tasks, concurrency, async (t) => {
-      const r = await doVisit(t.url, t);
-      if (r.visit) {
-        r.visit.page = t.page;
-        visitsOut.push(r.visit);
-      } else
-        failed[`${t.page} @${t.viewport}${t.fontSize !== 16 ? `/fs${t.fontSize}` : ''}`] =
-          r.error ?? `HTTP ${r.status}`;
-      ++done;
-      if (o.progress) o.progress({ stage: 'load', done, total: tasks.length, item: t.page });
-      else if (done % 25 === 0) log(`page loads: ${done}/${tasks.length}`);
-    });
+    const runTasks = (tasks: Task[]) =>
+      pool(tasks, concurrency, async (t) => {
+        const r = await doVisit(t.url, t);
+        if (r.visit) {
+          r.visit.page = t.page;
+          visitsOut.push(r.visit);
+        } else
+          failed[`${t.page} @${t.viewport}${t.fontSize !== 16 ? `/fs${t.fontSize}` : ''}`] =
+            r.error ?? `HTTP ${r.status}`;
+        if (sampled.has(t.page) && !o.fullSweep && !(await addsNothing(t.page, r.visit))) {
+          const k = sectionOf(t.page, { ...byPage.get(t.page)!, private: isPrivate(t.page) });
+          needed.set(k, (needed.get(k) ?? new Set()).add(settingKey(t)));
+        }
+        ++done;
+        if (o.progress) o.progress({ stage: 'load', done, total, item: t.page });
+        else if (done % 25 === 0) log(`page loads: ${done}/${total}`);
+      });
+    // Whether a sample page's load drew nothing its first load didn't, as far as the plan can tell.
+    const facts = new Map<string, FontFacts>();
+    const firstPrint = new Map<string, string>();
+    const notFonts = new Set<string>();
+    const factsOf = async (vs: Visit[]) => {
+      for (const v of vs)
+        for (const { sha256: sha } of v.fonts) {
+          const b = sha ? bodies.get(sha) : undefined;
+          if (!sha || !b || facts.has(sha) || notFonts.has(sha)) continue;
+          try {
+            facts.set(sha, await fontFacts(b));
+          } catch {
+            notFonts.add(sha); // not a font (an HTML 200 for a missing file)
+          }
+        }
+    };
+    const addsNothing = async (page: string, v: Visit | undefined) => {
+      const firstVisit = firstLoad.get(page);
+      if (!v || !firstVisit) return false;
+      await factsOf([firstVisit, v]);
+      let a = firstPrint.get(page);
+      if (a === undefined) firstPrint.set(page, (a = planFingerprint([firstVisit], facts)));
+      return planFingerprint([firstVisit, v], facts) === a;
+    };
+    o.progress?.({ stage: 'load', done: 0, total });
+    await runTasks(sampleTasks);
+    const restTasks: Task[] = [];
+    for (const [k, ps] of sections) {
+      const want = needed.get(k) ?? new Set<string>();
+      for (const p of ps)
+        if (!sampled.has(p)) restTasks.push(...settingsOf(p, byPage.get(p)!).filter((t) => want.has(settingKey(t))));
+    }
+    total += restTasks.length;
+    await runTasks(restTasks);
+    for (const v of visitsOut) fontSizes.add(v.fontSize);
+    const skipped =
+      [...byPage].reduce((n, [p, info]) => n + (sampled.has(p) ? 0 : settingsOf(p, info).length), 0) - restTasks.length;
+    const sweep = {
+      sampled: sampled.size,
+      perSection: SWEEP_SAMPLE,
+      pages: byPage.size,
+      sections: sections.size,
+      skipped,
+    };
+    if (skipped)
+      log(
+        `every width and font size on ${sampled.size} of ${byPage.size} pages (${SWEEP_SAMPLE} per section); ${restTasks.length ? `${restTasks.length} more load(s) where a sample page drew something new` : 'no other setting drew anything new on them'}; ${skipped} load(s) skipped (--full-sweep runs them)`,
+      );
 
     // Entries for pages and settings this run didn't touch are stale; keep them when pages were filtered.
     if (cache && !include.length && !(o.pages ?? []).length) cache.prune();
@@ -340,7 +411,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       );
 
     // 5. Font facts, usage, sources.
-    const facts = new Map<string, FontFacts>();
+    facts.clear();
     for (const [sha, b] of [...bodies].toSorted(([a], [c]) => (a < c ? -1 : 1))) {
       try {
         facts.set(sha, await fontFacts(b));
@@ -439,6 +510,7 @@ export async function audit(o: AuditOptions): Promise<AuditResult> {
       dynamicRoutes,
       routeSources: fileRoutes.sources,
       visits: visitsOut.length,
+      ...(sweep.skipped ? { sweep } : {}),
       cache: cache
         ? { reused: cache.stats.hits, visited: visitsOut.length - cache.stats.hits, stored: cache.stats.stored }
         : undefined,

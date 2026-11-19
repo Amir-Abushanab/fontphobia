@@ -66,7 +66,7 @@ function lines(r: VerifyResult, root: string, md: boolean): string[] {
     );
     const count = (k: string) => b.comparisons.filter((c) => c.class === k).length;
     item(
-      `${b.browsers.map((x) => `${x.engine} ${x.version}`).join(', ')} · ${b.pages.length} page(s)${b.skipped ? ` (set cover; ${b.skipped} more not visited)` : ''} · ${b.comparisons.length} comparison(s): ${count('identical')} identical, ${count('sub-pixel rounding')} sub-pixel rounding, ${count('regression')} regression(s)${count('unrelated') ? `, ${count('unrelated')} with pixel noise in text fontphobia didn't touch` : ''}${count('flaky') ? `, ${count('flaky')} flaky (a pixel difference that didn't reproduce)` : ''}${count('content changed') ? `, ${count('content changed')} content changed (left out)` : ''}${count('failed') ? `, ${count('failed')} failed to load` : ''}`,
+      `${b.browsers.map((x) => `${x.engine} ${x.version}`).join(', ')} · ${b.pages.length} page(s)${b.skipped ? ` (a sample per section and every face's files and character classes; ${b.skipped} more not compared, --all-pages compares them)` : ''} · ${b.comparisons.length} comparison(s): ${count('identical')} identical, ${count('sub-pixel rounding')} sub-pixel rounding, ${count('regression')} regression(s)${count('unrelated') ? `, ${count('unrelated')} with pixel noise in text fontphobia didn't touch` : ''}${count('flaky') ? `, ${count('flaky')} flaky (a pixel difference that didn't reproduce)` : ''}${count('content changed') ? `, ${count('content changed')} content changed (left out)` : ''}${count('failed') ? `, ${count('failed')} failed to load` : ''}`,
     );
     for (const c of b.comparisons.filter((x) => x.class === 'regression' || x.class === 'failed')) {
       item(
@@ -77,8 +77,16 @@ function lines(r: VerifyResult, root: string, md: boolean): string[] {
           const w = e.where ? (md ? ` (\`${e.where}\`)` : ` (${e.where})`) : '';
           L.push(md ? `  - ${e.text}${w}: ${e.cause}` : `      ${e.text}${w}: ${e.cause}`);
         }
-      if (c.diffImage)
-        L.push(md ? `  - diff: \`${relative(root, c.diffImage)}\`` : `      diff: ${relative(root, c.diffImage)}`);
+      if (c.diffImage) {
+        // The image keeps only the rows near a difference: say where they are, in CSS pixels.
+        const rows = c.diffRows;
+        const at = rows
+          ? ` (page y ${Math.round(rows[0]![0] / c.dpr)}–${Math.round(rows.at(-1)![1] / c.dpr)} px${rows.length > 1 ? `, in ${rows.length} parts; unchanged rows cut` : ''})`
+          : '';
+        L.push(
+          md ? `  - diff: \`${relative(root, c.diffImage)}\`${at}` : `      diff: ${relative(root, c.diffImage)}${at}`,
+        );
+      }
     }
     for (const c of b.comparisons.filter((x) => x.class === 'unrelated').slice(0, 5))
       item(`unrelated: ${where(c)}: ${c.causes.join('; ')}`);

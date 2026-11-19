@@ -5,7 +5,15 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
 import { join, resolve } from 'node:path';
-import { firefox, webkit, type Browser, type BrowserContext, type CDPSession, type Page } from 'playwright-core';
+import {
+  firefox,
+  webkit,
+  type Browser,
+  type BrowserContext,
+  type CDPSession,
+  type Page,
+  type Route,
+} from 'playwright-core';
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 import {
@@ -24,7 +32,8 @@ import {
 import { launchChrome } from './audit.ts';
 import { playwrightVersion, startLinuxBrowsers, stopOnExit, type LinuxBrowsers, type Runtime } from './linux.ts';
 import { openSite, type OpenSite, type SiteOptions } from './site.ts';
-import { matchesPage, pageKey, pageUrl, sitePath } from './visit.ts';
+import { sectionOf, SWEEP_SAMPLE } from './sweep.ts';
+import { ImageCache, matchesPage, pageKey, pageUrl, sitePath } from './visit.ts';
 import { worktreeBaseline, type Baseline } from './baseline.ts';
 
 /** Host browsers, and the same engines in the pinned Playwright Linux image (`linux-*`, via a container runtime). */
@@ -65,8 +74,10 @@ export interface VerifyOptions extends SiteOptions {
    * still download one (`originals`): a preload or a script asked for it.
    */
   sourcesInOutput?: boolean;
-  /** Cap before the set cover kicks in (default 200). */
+  /** Most pages compared (default 200). */
   maxPages?: number;
+  /** Every page up to maxPages, instead of a sample per section and a cover (selectPages). */
+  allPages?: boolean;
   viewports?: number[];
   dprs?: number[];
   browsers?: Engine[];
@@ -83,6 +94,11 @@ export interface VerifyOptions extends SiteOptions {
   /** Container runtime for `linux-*` engines (default: the first that answers: Apple container, Docker, Podman). */
   runtime?: Runtime;
   concurrency?: number;
+  /**
+   * Also screenshot each page as it loaded, before painting it again, and report the pixels the fresh
+   * paint changed (`leftover`). One more full-page screenshot per load.
+   */
+  asLoaded?: boolean;
   /** Where diff images go (default <root>/.fontphobia/verify). */
   outDir?: string;
   log?: (m: string) => void;
@@ -110,6 +126,8 @@ export interface Comparison {
   pixels: number;
   examples: NodeDiff[];
   diffImage?: string;
+  /** The rows of the page the diff image keeps, in image pixels (unchanged rows are cut). */
+  diffRows?: [start: number, end: number][];
   /**
    * The page as it loaded against a fresh paint of itself (the fresh paint is what is compared):
    * pixels an earlier paint left behind when a font file arrived after the page had drawn, and the
@@ -131,7 +149,7 @@ export interface BrowserVerify {
   baseline: 'overlay' | 'worktree';
   browsers: { engine: Engine; version: string }[];
   pages: string[];
-  /** Pages left out by the set cover (above maxPages). */
+  /** Pages not compared (the sample and cover of selectPages, or above maxPages). */
   skipped: number;
   comparisons: Comparison[];
   bytes: PageFonts[];
@@ -161,19 +179,26 @@ async function pool<T>(items: T[], n: number, fn: (x: T) => Promise<void>) {
   );
 }
 
-/** §10.3 page selection: everything up to the cap, else a greedy set cover of face × character class, plus config pages. */
+/**
+ * §10.3 page selection. With `all`, every page up to `max`; above it, or by default, a sample: up to
+ * SWEEP_SAMPLE pages of each section (pages under one parent path share their templates, as in the
+ * audit's sweep), then a greedy cover so that every face is compared drawing each class of
+ * character (ASCII, accented Latin, CJK, other) and each of its files (core, extended, rest), plus
+ * config pages.
+ */
 export function selectPages(
   usage: UsageFileJson,
   entries: Set<string>,
   max: number,
   always: string[] = [],
+  o: { all?: boolean; manifest?: Manifest } = {},
 ): { pages: string[]; skipped: number } {
   const all = Object.entries(usage.pages)
     .filter(([, p]) => !p.private && Object.keys(p.faces).some((id) => entries.has(id)))
     .map(([k]) => k)
     .toSorted();
   const forced = always.filter((p) => usage.pages[p]);
-  if (all.length <= max) return { pages: [...new Set([...all, ...forced])].toSorted(), skipped: 0 };
+  if (o.all && all.length <= max) return { pages: [...new Set([...all, ...forced])].toSorted(), skipped: 0 };
   const cls = (cp: number) => {
     const ch = String.fromCodePoint(cp);
     if (cp < 0x80) return 'ascii';
@@ -181,14 +206,33 @@ export function selectPages(
     if (/\p{Script=Latin}|\p{M}/u.test(ch)) return 'accented';
     return 'other';
   };
+  const files = new Map<string, { role: string; set: Set<number> }[]>();
+  for (const [id, e] of Object.entries(o.manifest?.entries ?? {}))
+    files.set(
+      id,
+      e.outputs.map((x) => ({ role: x.role, set: new Set(codePointsOf(parseUnicodeRange(x.unicodeRange))) })),
+    );
   const items = new Map<string, Set<string>>();
   for (const p of all) {
     const s = new Set<string>();
-    for (const [id, r] of Object.entries(usage.pages[p]!.faces))
-      if (entries.has(id)) for (const c of codePointsOf(parseUnicodeRange(r))) s.add(`${id}|${cls(c)}`);
+    for (const [id, r] of Object.entries(usage.pages[p]!.faces)) {
+      if (!entries.has(id)) continue;
+      for (const c of codePointsOf(parseUnicodeRange(r))) {
+        s.add(`${id}|${cls(c)}`);
+        for (const f of files.get(id) ?? []) if (f.set.has(c)) s.add(`${id}|file ${f.role}`);
+      }
+    }
     items.set(p, s);
   }
   const chosen = new Set(forced);
+  if (!o.all) {
+    const sections = new Map<string, string[]>();
+    for (const p of all) {
+      const k = sectionOf(p, { emMq: false, textScale: false, private: false });
+      sections.set(k, [...(sections.get(k) ?? []), p]);
+    }
+    for (const ps of sections.values()) for (const p of ps.slice(0, SWEEP_SAMPLE)) chosen.add(p);
+  }
   const covered = new Set<string>();
   for (const p of chosen) for (const x of items.get(p) ?? []) covered.add(x);
   for (;;) {
@@ -206,7 +250,10 @@ export function selectPages(
     chosen.add(best);
     for (const x of items.get(best)!) covered.add(x);
   }
-  return { pages: [...chosen].toSorted(), skipped: all.length - [...chosen].filter((p) => all.includes(p)).length };
+  // Config pages always; the cap trims the rest.
+  const rest = [...chosen].filter((p) => !forced.includes(p));
+  const pages = [...forced, ...rest.slice(0, Math.max(0, max - forced.length))].toSorted();
+  return { pages, skipped: all.length - pages.filter((p) => all.includes(p)).length };
 }
 
 interface Box {
@@ -292,6 +339,7 @@ async function context(
   hits: Set<string>,
   local: Set<string>,
   snapshots: Snapshots,
+  images: ImageCache,
 ): Promise<BrowserContext> {
   const before = mode === 'before';
   const ctx = await browser.newContext({
@@ -325,7 +373,9 @@ async function context(
   );
   // Adobe's font server counts page views (§6.6).
   await ctx.route(/^https?:\/\/p\.typekit\.net\//, (r) => r.abort());
-  await ctx.route(/.*/, async (route) => {
+  // A page can close while its requests are still in this handler (a comparison is done with it):
+  // whatever fails then must not end the run.
+  const handle = async (route: Route) => {
     const req = route.request();
     let url: URL;
     try {
@@ -348,6 +398,9 @@ async function context(
       });
     }
     const type = req.resourceType();
+    // Images from other sites: fetched once per run and served to every load, before and after
+    // alike (each load is a fresh context with an empty cache; see ImageCache in visit.ts).
+    if (type === 'image' && !local.has(url.origin) && (await images.serve(route).catch(() => false))) return;
     const thirdParty = !local.has(url.origin) && (type === 'font' || type === 'stylesheet');
     if (type !== 'document' && type !== 'stylesheet' && !thirdParty) return route.continue();
     let snap: { status: number; headers: Record<string, string>; body: Buffer } | undefined;
@@ -401,7 +454,8 @@ async function context(
     delete headers['content-length'];
     delete headers['content-encoding'];
     return route.fulfill({ status: snap ? snap.status : resp!.status(), headers, body: out ?? body });
-  });
+  };
+  await ctx.route(/.*/, (route) => handle(route).catch(() => route.continue().catch(() => {})));
   return ctx;
 }
 
@@ -411,6 +465,7 @@ async function capture(
   url: string,
   engine: Engine,
   timeout = 30,
+  asLoaded = false,
 ): Promise<{ page: Page; cdp?: CDPSession; snap: Snapshot }> {
   const page = await ctx.newPage();
   const fonts: Snapshot['fonts'] = [];
@@ -453,7 +508,6 @@ async function capture(
   for (let i = 0; i < 5 && (await fontsSettled()); i++);
   await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {});
   await Promise.all(pending);
-
   let nodes: Snapshot['nodes'];
   let cdp: CDPSession | undefined;
   if (engine.endsWith('chromium')) {
@@ -537,7 +591,8 @@ async function capture(
   // Changing the root's background invalidates the whole page without touching layout, focus or
   // scroll; a change that repaints the text alone did not help. Content in a layer of its own (a
   // scroller, `will-change`) is not repainted by it.
-  const asLoaded = await take();
+  // A full-page screenshot of a long page at 2x is seconds of rasterizing: only on request.
+  const loadedShot = asLoaded ? await take() : undefined;
   await page
     .evaluate(async () => {
       const root = document.documentElement;
@@ -554,8 +609,8 @@ async function capture(
   const shot = await take();
   const png = PNG.sync.read(shot);
   let leftover: Snapshot['leftover'];
-  if (!asLoaded.equals(shot)) {
-    const was = PNG.sync.read(asLoaded);
+  if (loadedShot && !loadedShot.equals(shot)) {
+    const was = PNG.sync.read(loadedShot);
     if (was.width === png.width && was.height === png.height) {
       let pixels = 0;
       let levels = 0;
@@ -707,7 +762,10 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
     : o.usage;
   const listed = new Set((o.pages ?? []).map((p) => sitePath(pageKey(pageUrl(p, site.base)), site.base)));
   const always = Object.keys(usable.pages).filter((k) => listed.has(sitePath(k, site.base)));
-  const { pages, skipped } = selectPages(usable, entryIds, o.maxPages ?? 200, always);
+  const { pages, skipped } = selectPages(usable, entryIds, o.maxPages ?? 200, always, {
+    all: o.allPages,
+    manifest: o.manifest,
+  });
   if (skipped)
     log(
       `verifying ${pages.length} pages chosen to cover every face × character class (${skipped} more not visited; raise --max-pages to include them)`,
@@ -778,6 +836,7 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
 
     const local = new Set([new URL(site.base).origin, ...(baseline ? [new URL(baseline.site.base).origin] : [])]);
     const snapshots: Snapshots = new Map();
+    const images = new ImageCache();
     type Task = { page: string; viewport: number; dpr: number; engine: Engine; browser: Browser };
     const tasks: Task[] = [];
     for (const b of browsers)
@@ -816,13 +875,14 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
           hitsB,
           local,
           snapshots,
+          images,
         ),
-        context(t.browser, { ...t, mask: o.mask }, overlay, 'plain', root, hitsA, local, snapshots),
+        context(t.browser, { ...t, mask: o.mask }, overlay, 'plain', root, hitsA, local, snapshots, images),
       ]);
       try {
         const [b, a] = await Promise.all([
-          capture(cb, beforeUrl, t.engine, o.timeout),
-          capture(ca, url, t.engine, o.timeout),
+          capture(cb, beforeUrl, t.engine, o.timeout, o.asLoaded),
+          capture(ca, url, t.engine, o.timeout, o.asLoaded),
         ]);
         for (const id of hitsA) usedInAfter.add(id);
         const drawn = Object.keys(o.usage.pages[t.page]?.faces ?? {}).filter((id) => entryIds.has(id));
@@ -848,13 +908,14 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
                   new Set(),
                   local,
                   snapshots,
+                  images,
                 ),
-                context(br, { ...t, mask: o.mask }, overlay, 'plain', root, new Set(), local, snapshots),
+                context(br, { ...t, mask: o.mask }, overlay, 'plain', root, new Set(), local, snapshots, images),
               ]);
               try {
                 const [b2, a2] = await Promise.all([
-                  capture(cb2, beforeUrl, t.engine, o.timeout),
-                  capture(ca2, url, t.engine, o.timeout),
+                  capture(cb2, beforeUrl, t.engine, o.timeout, o.asLoaded),
+                  capture(ca2, url, t.engine, o.timeout, o.asLoaded),
                 ]);
                 return { before: b2.snap.png, after: a2.snap.png };
               } finally {
@@ -1119,6 +1180,44 @@ function only({ before, after }: Shots, pixels: Uint32Array): PNG {
   return out;
 }
 
+/**
+ * The diff image cut down to the rows within `pad` of a differing pixel (pixelmatch's red): a
+ * full-page PNG of a long article at 1920 px is 1920×32,064 pixels, 2 to 3 MB, when a few lines
+ * changed (one run kept 358 of them, 849 MB). Where unchanged rows were cut, a 2-pixel blue line
+ * marks the seam. `bands` are the kept rows of the page, in image pixels; undefined when nothing is
+ * cut.
+ */
+export function cutToDiff(png: PNG, pad: number): { png: PNG; bands?: [start: number, end: number][] } {
+  const { width: w, height: h, data } = png;
+  const bands: [number, number][] = [];
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const k = (y * w + x) * 4;
+      if (data[k] === 255 && data[k + 1] === 0 && data[k + 2] === 0) {
+        const start = Math.max(0, y - pad),
+          end = Math.min(h, y + pad + 1);
+        const last = bands.at(-1);
+        if (last && start <= last[1] + SEAM) last[1] = Math.max(last[1], end);
+        else bands.push([start, end]);
+        break;
+      }
+    }
+  const rows = bands.reduce((n, [a, z]) => n + z - a, 0) + (bands.length - 1) * SEAM;
+  if (!bands.length || rows >= h) return { png };
+  const out = new PNG({ width: w, height: rows });
+  let at = 0;
+  bands.forEach(([a, z], i) => {
+    if (i) {
+      for (let k = at * w * 4; k < (at + SEAM) * w * 4; k += 4) out.data.set([60, 120, 230, 255], k);
+      at += SEAM;
+    }
+    data.copy(out.data, at * w * 4, a * w * 4, z * w * 4);
+    at += z - a;
+  });
+  return { png: out, bands };
+}
+const SEAM = 2;
+
 async function compare(
   t: { page: string; viewport: number; dpr: number; engine: Engine },
   base: Comparison,
@@ -1296,7 +1395,9 @@ async function compare(
         : 'regression';
   mkdirSync(outDir, { recursive: true });
   const name = `${slug(t.page)}@${t.viewport}x${t.dpr}.${t.engine}.png`;
-  writeFileSync(join(outDir, name), PNG.sync.write(diff));
+  const cut = cutToDiff(diff, 48 * t.dpr);
+  writeFileSync(join(outDir, name), PNG.sync.write(cut.png));
   r.diffImage = join(outDir, name);
+  if (cut.bands) r.diffRows = cut.bands;
   return r;
 }

@@ -43,8 +43,8 @@ files with `unicode-range`: **core** (printable ASCII, common punctuation and th
 pages use), **extended** (the Latin and locale characters no page uses yet) and **rest** (everything
 else in the original, loaded only if a page needs it). A used character goes in core or extended
 by measurement: whichever makes the face's pages download less in total. Glyph names, hinting,
-kerning, features and full variable axes are kept, and `verify` compares every page before and
-after, pixel for pixel.
+kerning, features and full variable axes are kept, and `verify` compares pages before and after,
+pixel for pixel.
 
 ## When to use
 
@@ -88,8 +88,9 @@ The default command (no subcommand) audits, prints the plan and the diff, then a
 - It builds the site in a throwaway copy of the project when there is no build output, so the build
   cannot touch the user's files. The output is kept in `.fontphobia/output` and reused while it is
   newer than every source file.
-- It crawls every page it finds at 4 viewport widths (360, 768, 1280, 1920) plus a browser
-  default-font-size sweep, and writes `.fontphobia/usage.json` and `.fontphobia/report.md`.
+- It loads every page it finds once, and 2 pages per section (parent path) at 4 widths and a
+  default-font-size sweep; other pages get a width or size only where a sample drew new text
+  (`--full-sweep`: all). It writes `.fontphobia/usage.json` and `.fontphobia/report.md`.
 - It prints each face's size now and after, the saving per page, the opt-ins with their measured
   savings, and the exact edits as a line diff.
 - In a terminal it offers the opt-ins as a checklist. With `--ci`, `--write`, `--allow`, `CI` or
@@ -125,7 +126,7 @@ The same steps, one at a time:
 pnpm dlx fontphobia@latest audit           # crawl; writes .fontphobia/usage.json and report.md
 pnpm dlx fontphobia@latest build           # plan from usage.json, no browser; shows plan and diff only
 pnpm dlx fontphobia@latest build --write   # apply
-pnpm dlx fontphobia@latest verify          # rebuild and compare every page before and after
+pnpm dlx fontphobia@latest verify          # rebuild and compare pages before and after
 ```
 
 `build` and `verify` fail with "run `fontphobia audit` first" when `usage.json` is missing.
@@ -155,18 +156,18 @@ Run `revert` before deleting subset files: the CSS still points at them.
 
 Most commands take `--json`. `inspect` and `subset` take a file path and no `--cwd`.
 
-| Command          | What it does                                                  | Key options                                                                                                                                                                  |
-| ---------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fontphobia`     | Audit, plan, ask, write, verify                               | `--write`/`-u`, `--allow`, `--ci`, plus the `audit`, `build` and `verify` options                                                                                            |
-| `audit`          | Crawl; write `.fontphobia/usage.json` and `report.md`         | `--dist`, `--build-cmd`, `--start-cmd`, `--url`, `--pages`, `--ignore`, `--viewports`, `--locales`, `--max-pages`, `--rebuild`, `--no-cache`, `--no-font-size-sweep`, `--ci` |
-| `build`          | Plan from `usage.json` (no browser); `--write` applies        | `--write`/`-u`, `--allow`, `--core-threshold`, `--no-remainder`, `--usage`                                                                                                   |
-| `verify`         | Check files and shaping, then compare pages before and after  | `--browsers`, `--dpr`, `--viewports`, `--mask`, `--ignore`, `--pages`, `--timeout`, `--baseline`, `--hinting`, `--runtime`, `--no-browser`                                   |
-| `check`          | Are the subsets still up to date? Static by default           | `--dist`, `--url`, `--mode`, `--strict`, `--allow-chars`                                                                                                                     |
-| `auto`           | Subset the built output in place; nothing to commit           | `--dist`, `--crawl`, `--rules`, `--verify`, `--dry-run`, `--allow`, `--core-threshold`, `--no-remainder`                                                                     |
-| `revert`         | Restore the originals from the manifest                       | `--dry-run`, `--keep-kits`                                                                                                                                                   |
-| `apply-kit`      | Adobe Fonts: remove unused kit styles through the Typekit API | `--yes`, `--check`                                                                                                                                                           |
-| `inspect <font>` | A font's tables, axes, features, hinting and sizes            | `--json`                                                                                                                                                                     |
-| `subset <font>`  | Subset one font to WOFF2; no crawl, no CSS edits              | `-o` (required, `.woff2`), `--unicodes`, `--text`, `--features`, `--axis`, `--name-ids`, `--no-hinting`                                                                      |
+| Command          | What it does                                                  | Key options                                                                                                                                                                                  |
+| ---------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fontphobia`     | Audit, plan, ask, write, verify                               | `--write`/`-u`, `--allow`, `--ci`, plus the `audit`, `build` and `verify` options                                                                                                            |
+| `audit`          | Crawl; write `.fontphobia/usage.json` and `report.md`         | `--dist`, `--build-cmd`, `--start-cmd`, `--url`, `--pages`, `--ignore`, `--viewports`, `--locales`, `--max-pages`, `--rebuild`, `--no-cache`, `--no-font-size-sweep`, `--full-sweep`, `--ci` |
+| `build`          | Plan from `usage.json` (no browser); `--write` applies        | `--write`/`-u`, `--allow`, `--core-threshold`, `--no-remainder`, `--usage`                                                                                                                   |
+| `verify`         | Check files and shaping, then compare pages before and after  | `--browsers`, `--dpr`, `--viewports`, `--mask`, `--ignore`, `--pages`, `--timeout`, `--baseline`, `--hinting`, `--runtime`, `--all-pages`, `--as-loaded`, `--no-browser`                     |
+| `check`          | Are the subsets still up to date? Static by default           | `--dist`, `--url`, `--mode`, `--strict`, `--allow-chars`                                                                                                                                     |
+| `auto`           | Subset the built output in place; nothing to commit           | `--dist`, `--crawl`, `--rules`, `--verify`, `--dry-run`, `--allow`, `--core-threshold`, `--no-remainder`                                                                                     |
+| `revert`         | Restore the originals from the manifest                       | `--dry-run`, `--keep-kits`                                                                                                                                                                   |
+| `apply-kit`      | Adobe Fonts: remove unused kit styles through the Typekit API | `--yes`, `--check`                                                                                                                                                                           |
+| `inspect <font>` | A font's tables, axes, features, hinting and sizes            | `--json`                                                                                                                                                                                     |
+| `subset <font>`  | Subset one font to WOFF2; no crawl, no CSS edits              | `-o` (required, `.woff2`), `--unicodes`, `--text`, `--features`, `--axis`, `--name-ids`, `--no-hinting`                                                                                      |
 
 Pages: `--pages` adds paths, or restricts to globs; `--ignore` skips globs. Both repeat. Both also
 come from the config's `pages` and `ignore`. `audit` revisits only pages whose HTML, CSS or fonts
@@ -426,18 +427,18 @@ A pixel difference at unchanged layout is loaded again, each time in a new brows
 regression when the same pixels differ every time. Chrome rasterizes on the CPU during `verify`:
 its GPU rasterizer does not draw large text the same way on every load.
 
-`verify` compares each page after painting all of it again. A line starting `note: in N
-comparison(s) the page as it loaded was not what a fresh paint of it gives` lists edge pixels Chrome
-kept from an earlier paint when a font file arrived late, with their count and size. It is not a
-difference between the two sides and does not fail the run; tell the user when the numbers are large.
+`verify` compares each page after painting all of it again. With `--as-loaded`, a line starting
+`note: in N comparison(s) the page as it loaded was not what a fresh paint of it gives` lists edge
+pixels Chrome kept from an earlier paint when a font file arrived late. It does not fail the run.
 
-`verify` exits 1 on a regression or a failed page. Diff images go to `.fontphobia/verify/` and the
-summary to `.fontphobia/report.md`. For content that changes between loads (script-driven
+`verify` exits 1 on a regression or a failed page. Diff images (`.fontphobia/verify/`) keep the rows
+near a difference, a blue line at each cut; the summary goes to `.fontphobia/report.md`. For content that changes between loads (script-driven
 animations, canvases, embeds), hide it with `--mask <selector>` or skip the page with
 `--ignore <glob>`; raise `--timeout` (seconds, default 30) for slow pages. `--browsers` adds
 `firefox`, `webkit` (Playwright builds on the host; when one is not installed, fontphobia prints
 the install command with the matching Playwright version) and `linux-chromium`, `linux-firefox`,
-`linux-webkit` (the pinned Playwright Linux image in a container). Above `--max-pages` (default 200) a set cover picks representative pages.
+`linux-webkit` (the pinned Playwright Linux image in a container). Pages: 2 per section plus those
+each face's files and character classes need; `--all-pages` compares all (`--max-pages`, def. 200).
 
 ## Licenses
 
