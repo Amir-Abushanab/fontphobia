@@ -217,6 +217,20 @@ async function run(
       if (!(await images.serve(r).catch(() => false))) await r.fallback().catch(() => {});
     });
 
+  // A stylesheet's request can finish before the page has parsed and applied it, and head
+  // stylesheets don't hold up DOMContentLoaded: text read in that gap is all in the browser's
+  // default font (seen on Windows CI). A <link>'s load or error event fires once the sheet, with
+  // its @imports, is applied or has failed; record which have, from before the first one can.
+  await page.addInitScript(() => {
+    const done = new WeakSet<EventTarget>();
+    Object.defineProperty(window, 'fontphobiaSheets', { value: done });
+    const mark = (e: Event) => {
+      if (e.target instanceof HTMLLinkElement) done.add(e.target);
+    };
+    addEventListener('load', mark, true);
+    addEventListener('error', mark, true);
+  });
+
   // The load event waits for every image, other sites' too: seconds each the first time one is
   // fetched. Text and styles don't depend on them, so the visit goes on once nothing but
   // cross-origin images below the fold is still loading (or at the load event, whichever is first).
@@ -240,13 +254,23 @@ async function run(
         (await page
           .evaluate(
             // An image on screen still loading could be the largest contentful paint: wait for it.
-            () =>
-              document.readyState !== 'loading' &&
-              ![...document.images].some((i) => {
-                if (i.complete) return false;
-                const r = i.getBoundingClientRect();
-                return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
-              }),
+            () => {
+              const sheets = (window as unknown as { fontphobiaSheets?: WeakSet<EventTarget> }).fontphobiaSheets;
+              return (
+                document.readyState !== 'loading' &&
+                !(
+                  sheets &&
+                  [...document.querySelectorAll<HTMLLinkElement>('link[rel~="stylesheet" i][href]')].some(
+                    (l) => !l.disabled && !/\balternate\b/i.test(l.rel) && !sheets.has(l),
+                  )
+                ) &&
+                ![...document.images].some((i) => {
+                  if (i.complete) return false;
+                  const r = i.getBoundingClientRect();
+                  return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+                })
+              );
+            },
           )
           .catch(() => true))
       )
