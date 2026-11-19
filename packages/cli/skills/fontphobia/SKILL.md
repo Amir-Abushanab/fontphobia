@@ -438,8 +438,8 @@ animations, canvases, embeds), hide it with `--mask <selector>` or skip the page
 `--ignore <glob>`; raise `--timeout` (seconds, default 30) for slow pages. `--browsers` adds
 `firefox`, `webkit` (Playwright builds on the host; when one is not installed, fontphobia prints
 the install command with the matching Playwright version) and `linux-chromium`, `linux-firefox`,
-`linux-webkit` (the pinned Playwright Linux image in a container). It compares 2 pages per section plus the pages each face's files and character classes need;
-`--all-pages` compares all (up to `--max-pages`, default 200).
+`linux-webkit` (the pinned Playwright Linux image in a container). Pages: 2 per section plus those
+each face's files and character classes need; `--all-pages` compares all (`--max-pages`, def. 200).
 
 ## Licenses
 
