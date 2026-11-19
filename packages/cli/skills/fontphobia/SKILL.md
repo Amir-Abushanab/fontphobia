@@ -161,7 +161,7 @@ Most commands take `--json`. `inspect` and `subset` take a file path and no `--c
 | `fontphobia`     | Audit, plan, ask, write, verify                               | `--write`/`-u`, `--allow`, `--ci`, plus the `audit`, `build` and `verify` options                                                                                                            |
 | `audit`          | Crawl; write `.fontphobia/usage.json` and `report.md`         | `--dist`, `--build-cmd`, `--start-cmd`, `--url`, `--pages`, `--ignore`, `--viewports`, `--locales`, `--max-pages`, `--rebuild`, `--no-cache`, `--no-font-size-sweep`, `--full-sweep`, `--ci` |
 | `build`          | Plan from `usage.json` (no browser); `--write` applies        | `--write`/`-u`, `--allow`, `--core-threshold`, `--no-remainder`, `--usage`                                                                                                                   |
-| `verify`         | Check files and shaping, then compare pages before and after  | `--browsers`, `--dpr`, `--viewports`, `--mask`, `--ignore`, `--pages`, `--timeout`, `--baseline`, `--hinting`, `--runtime`, `--no-browser`                                                   |
+| `verify`         | Check files and shaping, then compare pages before and after  | `--browsers`, `--dpr`, `--viewports`, `--mask`, `--ignore`, `--pages`, `--timeout`, `--baseline`, `--hinting`, `--runtime`, `--all-pages`, `--as-loaded`, `--no-browser`                     |
 | `check`          | Are the subsets still up to date? Static by default           | `--dist`, `--url`, `--mode`, `--strict`, `--allow-chars`                                                                                                                                     |
 | `auto`           | Subset the built output in place; nothing to commit           | `--dist`, `--crawl`, `--rules`, `--verify`, `--dry-run`, `--allow`, `--core-threshold`, `--no-remainder`                                                                                     |
 | `revert`         | Restore the originals from the manifest                       | `--dry-run`, `--keep-kits`                                                                                                                                                                   |
@@ -431,8 +431,9 @@ its GPU rasterizer does not draw large text the same way on every load.
 `note: in N comparison(s) the page as it loaded was not what a fresh paint of it gives` lists edge
 pixels Chrome kept from an earlier paint when a font file arrived late. It does not fail the run.
 
-`verify` exits 1 on a regression or a failed page. Diff images go to `.fontphobia/verify/` and the
-summary to `.fontphobia/report.md`. For content that changes between loads (script-driven
+`verify` exits 1 on a regression or a failed page. Diff images go to `.fontphobia/verify/`, cut to
+the rows near a difference (a blue line marks each cut; the report gives their page position), and
+the summary to `.fontphobia/report.md`. For content that changes between loads (script-driven
 animations, canvases, embeds), hide it with `--mask <selector>` or skip the page with
 `--ignore <glob>`; raise `--timeout` (seconds, default 30) for slow pages. `--browsers` adds
 `firefox`, `webkit` (Playwright builds on the host; when one is not installed, fontphobia prints
