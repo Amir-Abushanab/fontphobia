@@ -1,5 +1,11 @@
 # fontphobia
 
+## 0.9.1
+
+### Patch Changes
+
+- [#26](https://github.com/Amir-Abushanab/fontphobia/pull/26) [`bcedfe1`](https://github.com/Amir-Abushanab/fontphobia/commit/bcedfe121aa87f5883d169131a4b693369328e8c) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - `.fontphobia/.gitignore` is written before anything else goes into `.fontphobia/`. It used to be written once the audit had finished, while the page-load cache (`.fontphobia/cache/visits/`) is written during the crawl. An audit that was interrupted or failed part-way, or one run with `--out-dir`, left the cache files where `git add -A` would commit them. `verify` likewise creates the file before writing diff images. Cache files a repository already tracks stay tracked: `git rm -r --cached .fontphobia/cache` untracks them.
+
 ## 0.9.0
 
 ### Minor Changes
