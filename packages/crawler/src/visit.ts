@@ -714,6 +714,19 @@ async function settle(page: Page, inflight: () => number, scroll: boolean): Prom
   // `auto --allow inline-core` reads it: a stylesheet full of fonts delays an image that would
   // otherwise paint before it arrives (spike 13). Buffered entries arrive in a task of their own.
   // Read only for default-size loads: usage keeps no other (build.ts), and the check waits 100 ms.
+  // A visit no longer waits for the load event, so an image on screen may be loaded but not yet
+  // decoded and painted, and have no largest-contentful-paint entry: let it paint first.
+  if (scroll)
+    await page
+      .evaluate(async () => {
+        const onScreen = [...document.images].filter((i) => {
+          const r = i.getBoundingClientRect();
+          return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+        });
+        await Promise.all(onScreen.map((i) => i.decode().catch(() => {})));
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
+      })
+      .catch(() => {});
   const lcp = !scroll
     ? undefined
     : await page
