@@ -598,6 +598,7 @@ interface VerifyFlags {
   startCmd?: string;
   url?: string;
   rebuild?: boolean;
+  /** Accepted and unused: verify never prompts. */ ci?: boolean;
   pages?: string | string[];
   maxPages?: number;
   allPages?: boolean;
@@ -736,6 +737,7 @@ verifyOptions(
   cli
     .command('verify', 'Check the written fonts and compare every page before and after, in the browser')
     .option('--cwd <dir>', 'Project root (default: current directory)')
+    .option('--ci', 'Accepted so a CI script can pass it to every command (verify never prompts)')
     .option('--usage <file>', 'usage.json from the audit (default .fontphobia/usage.json)')
     .option('--dist <dir>', 'Built site to serve')
     .option('--build-cmd <cmd>', 'Command that builds the site (run when the build is older than the sources)')
@@ -782,6 +784,7 @@ buildOptions(
 
 interface CheckFlags {
   cwd?: string;
+  /** Accepted and unused: check never prompts. */ ci?: boolean;
   dist?: string;
   url?: string;
   usage?: string;
@@ -858,6 +861,7 @@ cli
     'Are the subsets up to date? Static by default (no browser; for postbuild and CI); --url crawls production',
   )
   .option('--cwd <dir>', 'Project root (default: current directory)')
+  .option('--ci', 'Accepted so a CI script can pass it to every command (check never prompts)')
   .option('--dist <dir>', 'Built site whose text is checked (default: what the framework profile finds)')
   .option('--url <origin>', 'Exact mode: crawl this site in Chrome and compare what it draws')
   .option('--usage <file>', 'usage.json from the audit (default .fontphobia/usage.json)')
