@@ -16,6 +16,7 @@ export * from './usage/build.ts';
 export * from './usage/phrases.ts';
 export * from './usage/json.ts';
 export * from './usage/facts.ts';
+export * from './usage/extra-text.ts';
 export * from './project/profiles.ts';
 export * from './project/detect.ts';
 export * from './project/offdom.ts';

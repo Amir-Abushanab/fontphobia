@@ -24,6 +24,12 @@ export interface Config {
    */
   coreThreshold?: number | 'auto';
   remainder?: boolean;
+  /**
+   * Text the crawl can't see: added by a script after the page has loaded, or behind an interaction.
+   * By page path, glob or `'*'`: the text, counted as drawn there in every face the page draws, or
+   * `{ 'Font Family': text }` to name the faces. Without it those characters are planned as unused.
+   */
+  extraText?: Record<string, string | Record<string, string>>;
   allow?: string[];
   rename?: Record<string, string>;
   licenses?: { allow?: string[] };
@@ -104,6 +110,7 @@ const SCHEMA: Record<string, Kind | Record<string, Kind>> = {
   maxPages: 'number',
   coreThreshold: 'custom',
   remainder: 'boolean',
+  extraText: 'custom',
   allow: { enum: ALLOW, array: true },
   rename: 'record',
   licenses: { allow: 'string[]' },
@@ -200,6 +207,10 @@ function validate(name: string, c: unknown): void {
   const t = c.coreThreshold;
   if (t !== undefined && t !== 'auto' && !(isNum(t) && (t as number) >= 0 && (t as number) <= 1))
     bad('coreThreshold', "'auto' or a number between 0 and 1");
+  const extra = c.extraText;
+  const strings = (v: unknown) => isObj(v) && Object.values(v).every((s) => typeof s === 'string');
+  if (extra !== undefined && !(isObj(extra) && Object.values(extra).every((v) => typeof v === 'string' || strings(v))))
+    bad('extraText', 'an object of page paths to text, or to { font family: text }');
   const m = c.inlineCoreMax;
   const bytes = (x: unknown) => x === undefined || (isNum(x) && (x as number) >= 0);
   if (

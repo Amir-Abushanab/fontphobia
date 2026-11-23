@@ -33,6 +33,7 @@ import {
   type SubsetOptions,
   offeredOptIns,
   heavierPages,
+  withExtraText,
   pageBytes,
   savedPct,
 } from '@fontphobia/core';
@@ -390,9 +391,11 @@ async function runBuild(
   const { config, file } = await loadConfig(root, selfUrl());
   const usageFile = resolve(root, o.usage ?? '.fontphobia/usage.json');
   if (!existsSync(usageFile)) throw new Error(`${usageFile} doesn't exist; run \`fontphobia audit\` first`);
-  const usage = JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson;
+  const declared = withExtraText(JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson, config.extraText);
+  const usage = declared.usage;
   ui.step(...(how.step ?? [0, 0]), 'Plan', EXPLAIN.plan);
   if (file && !how.ui) ui.log(`config: ${file}`);
+  for (const miss of declared.unmatched) ui.log(`extraText: nothing the audit saw matches ${JSON.stringify(miss)}`);
   const cfg = {
     coreThreshold: coreThresholdOf(o.coreThreshold) ?? config.coreThreshold,
     remainder: o.remainder === false ? false : config.remainder,
@@ -645,7 +648,8 @@ async function runVerify(o: VerifyFlags, how: { ui?: Ui; step?: [number, number]
   const { config } = await loadConfig(root, selfUrl());
   const usageFile = resolve(root, o.usage ?? join(o.outDir ?? '.fontphobia', 'usage.json'));
   if (!existsSync(usageFile)) throw new Error(`${usageFile} doesn't exist; run \`fontphobia audit\` first`);
-  const usage = JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson;
+  // With the config's extraText counted, as the plan counted it: a file that text makes a page load is expected.
+  const { usage } = withExtraText(JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson, config.extraText);
   const ui = how.ui ?? new Ui({ quiet: o.json, color: o.color });
   notifyUpdate(ui);
   ui.step(

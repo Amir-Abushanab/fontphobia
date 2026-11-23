@@ -315,6 +315,7 @@ export default defineConfig({
   maxPages: 500,
   coreThreshold: 'auto', // which used characters go in core: 'auto' measures; 0 to 1 is a fixed share of a face's pages
   remainder: true, // the lazy rest file
+  extraText: { '/': '°C' }, // text the crawl can't see (a script adds it after load), by page path, glob or '*'
   allow: [], // opt-ins
   rename: { 'Source Serif 4': 'SrcSerif Subset' }, // internal name for OFL Reserved Font Names
   licenses: { allow: [] }, // families you have the rights to modify
@@ -352,7 +353,7 @@ The project's own `LICENSE` and `package.json` never count as a font's license. 
 
 ## Limitations
 
-- **Text the crawl can't see** isn't counted when the files are planned: pages behind a login (use `auth`), text added by scripts after load, and content added later. Its characters render from the extended file when they are in Latin-1, Latin Extended-A or the alphabets of your `locales`, and from the rest file otherwise. With `remainder: false`, what would come from the rest file renders in the next font in the stack.
+- **Text the crawl can't see** isn't counted when the files are planned: pages behind a login (use `auth`), text added by scripts after load, and content added later. Its characters render from the extended file when they are in Latin-1, Latin Extended-A or the alphabets of your `locales`, and from the rest file otherwise. With `remainder: false`, what would come from the rest file renders in the next font in the stack. Declare such text with `extraText` in the config (by page path, glob or `'*'`, optionally per font family) and it is counted as drawn there, so its characters can go in core.
 - **`apply-kit` publishes your Adobe kit**, which changes every site that uses it. It refuses a kit whose draft has unpublished changes, reads each change back from Adobe and publishes only if it matches, and `revert` restores the previous styles only if nobody edited the kit since (otherwise it says which styles to add back, or `revert --keep-kits` leaves the kit as it is). Another site sharing the kit can run `fontphobia apply-kit --check` to see whether it lost a style it uses. It doesn't change the character set: Adobe's API doesn't reflect the web UI's setting, so the audit report says which one to pick and you change it on fonts.adobe.com.
 
 ## Other tools
