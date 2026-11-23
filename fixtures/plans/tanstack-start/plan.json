@@ -70,6 +70,10 @@
           "saving": 17588
         }
       ],
+      "pages": {
+        "coreOnly": 1,
+        "drawn": 1
+      },
       "source": {
         "bytes": 26156,
         "file": "public/fonts/dejavu-sans-latin.woff2",

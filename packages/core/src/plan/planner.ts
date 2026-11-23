@@ -166,6 +166,11 @@ export interface FacePlan {
    * in core, and how many of the face's pages then load no other file of the face.
    */
   coreChoice?: { added: string; count: number; pages: number; coreOnly: number };
+  /**
+   * How many pages draw the face, and how many of them load its core file alone. Whatever
+   * `coreThreshold` is: with a fixed share this is the only record of what the share costs.
+   */
+  pages?: { drawn: number; coreOnly: number };
   /** Characters moved into core so words shape as they did unsplit (§8.3). */
   repair?: { moved: string; count: number; words: string[]; truncated?: boolean };
   /** Words that shape differently across files (only with split-shaping). */
@@ -741,6 +746,7 @@ export async function planFace(
     ? [...new Set([...C0, ...(splitShaping ? [] : later)])].filter((c) => !fixedPart.has(c))
     : [];
   const elsewhere = setsFor(C);
+  const coreOnly = drawn.filter((cs) => ![...cs].some((c) => elsewhere.ext.has(c) || elsewhere.rest.has(c))).length;
 
   const notes: string[] = [];
   if (unknownLocales.length) notes.push(`CLDR has no characters for ${unknownLocales.join(', ')}`);
@@ -767,8 +773,9 @@ export async function planFace(
       added: fmt(chosen),
       count: chosen.length,
       pages: drawn.length,
-      coreOnly: drawn.filter((cs) => ![...cs].some((c) => elsewhere.ext.has(c) || elsewhere.rest.has(c))).length,
+      coreOnly,
     },
+    pages: caps.split === 'single' ? undefined : { drawn: drawn.length, coreOnly },
     repair:
       rep.moved.size && !splitShaping
         ? {

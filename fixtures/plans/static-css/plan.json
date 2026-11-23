@@ -72,6 +72,10 @@
           "saving": 18084
         }
       ],
+      "pages": {
+        "coreOnly": 1,
+        "drawn": 1
+      },
       "source": {
         "bytes": 757076,
         "file": "fonts/DejaVuSans.ttf",
@@ -149,6 +153,10 @@
           "saving": 23072
         }
       ],
+      "pages": {
+        "coreOnly": 1,
+        "drawn": 1
+      },
       "source": {
         "bytes": 879708,
         "file": "fonts/InterVariable.ttf",
@@ -238,6 +246,10 @@
           "saving": 8148
         }
       ],
+      "pages": {
+        "coreOnly": 3,
+        "drawn": 3
+      },
       "source": {
         "bytes": 879708,
         "file": "fonts/InterVariable.ttf",

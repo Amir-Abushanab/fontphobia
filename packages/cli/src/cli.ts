@@ -32,6 +32,7 @@ import {
   type AxisSetting,
   type SubsetOptions,
   offeredOptIns,
+  heavierPages,
   pageBytes,
   savedPct,
 } from '@fontphobia/core';
@@ -417,6 +418,8 @@ async function runBuild(
         notWritten: r.notWritten,
         unchanged: r.unchanged,
         written: write,
+        // Pages that would download more font bytes than before fontphobia (bytes), the worst first.
+        heavier: heavierPages(pageBytes(r.plan, usage)).map((p) => ({ page: p.page, before: p.now, after: p.after })),
       }),
     );
     return;
