@@ -460,6 +460,54 @@ async function context(
   return ctx;
 }
 
+/** Device pixels a screenshot may be tall before it is taken in strips: half the usual largest GPU texture. */
+const MAX_SHOT = 8192;
+
+/** Screenshots of consecutive strips of a page, one under the other. */
+export function joinStrips(parts: PNG[]): PNG {
+  const width = Math.max(...parts.map((p) => p.width));
+  const out = new PNG({ width, height: parts.reduce((n, p) => n + p.height, 0) });
+  let y = 0;
+  for (const p of parts) {
+    for (let row = 0; row < p.height; row++)
+      p.data.copy(out.data, (y + row) * width * 4, row * p.width * 4, (row + 1) * p.width * 4);
+    y += p.height;
+  }
+  return out;
+}
+
+/**
+ * An extended or rest file loaded on a page where the audit recorded none of its characters. The
+ * page as verify loaded it may say why: text a script added after the audit read the page (a label
+ * filled in by a fetch) is in this load's text. Name the characters and where they are, so the
+ * message says what to declare instead of that nothing uses the file.
+ */
+export function unexplainedLoad(
+  ref: { file: string; role: string },
+  range: Set<number>,
+  nodes: Snapshot['nodes'],
+): string {
+  const found = new Map<number, string>();
+  for (const n of nodes) {
+    let at = 0;
+    for (const ch of n.text) {
+      const cp = ch.codePointAt(0)!;
+      // The words around it, not the start of a long paragraph.
+      if (range.has(cp) && !found.has(cp))
+        found.set(cp, JSON.stringify(n.text.slice(Math.max(0, at - 20), at + 20).trim()));
+      at += ch.length;
+    }
+    if (found.size >= 4) break;
+  }
+  const head = `${ref.file} (${ref.role}) loaded, but the audit recorded none of its characters on this page`;
+  if (!found.size)
+    return `${head}, and the page's text has none now: text drawn outside the DOM (canvas), or a script asking for the font`;
+  const list = [...found]
+    .map(([cp, text]) => `${String.fromCodePoint(cp)} (U+${cp.toString(16).toUpperCase().padStart(4, '0')}) in ${text}`)
+    .join(', ');
+  return `${head}. The page's text has ${list}: text added after the audit read the page. Declare it with \`extraText\` in the config so the plan counts it`;
+}
+
 /** Load, settle (§10.3 "Stable screenshots"), and capture layout, fonts and pixels. */
 async function capture(
   ctx: BrowserContext,
@@ -491,11 +539,21 @@ async function capture(
       for (const el of document.querySelectorAll<HTMLImageElement | HTMLIFrameElement>('[loading="lazy"]'))
         el.loading = 'eager';
       const h = () => document.documentElement.scrollHeight;
+      // Each stop is held until the page has reacted to it: two frames, then a task, by which
+      // time an IntersectionObserver's callback for that position has run. With one frame a
+      // stop, which observer callback ran last depended on how fast the frames came, and a
+      // scroll-spy that remembers the last heading it saw ended the walk in a different state on
+      // each load: a moved label, reported as a text box that changed (principlestash.com).
+      const settle = async () => {
+        for (let k = 0; k < 2; k++) await new Promise((r) => requestAnimationFrame(() => r(null)));
+        await new Promise((r) => setTimeout(r, 0));
+      };
       for (let y = 0, i = 0; y < h() && i < 12; y += innerHeight, i++) {
         scrollTo(0, y);
-        await new Promise((r) => requestAnimationFrame(() => r(null)));
+        await settle();
       }
       scrollTo(0, 0);
+      await settle();
     })
     .catch(() => {});
   await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {});
@@ -574,11 +632,33 @@ async function capture(
       return out;
     });
   }
+  const shotOptions = { animations: 'disabled', caret: 'hide', scale: 'device' } as const;
   const take = async () => {
     try {
-      return await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide', scale: 'device' });
+      // A full-page screenshot is one GPU surface, and past the largest one Chrome draws the top
+      // of the page again instead of the rest (seen on a 44,000 px essay at 2×: the header 18
+      // times over, compared with itself). A long page is captured in strips and joined.
+      const size = await page.evaluate(() => ({
+        width: document.documentElement.scrollWidth,
+        height: document.documentElement.scrollHeight,
+        dpr: devicePixelRatio,
+      }));
+      const strip = Math.floor(MAX_SHOT / size.dpr);
+      if (size.height <= strip) return await page.screenshot({ fullPage: true, ...shotOptions });
+      const parts: PNG[] = [];
+      for (let y = 0; y < size.height; y += strip)
+        parts.push(
+          PNG.sync.read(
+            await page.screenshot({
+              fullPage: true,
+              clip: { x: 0, y, width: size.width, height: Math.min(strip, size.height - y) },
+              ...shotOptions,
+            }),
+          ),
+        );
+      return PNG.sync.write(joinStrips(parts));
     } catch {
-      return await page.screenshot({ animations: 'disabled', caret: 'hide', scale: 'device' });
+      return await page.screenshot(shotOptions);
     }
   };
   // The page as it loaded, then the whole page painted again. The second is what is compared; what
@@ -951,7 +1031,7 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
         if (a.snap.leftover) c = { ...c, leftover: { ...a.snap.leftover, original: b.snap.leftover?.pixels ?? 0 } };
         comparisons.push(c);
         if (t.dpr === dprsFor(t.engine)[0] && t.engine === engines[0])
-          record(t.page, b.snap.fonts, a.snap.fonts, hitsA);
+          record(t.page, b.snap.fonts, a.snap.fonts, hitsA, a.snap.nodes);
       } catch (e) {
         comparisons.push({ ...base, causes: [(e as Error).message.split('\n')[0]!] });
       } finally {
@@ -1004,7 +1084,13 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
     await site.stop();
   }
 
-  function record(page: string, before: Snapshot['fonts'], after: Snapshot['fonts'], inlined: Set<string>) {
+  function record(
+    page: string,
+    before: Snapshot['fonts'],
+    after: Snapshot['fonts'],
+    inlined: Set<string>,
+    nodes: Snapshot['nodes'] = [],
+  ) {
     const row: PageFonts = { page, before: { bytes: 0, requests: 0 }, after: { bytes: 0, requests: 0 }, faces: {} };
     const face = (id: string) => (row.faces[id] ??= { before: 0, after: 0 });
     for (const f of before) {
@@ -1053,11 +1139,17 @@ export async function verifyBrowser(o: VerifyOptions): Promise<BrowserVerify> {
               range.has(c),
             ),
           );
-        if (!uses && !shared)
-          loadProblems.set(
-            `${page}\u0000${ref.file}`,
-            `${ref.file} (${ref.role}) loaded, but the page uses none of its characters`,
+        if (!uses && !shared) {
+          // Characters the audit did record here were drawn by another face (× in the text font is
+          // not why the mono file loaded): only the ones it never saw on this page explain the load.
+          const recorded = new Set(
+            Object.values(o.usage.pages[page]?.faces ?? {}).flatMap((list) => [
+              ...codePointsOf(parseUnicodeRange(list)),
+            ]),
           );
+          const unseen = new Set([...range].filter((c) => !recorded.has(c)));
+          loadProblems.set(`${page}\u0000${ref.file}`, unexplainedLoad(ref, unseen, nodes));
+        }
       }
     }
     // A file the build put in the stylesheet as a data: URL (`auto`'s inline-core) makes no request:
@@ -1361,7 +1453,9 @@ async function compare(
           ? `line breaks changed (${nb.boxes.length} → ${n.boxes.length} lines)`
           : nb.boxes.some((x, k) => x.y !== n.boxes[k]!.y || x.h !== n.boxes[k]!.h)
             ? 'box height or position changed'
-            : 'width changed (shaping or advance widths)';
+            : nb.boxes.every((x, k) => Math.abs(x.w - n.boxes[k]!.w) < 0.01)
+              ? 'moved sideways at the same width (something beside it changed size, or the page was in another state; not its own glyphs)'
+              : 'width changed (shaping or advance widths)';
       } else cause = 'pixels differ at identical layout (glyph rasterization or sub-pixel glyph positions)';
     }
     if (r.examples.length < 12) {
@@ -1388,7 +1482,11 @@ async function compare(
 
   // §10.3 classification. Rounding: limit-axes only, nothing vertical, under 1 CSS px, and shaping agreed.
   const rounding =
-    !fallback && !vertical && maxDx < 1 && roundingOk && r.causes.every((c) => /^width changed|^pixels differ/.test(c));
+    !fallback &&
+    !vertical &&
+    maxDx < 1 &&
+    roundingOk &&
+    r.causes.every((c) => /^width changed|^moved sideways|^pixels differ/.test(c));
   r.class =
     flagged.length && unrelated === flagged.length && !moved.length
       ? 'unrelated'
