@@ -87,6 +87,7 @@ describe('loadConfig validation', () => {
       maxPages: 500,
       coreThreshold: 'auto',
       remainder: true,
+      format: false,
       extraText: { '/': '°C', '/menu/**': { Inter: 'Crème brûlée' } },
       allow: [],
       rename: { 'Source Serif 4': 'SrcSerif Subset' },

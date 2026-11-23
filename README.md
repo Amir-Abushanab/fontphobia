@@ -315,6 +315,7 @@ export default defineConfig({
   maxPages: 500,
   coreThreshold: 'auto', // which used characters go in core: 'auto' measures; 0 to 1 is a fixed share of a face's pages
   remainder: true, // the lazy rest file
+  format: true, // after a write, run the project's own formatter over the files fontphobia touched
   extraText: { '/': '°C' }, // text the crawl can't see (a script adds it after load), by page path, glob or '*'
   allow: [], // opt-ins
   rename: { 'Source Serif 4': 'SrcSerif Subset' }, // internal name for OFL Reserved Font Names

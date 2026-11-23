@@ -95,7 +95,25 @@ describe('build --write (css adapter, §9)', () => {
     });
     expect(stale.notes).toContainEqual(expect.stringMatching(/^usage\.json is from a different audit/));
     rmSync(join(root, 'src/late.js'));
-    revertProject(root, { write: true });
+    // The project's formatter has been over the file: the call broken over lines, with the comma
+    // it adds after an argument it moved down, and the grouping parentheses gone. The build still
+    // finds both fixed, and revert still finds what to put back.
+    const written = readFileSync(join(root, 'src/fonts.ts'), 'utf8');
+    const formatted = written
+      .replace(
+        'document.fonts.load(f).then((loaded) => document.fonts.ready.then(() => loaded))',
+        'document.fonts\n      .load(f)\n      .then((loaded) =>\n        document.fonts.ready.then(() => loaded),\n      )',
+      )
+      .replace(
+        "(document.fonts.check('1em Inter') && document.fonts.status === 'loaded')",
+        "document.fonts.check('1em Inter') &&\n      document.fonts.status === 'loaded'",
+      );
+    expect(formatted.split('\n').length).toBe(written.split('\n').length + 5);
+    writeFileSync(join(root, 'src/fonts.ts'), formatted);
+    expect((await buildProject(root, usage, {}, { version: '1', write: true })).unchanged).toBe(true);
+    expect(readFileSync(join(root, 'src/fonts.ts'), 'utf8')).toBe(formatted);
+    expect(revertProject(root, { write: true }).problems).toEqual([]);
+    expect(readFileSync(join(root, 'src/fonts.ts'), 'utf8')).toBe(code);
     const after = snapshot(root);
     for (const f of Object.keys(after)) if (/\.(core|ext|rest)\.[0-9a-f]{8}\.woff2$/.test(f)) delete after[f];
     expect(after).toEqual(before);

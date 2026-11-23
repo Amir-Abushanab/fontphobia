@@ -38,6 +38,7 @@ import {
   savedPct,
 } from '@fontphobia/core';
 import { loadConfig, selfUrl as selfUrlOf } from './config.ts';
+import { findFormatter, formatFiles } from './format.ts';
 import { applyKit, readUsage, revertKits } from './apply-kit.ts';
 import { runAuto } from './auto-run.ts';
 import { ansiStyle, colorEnabled, highlight, seconds, Ui } from './ui.ts';
@@ -340,6 +341,7 @@ interface BuildFlags {
   allow?: string | string[];
   coreThreshold?: string | number;
   remainder: boolean;
+  /** false with --no-format: leave what was written unformatted. */ format?: boolean;
   write?: boolean;
   u?: boolean;
   json?: boolean;
@@ -348,6 +350,18 @@ interface BuildFlags {
 }
 
 const selfUrl = () => selfUrlOf(import.meta.url);
+
+/**
+ * After a write: the project's own formatter over the files it touched (format.ts), so a format
+ * check in CI passes without a second command. Says which files it changed.
+ */
+async function formatWritten(root: string, r: Awaited<ReturnType<typeof buildProject>>, ui: Ui): Promise<void> {
+  const formatter = findFormatter(root);
+  if (!formatter) return;
+  const files = [...r.edits.map((e) => e.file), ...r.generated.map((g) => g.file), MANIFEST_FILE];
+  const changed = await formatFiles(root, files, formatter);
+  if (changed.length) ui.log(`formatted with ${formatter.name}: ${changed.join(', ')}`);
+}
 
 /** --core-threshold: 'auto', or the share of a face's pages (0 to 1) a character needs to be in core. */
 function coreThresholdOf(v: unknown): number | 'auto' | undefined {
@@ -409,6 +423,8 @@ async function runBuild(
   let write = !!(o.write || o.u);
   ui.spin(`Planning ${plural(Object.keys(usage.faces).length, 'face')} and subsetting with HarfBuzz`);
   let r = await buildProject(root, usage, cfg, { version: pkg.version, write });
+  const format = o.format !== false && config.format !== false;
+  if (write && !r.unchanged && format) await formatWritten(root, r, ui);
   ui.stop();
   if (o.json) {
     process.stdout.write(
@@ -585,7 +601,8 @@ async function runBuild(
     if (await ui.confirm(`Write ${plural(newFonts.length, 'font file')} and edit ${fileList(edited)}?`)) {
       write = true;
       ui.spin('Writing');
-      await buildProject(root, usage, cfg, { version: pkg.version, write: true });
+      const written = await buildProject(root, usage, cfg, { version: pkg.version, write: true });
+      if (format) await formatWritten(root, written, ui);
       ui.stop();
       ui.ok(
         `Wrote ${plural(newFonts.length, 'font file')} (${kb(newFonts.reduce((n, f) => n + f.bytes, 0))}), edited ${fileList(edited)} and wrote ${MANIFEST_FILE}`,
@@ -776,6 +793,10 @@ const buildOptions = (c: ReturnType<typeof cli.command>) =>
       "Which used characters go in core: 'auto' measures (default), 0 to 1 is a fixed share of a face's pages",
     )
     .option('--no-remainder', 'No lazy "rest" file: unseen characters fall back to the system font')
+    .option(
+      '--no-format',
+      "Don't run the project's formatter (oxfmt, Prettier, Biome or dprint, when it has one) over the files written",
+    )
     .option('--write, -u', 'Write the fonts, the CSS edits and .fontphobia/manifest.json without asking');
 
 buildOptions(

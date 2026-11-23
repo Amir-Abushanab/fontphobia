@@ -25,6 +25,11 @@ export interface Config {
   coreThreshold?: number | 'auto';
   remainder?: boolean;
   /**
+   * After a write, run the project's own formatter (oxfmt, Prettier, Biome or dprint, when it
+   * declares one) over the files fontphobia touched. Default true.
+   */
+  format?: boolean;
+  /**
    * Text the crawl can't see: added by a script after the page has loaded, or behind an interaction.
    * By page path, glob or `'*'`: the text, counted as drawn there in every face the page draws, or
    * `{ 'Font Family': text }` to name the faces. Without it those characters are planned as unused.
@@ -110,6 +115,7 @@ const SCHEMA: Record<string, Kind | Record<string, Kind>> = {
   maxPages: 'number',
   coreThreshold: 'custom',
   remainder: 'boolean',
+  format: 'boolean',
   extraText: 'custom',
   allow: { enum: ALLOW, array: true },
   rename: 'record',
