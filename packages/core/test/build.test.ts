@@ -145,6 +145,31 @@ describe('build --write (css adapter, §9)', () => {
     expect(again.unchanged).toBe(true);
     expect(snapshot(root)).toEqual(written);
 
+    // The project's formatter has been over both files: a long unicode-range reflowed the way
+    // oxfmt and Prettier do it, the manifest's short arrays on one line. Still the same build.
+    const reflowed = css.replace(/unicode-range: ([^;]{60,});/g, (_, list: string) => {
+      const ranges = list.split(', ');
+      const half = Math.ceil(ranges.length / 2);
+      return `unicode-range:\n    ${ranges.slice(0, half).join(', ')},\n    ${ranges.slice(half).join(', ')};`;
+    });
+    expect(reflowed).not.toBe(css);
+    writeFileSync(join(root, 'styles.css'), reflowed);
+    const manifestFile = join(root, MANIFEST_FILE);
+    const manifestText = readFileSync(manifestFile, 'utf8');
+    const compact = manifestText.replace(
+      /\[\n\s+("[^"\n]*"(?:,\n\s+"[^"\n]*")*)\n\s+\]/g,
+      (_, items: string) => `[${items.replace(/,\n\s+/g, ', ')}]`,
+    );
+    expect(compact).not.toBe(manifestText);
+    writeFileSync(manifestFile, compact);
+    const formatted = snapshot(root);
+    const afterFormat = await buildProject(root, usage, {}, { version: '9.9.9', write: true });
+    expect(afterFormat.unchanged).toBe(true);
+    expect(afterFormat.edits).toEqual([]);
+    expect(snapshot(root)).toEqual(formatted);
+    writeFileSync(join(root, 'styles.css'), css);
+    writeFileSync(manifestFile, manifestText);
+
     const rv = revertProject(root, { write: true });
     expect(rv.problems).toEqual([]);
     expect(rv.files).toEqual(['index.html', 'styles.css']);
