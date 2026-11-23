@@ -314,6 +314,7 @@ export default defineConfig({
   locales: ['en', 'fr'], // their characters (quotes and so on) go into the subsets
   maxPages: 500,
   coreThreshold: 'auto', // which used characters go in core: 'auto' measures; 0 to 1 is a fixed share of a face's pages
+  pageWeights: { '/': 20 }, // how much a page counts in the automatic choice (path, glob or '*'; default 1)
   remainder: true, // the lazy rest file
   format: true, // after a write, run the project's own formatter over the files fontphobia touched
   extraText: { '/': '°C' }, // text the crawl can't see (a script adds it after load), by page path, glob or '*'

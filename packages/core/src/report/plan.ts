@@ -231,7 +231,7 @@ export function formatPlan(plan: Plan, usage: UsageFileJson, o: FormatPlanOption
       if (heavier.length > 5) L.push(`  … and ${heavier.length - 5} more`);
       L.push(
         s.dim(
-          '  `--core-threshold 0` puts every used character in core: each page then loads a slightly larger core file and none of these.',
+          '  `--core-threshold 0` puts every used character in core: each page then loads a slightly larger core file and none of these. `pageWeights` in the config makes a page with more visits count for more in the choice.',
         ),
       );
     }

@@ -61,6 +61,7 @@ export async function runAuto(o: AutoRunOptions): Promise<AutoRun> {
   }
   const cfg: PlanConfig = {
     coreThreshold: o.coreThreshold ?? config.coreThreshold,
+    pageWeights: config.pageWeights,
     remainder: o.remainder === false ? false : config.remainder,
     allow: [...(config.allow ?? []), ...(o.allow ?? [])],
     locales: config.locales,

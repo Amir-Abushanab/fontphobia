@@ -19,9 +19,25 @@ import { glyfInstructionBytes, parseFvar, type Axis } from '../font/tables.ts';
 import { checkShaping, type ShapeCase } from '../shape/equivalence.ts';
 import { hbSubset, subsetFont, type AxisSetting, type SubsetOptions } from '../subset/subset.ts';
 import { chooseCore } from './core.ts';
+import { globToRegExp, isGlob } from '../project/detect.ts';
 import { detectLicense, licenseRefusal, renameFor, type License } from './license.ts';
 import { localeChars } from './locale.ts';
 import { cmapAliases, hintRefs, macosReferenceGlyphs, reverseCmap } from './hintrefs.ts';
+
+/**
+ * A page's weight (`pageWeights`): its own entry, else the first glob that matches it, else `'*'`,
+ * else 1. Whole and from 0 to 1000, whatever was given.
+ */
+export function pageWeight(weights: Record<string, number> | undefined, page: string): number {
+  if (!weights) return 1;
+  const key =
+    page in weights
+      ? page
+      : (Object.keys(weights).find((k) => k !== '*' && isGlob(k) && globToRegExp(k).test(page)) ??
+        ('*' in weights ? '*' : undefined));
+  const w = key === undefined ? 1 : weights[key]!;
+  return Number.isFinite(w) ? Math.min(1000, Math.max(0, Math.round(w))) : 1;
+}
 
 // ─── Input: usage.json as written by `audit` (§7.6) ─────────────────────────────────────────────
 
@@ -84,6 +100,12 @@ export interface PlanConfig {
    * the ones at least this share of the face's pages use.
    */
   coreThreshold?: number | 'auto';
+  /**
+   * How much each page counts when 'auto' chooses core: by page path, glob or `'*'`, a whole number
+   * (default 1). The choice minimizes what all pages download together, each counted once; a page
+   * that gets twenty times the visits of the others is given 20 here. 0 leaves a page out.
+   */
+  pageWeights?: Record<string, number>;
   /** The third, lazy "rest" file (default true). */
   remainder?: boolean;
   /** Opt-ins: limit-axes, drop-hinting, split-shaping. */
@@ -565,7 +587,11 @@ export async function planFace(
           )
         : 0;
     return chooseCore(
-      drawn.map((cs) => [...cs].filter((c) => K.has(c) && !from.has(c))),
+      // A page weighing n is n pages to the choice.
+      drawn.flatMap((cs, i) => {
+        const needs = [...cs].filter((c) => K.has(c) && !from.has(c));
+        return Array.from({ length: pageWeight(cfg.pageWeights, face.pages[i]!) }, () => needs);
+      }),
       (add) => {
         const core = new Set([...from, ...add]);
         return { core: size('core', core), ext: size('ext', new Set([...K].filter((c) => !core.has(c)))) };

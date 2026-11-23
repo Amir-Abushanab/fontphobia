@@ -23,6 +23,11 @@ export interface Config {
    * ones at least this share of the font's pages use.
    */
   coreThreshold?: number | 'auto';
+  /**
+   * How much each page counts when `coreThreshold: 'auto'` chooses core: by page path, glob or `'*'`,
+   * a whole number from 0 to 1000 (default 1). Give a page that gets most of the visits a larger one.
+   */
+  pageWeights?: Record<string, number>;
   remainder?: boolean;
   /**
    * After a write, run the project's own formatter (oxfmt, Prettier, Biome or dprint, when it
@@ -115,6 +120,7 @@ const SCHEMA: Record<string, Kind | Record<string, Kind>> = {
   maxPages: 'number',
   coreThreshold: 'custom',
   remainder: 'boolean',
+  pageWeights: 'custom',
   format: 'boolean',
   extraText: 'custom',
   allow: { enum: ALLOW, array: true },
@@ -213,6 +219,15 @@ function validate(name: string, c: unknown): void {
   const t = c.coreThreshold;
   if (t !== undefined && t !== 'auto' && !(isNum(t) && (t as number) >= 0 && (t as number) <= 1))
     bad('coreThreshold', "'auto' or a number between 0 and 1");
+  const weights = c.pageWeights;
+  if (
+    weights !== undefined &&
+    !(
+      isObj(weights) &&
+      Object.values(weights).every((w) => Number.isInteger(w) && (w as number) >= 0 && (w as number) <= 1000)
+    )
+  )
+    bad('pageWeights', 'an object of page paths to whole numbers from 0 to 1000');
   const extra = c.extraText;
   const strings = (v: unknown) => isObj(v) && Object.values(v).every((s) => typeof s === 'string');
   if (extra !== undefined && !(isObj(extra) && Object.values(extra).every((v) => typeof v === 'string' || strings(v))))

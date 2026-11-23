@@ -412,6 +412,7 @@ async function runBuild(
   for (const miss of declared.unmatched) ui.log(`extraText: nothing the audit saw matches ${JSON.stringify(miss)}`);
   const cfg = {
     coreThreshold: coreThresholdOf(o.coreThreshold) ?? config.coreThreshold,
+    pageWeights: config.pageWeights,
     remainder: o.remainder === false ? false : config.remainder,
     allow: [...(config.allow ?? []), ...(list(o.allow) ?? [])],
     locales: config.locales,
