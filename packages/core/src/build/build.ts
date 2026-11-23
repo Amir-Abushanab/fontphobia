@@ -110,6 +110,20 @@ const SKIP = new Set([
 
 const lineStart = (text: string, at: number) => text.lastIndexOf('\n', at - 1) + 1;
 
+/** Two CSS texts that differ only in whitespace: what a formatter does to a generated block. */
+const sameCssText = (a: string, b: string) => a === b || squeeze(a) === squeeze(b);
+const squeeze = (css: string) => css.replace(/\s+/g, ' ').trim();
+
+/** Two JSON texts holding the same value, keys in the same order. */
+function sameJsonText(a: string, b: string): boolean {
+  if (a === b) return true;
+  try {
+    return JSON.stringify(JSON.parse(a)) === JSON.stringify(JSON.parse(b));
+  } catch {
+    return false;
+  }
+}
+
 type Located = { file: string; start: number; end: number; declaration: string; sourceUrl: string; syntax: Syntax };
 
 function locate(
@@ -579,7 +593,9 @@ export async function buildProject(
             : undefined,
       })),
     });
-    if (text.slice(loc.start, loc.end) !== block)
+    // A formatter may have reflowed the block (a long unicode-range onto its own lines): the same
+    // rules in other whitespace are the block, and rewriting them would only undo the formatter.
+    if (!sameCssText(text.slice(loc.start, loc.end), block))
       edits.push({
         file: loc.file,
         start: loc.start,
@@ -710,10 +726,11 @@ export async function buildProject(
     .filter((x) => existsSync(join(root, x.file)) && sha(readFileSync(join(root, x.file))) === x.sha256)
     .map((x) => x.file);
   const json = manifestJson(manifest);
+  // By value, not by text: the manifest is a .json file, and a project's formatter reformats those.
   const manifestSame =
     manifestPath(root) === join(root, MANIFEST_FILE) &&
     existsSync(join(root, MANIFEST_FILE)) &&
-    readFileSync(join(root, MANIFEST_FILE), 'utf8') === json;
+    sameJsonText(readFileSync(join(root, MANIFEST_FILE), 'utf8'), json);
   const unchanged =
     !edits.length &&
     fontList.every((f) => f.exists) &&

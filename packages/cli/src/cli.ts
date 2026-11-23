@@ -32,10 +32,13 @@ import {
   type AxisSetting,
   type SubsetOptions,
   offeredOptIns,
+  heavierPages,
+  withExtraText,
   pageBytes,
   savedPct,
 } from '@fontphobia/core';
 import { loadConfig, selfUrl as selfUrlOf } from './config.ts';
+import { findFormatter, formatFiles } from './format.ts';
 import { applyKit, readUsage, revertKits } from './apply-kit.ts';
 import { runAuto } from './auto-run.ts';
 import { ansiStyle, colorEnabled, highlight, seconds, Ui } from './ui.ts';
@@ -338,6 +341,7 @@ interface BuildFlags {
   allow?: string | string[];
   coreThreshold?: string | number;
   remainder: boolean;
+  /** false with --no-format: leave what was written unformatted. */ format?: boolean;
   write?: boolean;
   u?: boolean;
   json?: boolean;
@@ -346,6 +350,18 @@ interface BuildFlags {
 }
 
 const selfUrl = () => selfUrlOf(import.meta.url);
+
+/**
+ * After a write: the project's own formatter over the files it touched (format.ts), so a format
+ * check in CI passes without a second command. Says which files it changed.
+ */
+async function formatWritten(root: string, r: Awaited<ReturnType<typeof buildProject>>, ui: Ui): Promise<void> {
+  const formatter = findFormatter(root);
+  if (!formatter) return;
+  const files = [...r.edits.map((e) => e.file), ...r.generated.map((g) => g.file), MANIFEST_FILE];
+  const changed = await formatFiles(root, files, formatter);
+  if (changed.length) ui.log(`formatted with ${formatter.name}: ${changed.join(', ')}`);
+}
 
 /** --core-threshold: 'auto', or the share of a face's pages (0 to 1) a character needs to be in core. */
 function coreThresholdOf(v: unknown): number | 'auto' | undefined {
@@ -389,11 +405,14 @@ async function runBuild(
   const { config, file } = await loadConfig(root, selfUrl());
   const usageFile = resolve(root, o.usage ?? '.fontphobia/usage.json');
   if (!existsSync(usageFile)) throw new Error(`${usageFile} doesn't exist; run \`fontphobia audit\` first`);
-  const usage = JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson;
+  const declared = withExtraText(JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson, config.extraText);
+  const usage = declared.usage;
   ui.step(...(how.step ?? [0, 0]), 'Plan', EXPLAIN.plan);
   if (file && !how.ui) ui.log(`config: ${file}`);
+  for (const miss of declared.unmatched) ui.log(`extraText: nothing the audit saw matches ${JSON.stringify(miss)}`);
   const cfg = {
     coreThreshold: coreThresholdOf(o.coreThreshold) ?? config.coreThreshold,
+    pageWeights: config.pageWeights,
     remainder: o.remainder === false ? false : config.remainder,
     allow: [...(config.allow ?? []), ...(list(o.allow) ?? [])],
     locales: config.locales,
@@ -405,6 +424,8 @@ async function runBuild(
   let write = !!(o.write || o.u);
   ui.spin(`Planning ${plural(Object.keys(usage.faces).length, 'face')} and subsetting with HarfBuzz`);
   let r = await buildProject(root, usage, cfg, { version: pkg.version, write });
+  const format = o.format !== false && config.format !== false;
+  if (write && !r.unchanged && format) await formatWritten(root, r, ui);
   ui.stop();
   if (o.json) {
     process.stdout.write(
@@ -417,6 +438,8 @@ async function runBuild(
         notWritten: r.notWritten,
         unchanged: r.unchanged,
         written: write,
+        // Pages that would download more font bytes than before fontphobia (bytes), the worst first.
+        heavier: heavierPages(pageBytes(r.plan, usage)).map((p) => ({ page: p.page, before: p.now, after: p.after })),
       }),
     );
     return;
@@ -579,7 +602,8 @@ async function runBuild(
     if (await ui.confirm(`Write ${plural(newFonts.length, 'font file')} and edit ${fileList(edited)}?`)) {
       write = true;
       ui.spin('Writing');
-      await buildProject(root, usage, cfg, { version: pkg.version, write: true });
+      const written = await buildProject(root, usage, cfg, { version: pkg.version, write: true });
+      if (format) await formatWritten(root, written, ui);
       ui.stop();
       ui.ok(
         `Wrote ${plural(newFonts.length, 'font file')} (${kb(newFonts.reduce((n, f) => n + f.bytes, 0))}), edited ${fileList(edited)} and wrote ${MANIFEST_FILE}`,
@@ -598,6 +622,7 @@ interface VerifyFlags {
   startCmd?: string;
   url?: string;
   rebuild?: boolean;
+  /** Accepted and unused: verify never prompts. */ ci?: boolean;
   pages?: string | string[];
   maxPages?: number;
   allPages?: boolean;
@@ -641,7 +666,8 @@ async function runVerify(o: VerifyFlags, how: { ui?: Ui; step?: [number, number]
   const { config } = await loadConfig(root, selfUrl());
   const usageFile = resolve(root, o.usage ?? join(o.outDir ?? '.fontphobia', 'usage.json'));
   if (!existsSync(usageFile)) throw new Error(`${usageFile} doesn't exist; run \`fontphobia audit\` first`);
-  const usage = JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson;
+  // With the config's extraText counted, as the plan counted it: a file that text makes a page load is expected.
+  const { usage } = withExtraText(JSON.parse(readFileSync(usageFile, 'utf8')) as UsageFileJson, config.extraText);
   const ui = how.ui ?? new Ui({ quiet: o.json, color: o.color });
   notifyUpdate(ui);
   ui.step(
@@ -736,6 +762,7 @@ verifyOptions(
   cli
     .command('verify', 'Check the written fonts and compare every page before and after, in the browser')
     .option('--cwd <dir>', 'Project root (default: current directory)')
+    .option('--ci', 'Accepted so a CI script can pass it to every command (verify never prompts)')
     .option('--usage <file>', 'usage.json from the audit (default .fontphobia/usage.json)')
     .option('--dist <dir>', 'Built site to serve')
     .option('--build-cmd <cmd>', 'Command that builds the site (run when the build is older than the sources)')
@@ -767,6 +794,10 @@ const buildOptions = (c: ReturnType<typeof cli.command>) =>
       "Which used characters go in core: 'auto' measures (default), 0 to 1 is a fixed share of a face's pages",
     )
     .option('--no-remainder', 'No lazy "rest" file: unseen characters fall back to the system font')
+    .option(
+      '--no-format',
+      "Don't run the project's formatter (oxfmt, Prettier, Biome or dprint, when it has one) over the files written",
+    )
     .option('--write, -u', 'Write the fonts, the CSS edits and .fontphobia/manifest.json without asking');
 
 buildOptions(
@@ -782,6 +813,7 @@ buildOptions(
 
 interface CheckFlags {
   cwd?: string;
+  /** Accepted and unused: check never prompts. */ ci?: boolean;
   dist?: string;
   url?: string;
   usage?: string;
@@ -858,6 +890,7 @@ cli
     'Are the subsets up to date? Static by default (no browser; for postbuild and CI); --url crawls production',
   )
   .option('--cwd <dir>', 'Project root (default: current directory)')
+  .option('--ci', 'Accepted so a CI script can pass it to every command (check never prompts)')
   .option('--dist <dir>', 'Built site whose text is checked (default: what the framework profile finds)')
   .option('--url <origin>', 'Exact mode: crawl this site in Chrome and compare what it draws')
   .option('--usage <file>', 'usage.json from the audit (default .fontphobia/usage.json)')

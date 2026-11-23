@@ -23,7 +23,23 @@ export interface Config {
    * ones at least this share of the font's pages use.
    */
   coreThreshold?: number | 'auto';
+  /**
+   * How much each page counts when `coreThreshold: 'auto'` chooses core: by page path, glob or `'*'`,
+   * a whole number from 0 to 1000 (default 1). Give a page that gets most of the visits a larger one.
+   */
+  pageWeights?: Record<string, number>;
   remainder?: boolean;
+  /**
+   * After a write, run the project's own formatter (oxfmt, Prettier, Biome or dprint, when it
+   * declares one) over the files fontphobia touched. Default true.
+   */
+  format?: boolean;
+  /**
+   * Text the crawl can't see: added by a script after the page has loaded, or behind an interaction.
+   * By page path, glob or `'*'`: the text, counted as drawn there in every face the page draws, or
+   * `{ 'Font Family': text }` to name the faces. Without it those characters are planned as unused.
+   */
+  extraText?: Record<string, string | Record<string, string>>;
   allow?: string[];
   rename?: Record<string, string>;
   licenses?: { allow?: string[] };
@@ -104,6 +120,9 @@ const SCHEMA: Record<string, Kind | Record<string, Kind>> = {
   maxPages: 'number',
   coreThreshold: 'custom',
   remainder: 'boolean',
+  pageWeights: 'custom',
+  format: 'boolean',
+  extraText: 'custom',
   allow: { enum: ALLOW, array: true },
   rename: 'record',
   licenses: { allow: 'string[]' },
@@ -200,6 +219,19 @@ function validate(name: string, c: unknown): void {
   const t = c.coreThreshold;
   if (t !== undefined && t !== 'auto' && !(isNum(t) && (t as number) >= 0 && (t as number) <= 1))
     bad('coreThreshold', "'auto' or a number between 0 and 1");
+  const weights = c.pageWeights;
+  if (
+    weights !== undefined &&
+    !(
+      isObj(weights) &&
+      Object.values(weights).every((w) => Number.isInteger(w) && (w as number) >= 0 && (w as number) <= 1000)
+    )
+  )
+    bad('pageWeights', 'an object of page paths to whole numbers from 0 to 1000');
+  const extra = c.extraText;
+  const strings = (v: unknown) => isObj(v) && Object.values(v).every((s) => typeof s === 'string');
+  if (extra !== undefined && !(isObj(extra) && Object.values(extra).every((v) => typeof v === 'string' || strings(v))))
+    bad('extraText', 'an object of page paths to text, or to { font family: text }');
   const m = c.inlineCoreMax;
   const bytes = (x: unknown) => x === undefined || (isNum(x) && (x as number) >= 0);
   if (

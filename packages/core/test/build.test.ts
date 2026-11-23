@@ -95,7 +95,25 @@ describe('build --write (css adapter, §9)', () => {
     });
     expect(stale.notes).toContainEqual(expect.stringMatching(/^usage\.json is from a different audit/));
     rmSync(join(root, 'src/late.js'));
-    revertProject(root, { write: true });
+    // The project's formatter has been over the file: the call broken over lines, with the comma
+    // it adds after an argument it moved down, and the grouping parentheses gone. The build still
+    // finds both fixed, and revert still finds what to put back.
+    const written = readFileSync(join(root, 'src/fonts.ts'), 'utf8');
+    const formatted = written
+      .replace(
+        'document.fonts.load(f).then((loaded) => document.fonts.ready.then(() => loaded))',
+        'document.fonts\n      .load(f)\n      .then((loaded) =>\n        document.fonts.ready.then(() => loaded),\n      )',
+      )
+      .replace(
+        "(document.fonts.check('1em Inter') && document.fonts.status === 'loaded')",
+        "document.fonts.check('1em Inter') &&\n      document.fonts.status === 'loaded'",
+      );
+    expect(formatted.split('\n').length).toBe(written.split('\n').length + 5);
+    writeFileSync(join(root, 'src/fonts.ts'), formatted);
+    expect((await buildProject(root, usage, {}, { version: '1', write: true })).unchanged).toBe(true);
+    expect(readFileSync(join(root, 'src/fonts.ts'), 'utf8')).toBe(formatted);
+    expect(revertProject(root, { write: true }).problems).toEqual([]);
+    expect(readFileSync(join(root, 'src/fonts.ts'), 'utf8')).toBe(code);
     const after = snapshot(root);
     for (const f of Object.keys(after)) if (/\.(core|ext|rest)\.[0-9a-f]{8}\.woff2$/.test(f)) delete after[f];
     expect(after).toEqual(before);
@@ -144,6 +162,31 @@ describe('build --write (css adapter, §9)', () => {
     const again = await buildProject(root, usage, {}, { version: '9.9.9', write: true });
     expect(again.unchanged).toBe(true);
     expect(snapshot(root)).toEqual(written);
+
+    // The project's formatter has been over both files: a long unicode-range reflowed the way
+    // oxfmt and Prettier do it, the manifest's short arrays on one line. Still the same build.
+    const reflowed = css.replace(/unicode-range: ([^;]{60,});/g, (_, list: string) => {
+      const ranges = list.split(', ');
+      const half = Math.ceil(ranges.length / 2);
+      return `unicode-range:\n    ${ranges.slice(0, half).join(', ')},\n    ${ranges.slice(half).join(', ')};`;
+    });
+    expect(reflowed).not.toBe(css);
+    writeFileSync(join(root, 'styles.css'), reflowed);
+    const manifestFile = join(root, MANIFEST_FILE);
+    const manifestText = readFileSync(manifestFile, 'utf8');
+    const compact = manifestText.replace(
+      /\[\n\s+("[^"\n]*"(?:,\n\s+"[^"\n]*")*)\n\s+\]/g,
+      (_, items: string) => `[${items.replace(/,\n\s+/g, ', ')}]`,
+    );
+    expect(compact).not.toBe(manifestText);
+    writeFileSync(manifestFile, compact);
+    const formatted = snapshot(root);
+    const afterFormat = await buildProject(root, usage, {}, { version: '9.9.9', write: true });
+    expect(afterFormat.unchanged).toBe(true);
+    expect(afterFormat.edits).toEqual([]);
+    expect(snapshot(root)).toEqual(formatted);
+    writeFileSync(join(root, 'styles.css'), css);
+    writeFileSync(manifestFile, manifestText);
 
     const rv = revertProject(root, { write: true });
     expect(rv.problems).toEqual([]);

@@ -42,6 +42,13 @@ test('check --allow-chars with a number does not crash', () => {
   expect(r.stdout).toMatch(/nothing to check/);
 });
 
+test('--ci is accepted by the commands a CI job runs, not only the ones that prompt', () => {
+  for (const command of ['verify', 'check']) {
+    const r = spawnSync(process.execPath, [cli, command, '--ci', '--cwd', tmp], { encoding: 'utf8' });
+    expect(r.stderr + r.stdout).not.toMatch(/Unknown option/);
+  }
+});
+
 test('bad arguments exit non-zero with a message', () => {
   expect(() =>
     execFileSync(process.execPath, [cli, 'subset', font, '-o', join(tmp, 'x.ttf')], { stdio: 'pipe' }),

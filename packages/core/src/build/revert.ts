@@ -13,6 +13,27 @@ export interface RevertResult {
   /** Generated stylesheets removed. */ removed: string[];
 }
 
+/**
+ * Where `written` is in `text`: as fontphobia wrote it, or as the project's formatter left it.
+ * A formatter breaks a long call over lines, adds a comma after the last argument it moved down,
+ * and drops parentheses that group nothing. The characters are the same, in the same order.
+ */
+function findWritten(text: string, written: string): { start: number; end: number } | undefined {
+  const at = text.indexOf(written);
+  if (at >= 0) return { start: at, end: at + written.length };
+  const loose = (code: string) =>
+    new RegExp(
+      [...code.replace(/\s+/g, '')]
+        .map((ch) => (ch === ')' ? ',?\\s*\\)' : ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+        .join('\\s*'),
+    );
+  for (const code of [written, written.replace(/^\(([\s\S]*)\)$/, '$1')]) {
+    const m = loose(code).exec(text);
+    if (m) return { start: m.index, end: m.index + m[0].length };
+  }
+  return undefined;
+}
+
 export function revertProject(root: string, o: { write?: boolean } = {}): RevertResult {
   const m = readManifest(root);
   if (!m) throw new Error(`No ${MANIFEST_FILE} in ${root}; nothing to revert`);
@@ -35,14 +56,14 @@ export function revertProject(root: string, o: { write?: boolean } = {}): Revert
       continue;
     }
     const t = read(fc.file);
-    const at = t.indexOf(fc.to);
-    if (at < 0) {
+    const at = findWritten(t, fc.to);
+    if (!at) {
       problems.push(
         `the document.fonts call fontphobia changed in ${fc.file} changed since; put the original back yourself:\n${fc.from}`,
       );
       continue;
     }
-    texts.set(fc.file, t.slice(0, at) + fc.from + t.slice(at + fc.to.length));
+    texts.set(fc.file, t.slice(0, at.start) + fc.from + t.slice(at.end));
     touched.add(fc.file);
   }
   // fontsource ejects (§6.2): imports back to the package; the generated copy goes if unchanged.
@@ -54,14 +75,14 @@ export function revertProject(root: string, o: { write?: boolean } = {}): Revert
         continue;
       }
       const t = read(sn.file);
-      const at = t.indexOf(sn.to);
-      if (at < 0) {
+      const at = findWritten(t, sn.to);
+      if (!at) {
         problems.push(
           `what fontphobia wrote in ${sn.file} for ${ej.package} changed since; put the original back yourself:\n${sn.from}`,
         );
         continue;
       }
-      texts.set(sn.file, t.slice(0, at) + sn.from + t.slice(at + sn.to.length));
+      texts.set(sn.file, t.slice(0, at.start) + sn.from + t.slice(at.end));
       touched.add(sn.file);
     }
     for (const i of ej.imports) {

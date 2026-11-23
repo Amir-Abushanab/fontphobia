@@ -86,7 +86,10 @@ describe('loadConfig validation', () => {
       locales: ['en', 'fr'],
       maxPages: 500,
       coreThreshold: 'auto',
+      pageWeights: { '/': 20, '/blog/**': 2 },
       remainder: true,
+      format: false,
+      extraText: { '/': '°C', '/menu/**': { Inter: 'Crème brûlée' } },
       allow: [],
       rename: { 'Source Serif 4': 'SrcSerif Subset' },
       licenses: { allow: [] },
@@ -118,6 +121,9 @@ describe('loadConfig validation', () => {
   bad({ dist: 1 }, '"dist" must be a string');
   bad({ maxPages: '5' }, '"maxPages" must be a number');
   bad({ remainder: 'yes' }, '"remainder" must be a boolean');
+  bad({ pageWeights: { '/': 1.5 } }, '"pageWeights" must be an object of page paths to whole numbers from 0 to 1000');
+  bad({ extraText: '°C' }, '"extraText" must be an object of page paths to text, or to { font family: text }');
+  bad({ extraText: { '/': { Inter: 1 } } }, '"extraText" must be an object of page paths to text');
   bad({ viewports: ['a'] }, '"viewports" must be an array of numbers');
   bad({ rename: { a: 1 } }, '"rename" must be an object of strings');
   bad({ auth: 'x' }, '"auth" must be an object');

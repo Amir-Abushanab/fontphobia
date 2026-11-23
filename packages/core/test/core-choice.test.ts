@@ -101,3 +101,31 @@ describe("coreThreshold: 'auto'", () => {
     }
   });
 });
+
+describe('pageWeights', () => {
+  it('a page counts once unless it is given a weight: its own, a glob that matches it, or *', async () => {
+    const { pageWeight } = await import('../src/index.ts');
+    expect(pageWeight(undefined, '/')).toBe(1);
+    const weights = { '/': 20, '/blog/**': 3, '*': 2 };
+    expect(pageWeight(weights, '/')).toBe(20);
+    expect(pageWeight(weights, '/blog/a/')).toBe(3);
+    expect(pageWeight(weights, '/about/')).toBe(2);
+    expect(pageWeight({ '/blog/**': 3 }, '/about/')).toBe(1);
+    // Whole and bounded, whatever a config slipped through.
+    expect(pageWeight({ '/': 2.6, '/a/': -1, '/b/': 1e9 }, '/')).toBe(3);
+    expect(pageWeight({ '/a/': -1 }, '/a/')).toBe(0);
+    expect(pageWeight({ '/b/': 1e9 }, '/b/')).toBe(1000);
+  });
+
+  it('a heavier page tips the choice toward core', () => {
+    // 59 pages; one draws an accented character. In core it costs every page 1 KB; left in
+    // extended it costs that one page the 40 KB file.
+    const measure = (add: Set<number>) => ({ core: (45 + add.size) * 1024, ext: add.size ? 0 : 40 * 1024 });
+    const site = (weight: number) => [
+      ...Array.from({ length: 58 }, () => []),
+      ...Array.from({ length: weight }, () => [0xe9]),
+    ];
+    expect([...chooseCore(site(1), measure).add]).toEqual([]);
+    expect([...chooseCore(site(20), measure).add]).toEqual([0xe9]);
+  });
+});
