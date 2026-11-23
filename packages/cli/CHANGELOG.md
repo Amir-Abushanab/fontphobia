@@ -1,5 +1,41 @@
 # fontphobia
 
+## 0.10.0
+
+### Minor Changes
+
+- [#31](https://github.com/Amir-Abushanab/fontphobia/pull/31) [`c8f624b`](https://github.com/Amir-Abushanab/fontphobia/commit/c8f624bd5803f9ffe76b830150c403ff1f0c8096) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - `extraText` in the config declares text the crawl can't see. A script that adds text after the page has loaded (a weather label's "9°C" after a fetch) leaves characters the audit never records: the plan treats them as unused, they land in the extended file, and the page downloads that whole file for one character. `extraText: { '/': '°C' }` counts the text as drawn on that page, by path, glob or `'*'`, in every face the page draws or in the families you name (`{ '/': { 'Geist Mono': '°C' } }`), so the core choice can put its characters in core. `build` and `verify` read it; a pattern or family that matches nothing the audit saw is reported.
+
+- [#31](https://github.com/Amir-Abushanab/fontphobia/pull/31) [`c8f624b`](https://github.com/Amir-Abushanab/fontphobia/commit/c8f624bd5803f9ffe76b830150c403ff1f0c8096) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - After a write, `build` runs the project's own formatter over the files it touched, so a format check in CI passes without a second command.
+  
+  What fontphobia writes can't be formatted in advance: oxfmt, Prettier and Biome each wrap the same long `unicode-range` differently, by the project's print width, quotes and indentation, and a rewritten `document.fonts.load()` call is one long line. The formatter used is the one the project declares in a package.json (or has a config file for) and has installed, at the project root or above it in a workspace: oxfmt, Prettier, Biome or dprint. Nothing is downloaded, a project without one is left as written, and a file the formatter ignores or refuses is skipped. `--no-format`, or `format: false` in the config, turns it off.
+  
+  `revert` finds what fontphobia wrote after a formatter has been over it: a call broken over several lines, with a trailing comma added or grouping parentheses dropped, is still put back as it was.
+
+- [#31](https://github.com/Amir-Abushanab/fontphobia/pull/31) [`c8f624b`](https://github.com/Amir-Abushanab/fontphobia/commit/c8f624bd5803f9ffe76b830150c403ff1f0c8096) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - `pageWeights` in the config says how much each page counts when `coreThreshold: 'auto'` chooses core. The choice minimizes what all pages download together and counted every page once, so it would leave the home page fetching a 41.7 KB extended file for four characters to save 1.1 KB on each of 58 pages hardly anyone opens. `pageWeights: { '/': 20 }` counts the home page as twenty: by page path, glob or `'*'`, a whole number from 0 to 1000, default 1. `build` and `auto` read it, and the plan's list of pages that would download more than before points to it.
+
+- [#31](https://github.com/Amir-Abushanab/fontphobia/pull/31) [`c8f624b`](https://github.com/Amir-Abushanab/fontphobia/commit/c8f624bd5803f9ffe76b830150c403ff1f0c8096) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - The plan says when a page would get heavier, and a plan made over an already split site is compared with the unsplit one.
+  
+  - **Pages that would download more than before.** A page pays for a whole extended file as soon as it draws one of its characters, and the core choice counts every page the same, so one page can end up loading more than it did unsplit. The plan now lists those pages, with the file and the characters that cause it, and `build --json` carries them as `heavier`.
+  - **Before means before fontphobia.** Rerunning over a site an earlier build had split compared the new plan with that build's core files, and printed lines like "median 84.7 KB → 87.0 KB (-3% less)". The baseline is now each face's source file, the first column is headed `Before`, and a median that grows reads "3% more".
+  - **Page counts in every plan.** Each split face records `pages: { drawn, coreOnly }`. Until now only `coreThreshold: 'auto'` reported how many pages load the core file alone, so a fixed share had no record of what it costs.
+
+### Patch Changes
+
+- [#31](https://github.com/Amir-Abushanab/fontphobia/pull/31) [`c8f624b`](https://github.com/Amir-Abushanab/fontphobia/commit/c8f624bd5803f9ffe76b830150c403ff1f0c8096) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - `build` no longer undoes the project's formatter. It compared its marked block and the manifest with what it would write byte for byte, so once a formatter had wrapped a long `unicode-range` or put the manifest's short arrays on one line, every build reported an edit and `--write` put the unformatted text back. The block is now compared ignoring whitespace and the manifest by value. `check` and `verify` already read both by parsing them.
+
+- [#31](https://github.com/Amir-Abushanab/fontphobia/pull/31) [`c8f624b`](https://github.com/Amir-Abushanab/fontphobia/commit/c8f624bd5803f9ffe76b830150c403ff1f0c8096) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - `verify` and `check` accept `--ci`. The top-level help lists the flag, and a CI script that passed it to every command got "Unknown option" from the two commands it is most likely to run. Neither prompts, so the flag changes nothing there.
+
+- [`c2a72d9`](https://github.com/Amir-Abushanab/fontphobia/commit/c2a72d9a30c2c82574185775704e89fe5dc9f297) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - An audit waits for each page's stylesheets to be applied before reading its text. A visit went on once no request was in flight, and a stylesheet can finish downloading before the page has applied it, so on a slow machine a visit could read the page in the browser's default font and report its text as drawn by a system font. Seen on Windows CI in the font-size sweep visits, which skip the scroll.
+
+- [#31](https://github.com/Amir-Abushanab/fontphobia/pull/31) [`c8f624b`](https://github.com/Amir-Abushanab/fontphobia/commit/c8f624bd5803f9ffe76b830150c403ff1f0c8096) Thanks [@Amir-Abushanab](https://github.com/Amir-Abushanab)! - `verify`, after a run on a site with live widgets and a 44,000 px essay:
+  
+  - **An unexplained font load names its character.** "Loaded, but the page uses none of its characters" was wrong when a script had added the text after the audit read the page. The message now looks at the text of the page as verify loaded it and names the characters the audit never recorded there, with the words around them, and says to declare them with `extraText`. When the text has none either, it says that: canvas text, or a script asking for the font.
+  - **The walk down the page ends in the same state every time.** Each scroll stop was held for one frame, so which IntersectionObserver callback ran last depended on how fast the frames came, and a scroll-spy that keeps the last heading it saw left a label in a different place on each load. That was reported as a regression in text. Each stop is now held for two frames and a task, and so is the return to the top.
+  - **A box that moved sideways at the same width says so,** instead of "width changed (shaping or advance widths)".
+  - **Long pages are captured in strips.** A full-page screenshot is one GPU surface; past its largest size Chrome drew the top of the page again, so the lower part of a long page at 2× was compared with copies of the header, and the diff image showed the header 18 times.
+  - **Pages that download more than before are called out** under the bytes table, where until now only the table's own numbers showed it.
+
 ## 0.9.1
 
 ### Patch Changes
