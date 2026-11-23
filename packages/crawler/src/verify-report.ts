@@ -113,7 +113,8 @@ function lines(r: VerifyResult, root: string, md: boolean): string[] {
     if (b.bytes.length) {
       const now = median(b.bytes.map((p) => p.before.bytes)),
         after = median(b.bytes.map((p) => p.after.bytes));
-      item(`median ${kb(now)} → ${kb(after)}${now ? ` (${Math.round((1 - after / now) * 100)}% less)` : ''}`);
+      const pct = now ? Math.round(Math.abs(1 - after / now) * 100) : 0;
+      item(`median ${kb(now)} → ${kb(after)}${now ? ` (${pct}% ${after > now ? 'more' : 'less'})` : ''}`);
       if (md) L.push('', '| Page | Before | After | Requests |', '|---|---:|---:|---:|');
       for (const p of b.bytes)
         L.push(
@@ -122,6 +123,17 @@ function lines(r: VerifyResult, root: string, md: boolean): string[] {
             : `  ${p.page.padEnd(30)} ${kb(p.before.bytes).padStart(9)} → ${kb(p.after.bytes).padStart(9)}  (${p.before.requests} → ${p.after.requests} requests${p.after.inCss ? `; ${kb(p.after.inCss)} in the stylesheet` : ''})`,
         );
       if (md) L.push('');
+      // Measured, where the plan could only predict it: these pages are worse off than unsplit.
+      const heavier = b.bytes.filter((p) => p.after.bytes > p.before.bytes);
+      if (heavier.length)
+        item(
+          `note: ${heavier.length} page(s) download more than before (${heavier
+            .slice(0, 3)
+            .map((p) => `${p.page} +${kb(p.after.bytes - p.before.bytes)}`)
+            .join(
+              ', ',
+            )}${heavier.length > 3 ? ', …' : ''}): an extended file for a few characters; \`build\` lists them and what would avoid it`,
+        );
       item(
         b.loads.length
           ? "some files loaded where they weren't needed (above)"
